@@ -1,0 +1,28 @@
+docs/lessons-draft.json
+  s_f983bef49b9fee::t_37a9ac40fb0ec0 4,24,38
+README.md
+  s_f983bef49b9fee::t_0b86628fd6623c 11-41,124,126
+docs/learning-milestones.md
+  s_f983bef49b9fee::t_1c8aa8ee3eea6a 1-54,56-90,93-108,110-116
+  s_f983bef49b9fee::t_8fc66dcb2e4d16 55,91-92,109
+docs/curriculum.md
+  s_f983bef49b9fee::t_37a9ac40fb0ec0 3,54-55,92
+CHANGELOG.md
+  s_f983bef49b9fee::t_0b86628fd6623c 7-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4b5f56cb6a2e2a8308d7aa770244f4efbe366cc2",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
