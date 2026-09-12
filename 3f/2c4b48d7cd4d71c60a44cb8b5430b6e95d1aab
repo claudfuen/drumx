@@ -1,0 +1,25 @@
+scripts/test-native.sh
+  s_f983bef49b9fee::t_0ce81bd737da14 55-61
+native/macos/DrumxUnlocks.swift
+  s_f983bef49b9fee::t_ed265b458aba3c 32-35
+  s_f983bef49b9fee::t_0ce81bd737da14 1-31,36-139
+native/macos/tests/DrumxUnlockChecks.swift
+  s_f983bef49b9fee::t_0ce81bd737da14 1-166,169-170,173-176,220-230,232-236
+  s_f983bef49b9fee::t_ed265b458aba3c 167-168,171-172,177-219,231
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3f2c4b48d7cd4d71c60a44cb8b5430b6e95d1aab",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
