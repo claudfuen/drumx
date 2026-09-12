@@ -39,6 +39,8 @@ extension LabController {
   }
 
   func saveResume() {
+    // Merely navigating setup must not replace unreadable saved progress with its fallback.
+    guard progress.selectedProfile.hasCompletedWelcome else { return }
     _ = progress.updateResume(PracticeResume(lessonID: lesson.id, tempo: tempo, mode: mode,
                                            liveFeedback: showLive, bars: lessonBars, lessonVersion: lesson.version))
     if let error = progress.lastError { setStatus(error) }
@@ -79,8 +81,12 @@ extension LabController {
     }
     welcomeError.stringValue = ""
     playerButton.title = progress.selectedProfile.name
-    saveResume(); showPage(.course)
+    saveResume(); showPage(.mainMenu)
     setStatus("Start with the pulse. Keep your hands comfortable and take breaks as you practise.")
+  }
+
+  var unlockState: DrumxUnlockState {
+    DrumxUnlocks.evaluate(course: DrumxCourse.lessons, history: history.attempts, progress: progress)
   }
 
   func refreshCourse() {
@@ -96,11 +102,16 @@ extension LabController {
       statuses[definition.id] = recall && reading ? "Read + recall tried" : recall ? "Recall tried"
         : reading && played ? "Practised + read" : played ? "Practised" : reading ? "Reading checked" : "New"
     }
-    courseView.update(lesson: lesson, player: progress.selectedProfile.name, statuses: statuses, practised: practised)
+    let state = unlockState
+    courseView.update(lesson: lesson, player: progress.selectedProfile.name, statuses: statuses, practised: practised,
+      availability: state.availableIDs, cleared: state.clearedIDs, lockReasons: state.reasonByID)
   }
 
   func selectLesson(_ id: String) {
     guard !transportActive, let selected = DrumxCourse.lesson(id: id) else { return }
+    guard unlockState.availableIDs.contains(id) else {
+      setStatus(unlockState.reasonByID[id] ?? "Complete the previous lesson to open this one."); return
+    }
     if selected.id != lesson.id {
       lesson = selected; tempo = selected.suggestedBPM; mode = 0; showLive = true; lessonBars = 4
     }
@@ -109,6 +120,7 @@ extension LabController {
 
   func openCurrentLesson() {
     guard !transportActive else { return }
+    guard unlockState.availableIDs.contains(lesson.id) else { backToCourse(); return }
     resetCore(); showPage(.prepare)
     setStatus("\(lesson.practiceMinutes) of practice. Listen, count, repeat, then try less help.")
   }
@@ -128,23 +140,45 @@ extension LabController {
       || progress.recallEvidence(lessonID: lesson.id, version: lesson.version) != nil
     lessonEvidence.stringValue = "\(takes.count) takes with matched hits  ·  Reading \(reading ? "checked" : "to try")  ·  Recall \(recall ? "tried" : "to try")"
     window.title = "Drumx · \(lesson.title)"
+    let state = unlockState
+    if !state.clearedIDs.contains(lesson.id) {
+      lessonEvidence.stringValue += "  ·  Unlock next: 4+ bars, 80% caught"
+    }
   }
 
   @objc func backToCourse() {
     guard !transportActive else { return }
     saveResume(); resetCore(); showPage(.course)
     window.title = "Drumx · Foundations"
-    setStatus("Choose a lesson or continue where you left off. Your practice is saved on this Mac.")
+    setStatus("Choose a chapter to explore. Open lessons are always available to revisit.")
   }
 
   @objc func nextLesson() {
     guard !transportActive else { return }
     if let index = DrumxCourse.lessons.firstIndex(where: { $0.id == lesson.id }), index + 1 < DrumxCourse.lessons.count {
-      selectLesson(DrumxCourse.lessons[index + 1].id)
+      let next = DrumxCourse.lessons[index + 1]
+      if unlockState.availableIDs.contains(next.id) { selectLesson(next.id) }
+      else { setStatus(unlockState.reasonByID[next.id] ?? "Keep practising this pattern.") }
     } else {
       backToCourse()
       setStatus("You reached the last lesson. Revisit an earlier pattern with less help or a comfortable new tempo.")
     }
+  }
+
+  func refreshUnlockReview() {
+    let state = unlockState
+    guard let index = DrumxCourse.lessons.firstIndex(where: { $0.id == lesson.id }) else { return }
+    if index + 1 < DrumxCourse.lessons.count {
+      let next = DrumxCourse.lessons[index + 1]
+      let available = state.availableIDs.contains(next.id)
+      nextLessonButton.isEnabled = available
+      nextLessonButton.title = available ? "Next lesson →" : "Next lesson locked"
+      unlockCaption.stringValue = available ? "Open next: \(next.title)" : state.reasonByID[next.id] ?? "Finish 4+ bars and catch at least 80% of the notes."
+    } else {
+      nextLessonButton.isEnabled = true; nextLessonButton.title = "Explore foundations"
+      unlockCaption.stringValue = "Keep building: revisit a pattern with less guidance."
+    }
+    nextLessonButton.needsDisplay = true
   }
 
   @objc func lengthChanged() {
@@ -156,6 +190,7 @@ extension LabController {
 
   @objc func showPlayers() {
     guard !transportActive, playerWindow == nil, checkWindow == nil else { return }
+    if currentPage == .settings { leaveSettings() }
     saveResume()
     let panel = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 620, height: 340), styleMask: [.titled], backing: .buffered, defer: false)
     panel.title = "Who's playing?"; panel.appearance = window.appearance
@@ -185,7 +220,7 @@ extension LabController {
   @objc func changePlayer() {
     guard let id = playerMenu.selectedItem?.representedObject as? UUID, progress.selectProfile(id: id) else { return }
     history = makePlayerHistory(); restorePlayer(); closePlayers()
-    resetCore(); showPage(progress.selectedProfile.hasCompletedWelcome ? .course : .welcome)
+    resetCore(); showPage(progress.selectedProfile.hasCompletedWelcome ? .mainMenu : .welcome)
   }
   @objc func addPlayer() {
     guard progress.addProfile(name: newPlayerName.stringValue) != nil else { playerError.stringValue = progress.lastError ?? "Choose a different name."; return }
@@ -193,7 +228,7 @@ extension LabController {
   }
   @objc func renamePlayer() {
     guard progress.renameSelectedProfile(name: newPlayerName.stringValue) else { playerError.stringValue = progress.lastError ?? "Check the name."; return }
-    playerButton.title = progress.selectedProfile.name; closePlayers(); showPage(.course)
+    playerButton.title = progress.selectedProfile.name; closePlayers(); showPage(.mainMenu)
   }
   @objc func closePlayers() {
     if let panel = playerWindow { window.endSheet(panel); panel.orderOut(nil) }
@@ -240,7 +275,9 @@ extension LabController {
   }
   @objc func closeLearningCheck() {
     if let panel = checkWindow { window.endSheet(panel); panel.orderOut(nil) }
-    checkWindow = nil; refreshLesson(); focusStage()
+    checkWindow = nil
+    if currentPage == .review { refreshUnlockReview() } else { refreshLesson() }
+    focusStage()
   }
 
   func refreshKitCheck() {

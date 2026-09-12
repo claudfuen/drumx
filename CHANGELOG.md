@@ -4,6 +4,15 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### A game menu and an explorable foundation journey
+
+- Give the app a distinct main menu with Continue, Learn, Settings, keyboard selection, and original percussion artwork. Replace the chapter tabs with illustrated chapter cards and connected lesson steps.
+- Show lesson locks and their requirements, keep future chapters browsable, and connect qualifying practice and reading checks to the next-lesson action. Existing players retain their reached lessons.
+- Add a full settings page for kit mapping, sound, playing preferences, and local players/progress. Give sliders, toggles, and selectors a consistent Drumx appearance while retaining AppKit input and accessibility behavior.
+- Make Back and Main menu explicit. Escape returns home from lesson/menu pages and opens a pause menu during practice; interrupted takes restart with a count-in and never set records. A take that already finished keeps its completed review.
+- Commit pending timing edits when leaving settings or quitting, and prevent setup navigation from replacing unreadable progress with a fallback profile.
+- Document a durable menu hierarchy and a production-engine decision gate before broader curriculum expansion. Swift/AppKit remains the Mac shell; it is not a shared Windows UI.
+
 ### Evidence-based beginner unlock model
 
 - Add a tested progression model: four or more bars with at least 80% of notes matched opens the next lesson; chapter boundaries also require the preceding reading check. Timing stars remain a separate challenge.

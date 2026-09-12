@@ -33,7 +33,7 @@ final class PracticeView: NSView {
 
   override func keyDown(with event: NSEvent) {
     guard !event.isARepeat else { return }
-    if event.keyCode == 53 { controller?.stopTake(); return }
+    if event.keyCode == 53 { controller?.dismissOrStop(); return }
     let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
     if let pad = ["a": 0, "s": 1, " ": 2][key] {
       controller?.keyboardHit(

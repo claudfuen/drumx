@@ -6,9 +6,13 @@ Drumx is a desktop trainer for real MIDI drum kits: the pull of a rhythm game, b
 
 Start with **Find the pulse**, then work through **12 foundation lessons**: count quarter and eighth notes, give rests their space, combine hands and feet, build a backbeat, and return to one after a short fill. Every lesson connects real drum notation, recorded drum sounds, and the same focused practice highway.
 
-**Current build:** a playable native macOS foundation course, welcome flow, separate local players, and saved progress. The unit suggests **96 minutes of repeat practice**, taken at your pace across listening, playing, checks, and recall. Free public distribution is the goal; a release installer, deeper rudiments, the production renderer, and Windows are still ahead.
+**Current build:** a playable native macOS app with a main menu, an explorable chapter journey, lesson unlocks, full-page settings, separate local players, and saved progress. The unit suggests **96 minutes of repeat practice**, taken at your pace across listening, playing, checks, and recall. A release installer, deeper rudiments, the production renderer, and Windows are still ahead.
 
 [Run it](#quick-start) · [Current milestone](#current-milestone) · [Lesson guide](docs/native-lab.md) · [Changelog](CHANGELOG.md)
+
+![Drumx native main menu](docs/images/main-menu.png)
+
+*Native main menu, rendered with a sample player.*
 
 ## Current milestone
 
@@ -18,7 +22,7 @@ The prototype established the shared timing line, stable kit layout, capture fee
 
 The active milestone is a player outcome: **a new drummer can connect their kit, learn a small foundation unit, try it with less help, and return knowing what to practise next.** Welcome, course selection, teaching, practice, review, and local progress are now connected. The next evidence comes from using the whole course with a beginner and a physical kit.
 
-**Quality bar: a small, finished game that could belong on Steam.** The first unit should feel deliberately designed from launch through the return visit: clear onboarding, cohesive visuals and sound, responsive play, satisfying feedback, and dependable recovery. This is an experience target, not a claim of Steam availability; free public distribution remains the goal.
+**Quality bar: a small, finished game that could belong on Steam.** The first unit should feel deliberately designed from launch through the return visit: clear onboarding, cohesive visuals and sound, responsive play, satisfying feedback, and dependable recovery. Steam distribution and possible paid release are aspirations to evaluate; availability, pricing, and a source-code license are not decided.
 
 | Milestone | Status | What the player gains |
 | --- | --- | --- |
@@ -42,7 +46,7 @@ The active milestone is a player outcome: **a new drummer can connect their kit,
 
 Checked items have implementation and verification evidence. The remaining acceptance gates keep M1 active. A bigger lesson list or five-star run alone does not close the milestone. Stars reward a take; learning gates describe readiness using timing, reading, recall, and the evidence MIDI cannot provide.
 
-[Learning definitions and gates](docs/learning-milestones.md) specify the shared terms, evidence, and boundaries behind this roadmap. Reliability, accessibility, and distribution run alongside the learning milestones; a free public preview need not wait for the intermediate course. We close each milestone with a demonstrated journey, relevant checks, known limitations, and an updated README and changelog.
+[Learning definitions and gates](docs/learning-milestones.md) specify the shared terms, evidence, and boundaries behind this roadmap. Reliability, accessibility, and distribution run alongside the learning milestones; a public preview need not wait for the intermediate course. We close each milestone with a demonstrated journey, relevant checks, known limitations, and an updated README and changelog.
 
 ## A foundation worth practising
 
@@ -54,6 +58,8 @@ Checked items have implementation and verification evidence. The remaining accep
 
 Each lesson offers a clear objective, counts, a staff study, an audible demonstration, short repeatable takes, a reading question, and a technique self-check. Choose 1, 4, or 8 bars; vary the tempo; reduce assistance when comfortable. Suggested minutes are practice guidance, not a timer or a promise of learning speed.
 
+**Learn** opens three illustrated chapter cards and their lesson steps. You can inspect every chapter. For a new player, completing at least four bars with **80% of expected notes matched** opens the next lesson; entering a new chapter also requires the preceding lesson's reading check. One-bar practice remains useful for repair. Existing players retain access through their saved progress. This is a prototype unlock rule, separate from stars and broader learning readiness.
+
 | You can do this now | What it teaches |
 | --- | --- |
 | **Hear the pattern** | Listen to the selected lesson's acoustic drum demonstration and count along. |
@@ -64,6 +70,8 @@ Each lesson offers a clear objective, counts, a staff study, an audible demonstr
 | **Chase a clean phrase** | Earn up to five stars and 10,000 points; build a combo, then compare the last six matching takes and your previous best. |
 | **Use your own kit** | Select a MIDI input, learn pad mappings, and choose app sounds or your module's sounds. |
 | **Return to your practice** | Continue the selected player's lesson with saved tempo, phrase length, and guidance. Reading and recall evidence stay separate. |
+
+The main menu gives each visit three clear routes: **Continue** opens your saved lesson, **Learn** explores the course, and **Settings** configures the kit, sound, playing preferences, and players. The [menu architecture](docs/menu-architecture.md) explains how this grows into multiple courses and a separate practice space when those experiences exist.
 
 The foundation unit plays **hi-hat, snare, and kick**. Seven stable hand-instrument positions and a full-width kick bar establish the visual layout; the other kit positions are reserved for future exercises.
 
@@ -82,11 +90,11 @@ open .build/DrumxLab.app
 
 No MIDI kit is required to try the lesson:
 
-1. Enter a player name on the welcome page, then choose **Let's play**.
-2. Choose **Find the pulse**. Read the counts and choose **Hear the pattern**.
-3. Select a comfortable tempo, choose **Start playing**, and come in after the four-beat count-in.
+1. Enter a player name on the welcome page, then choose **Let's play** to reach the main menu.
+2. Choose **Continue** to open **Find the pulse**, or **Learn** to inspect the chapter journey. Read the counts and choose **Hear the pattern**.
+3. Select a comfortable tempo and four bars, choose **Start playing**, and come in after the four-beat count-in.
 4. Read the review. Try **Play again**, **Slow it down**, or **Work on one bar**. Use **Lesson check** to connect the pattern to drum language.
-5. When comfortable, try **Hide a phrase**, then **Try click-only**, or open the **Next lesson**. Return to **Course** whenever you want to choose your next focus.
+5. When comfortable, try **Hide a phrase**, then **Try click-only**, or open **Next lesson** when unlocked. A locked next step explains what remains. **Main menu** returns to Continue, Learn, and Settings.
 
 Try five minutes of short takes first. A four-bar take lasts 16 seconds at 60 BPM, plus the count-in. Your completed attempts are archived on this Mac and the course remembers your reading and practice evidence. Add another local player from the player button to keep their progress separate.
 
@@ -96,11 +104,15 @@ Try five minutes of short takes first. A four-bar take lasts 16 seconds at 60 BP
 | **S** | Snare |
 | **Space** | Kick |
 | **Shift + key** | Softer strike |
-| **Enter** | Continue from the course; start or retry from a lesson |
-| **Esc** | Stop playing/listening, close a sheet, or return to the course |
-| **Kit & sound** | MIDI input, pad mapping, sound, volume, sticking hints, and input offset |
+| **↑ / ↓** | Choose Continue, Learn, or Settings on the main menu |
+| **Enter** | Activate the selected menu action; start/retry from a lesson; restart from pause |
+| **Esc** | Close a check/player sheet first; pause active playing/listening; otherwise return to the main menu after welcome |
+| **Cmd + ,** | Open Settings while no phrase is running |
+| **Settings** | Your kit, Sound, Playing, and Players & progress |
 
-For a physical kit, open **Kit & sound**, choose its MIDI source, and check each pad before playing. The [lesson guide](docs/native-lab.md) covers setup and sound routing.
+Pause stops the current phrase. **Restart with count-in** begins it again; it does not resume in the middle of a bar. An unfinished take does not change personal bests or unlock a lesson.
+
+For a physical kit, open **Settings → Your kit**, choose its MIDI source, and check each pad before playing. **Sound** controls app monitoring and volume. The [lesson guide](docs/native-lab.md) covers setup, navigation, and sound routing.
 
 ## Sound and timing
 
@@ -121,7 +133,7 @@ flowchart LR
 
 The click and demo use native audio scheduling. MIDI monitoring bypasses the UI thread. Scoring retains captured timestamps, so a slow frame can delay feedback without becoming the player's timing error.
 
-The stack is **Swift/AppKit + CoreMIDI + AVAudioEngine**, with a **portable C++17 core and C interface**. Physical latency and sustained frame pacing still need hardware measurements. See the [rendering plan](docs/rendering-plan.md) for the next experiment; the production engine remains undecided.
+The Mac stack is **Swift/AppKit + CoreMIDI + AVAudioEngine**, with a **portable C++17 core and C interface**. The custom interface is built on AppKit; it is not a shared Windows UI. The authored lesson and progression models are currently Swift and need extraction or porting alongside Windows input/audio layers. Physical latency and sustained frame pacing still need hardware measurements. Choose the production engine before large content expansion; the [rendering plan](docs/rendering-plan.md) records the next experiment.
 
 ## Development
 
@@ -131,7 +143,7 @@ Versioned foundation exercises live in [DrumxCourse.swift](native/macos/DrumxCou
 bash scripts/test-native.sh
 ```
 
-The native checks exercise scoring boundaries, simultaneous notes, late input, MIDI parsing and virtual input, sample integrity, audio/demo behavior, projection and count-in continuity, and comparable lesson history. They validate software behavior, not physical pad-to-sound latency.
+The native checks exercise scoring boundaries, simultaneous notes, late input, MIDI parsing and virtual input, sample integrity, audio/demo behavior, projection and count-in continuity, comparable lesson history, and unlock sequencing. They validate software behavior, not physical pad-to-sound latency.
 
 Start with the [scoring interface](native/core/drumx_core.h), [journey controller](native/macos/DrumxJourneyController.swift), [practice drawing](native/macos/PracticeView.swift), [notation](native/macos/DrumxNotationView.swift), or [review/history model](native/macos/DrumxLesson.swift).
 
@@ -142,6 +154,7 @@ See [troubleshooting](docs/native-lab.md#troubleshooting) for setup help. Builds
 The active focus is **M1, the complete beginner journey**. The foundation course is playable; real-kit validation, beginner observation, sustained practice feedback, and further experience polish remain open. The broader rudiment course remains a draft.
 
 - [Learning definitions and gates](docs/learning-milestones.md): the milestone contract and evidence for progression.
+- [Menu architecture](docs/menu-architecture.md): current navigation, future course collections, and the boundary between learning and free practice.
 - [Product pitch](docs/pitch.md): the learning experience and its scope.
 - [Curriculum](docs/curriculum.md) and [lesson data draft](docs/lessons-draft.json): real drum language and planned progression.
 - [Product research](docs/product-research.md): learning tools, rhythm games, and their tradeoffs.
