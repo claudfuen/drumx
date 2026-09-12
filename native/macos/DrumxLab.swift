@@ -72,7 +72,7 @@ final class PracticeView: NSView {
     let songTime = max(0, rawTime)
     let beat = songTime * c.tempo / 60
     let look = 4.0 * 60 / c.tempo
-    let top: CGFloat = 49
+    let top: CGFloat = 64
     let strike = max(200, bounds.height - 190)
     let center = bounds.midX
     let bottomWidth = min(790, bounds.width - 110)
@@ -96,8 +96,13 @@ final class PracticeView: NSView {
     text(
       c.running
         ? (rawTime < 0 ? "Count-in" : memory ? "From memory" : "Keep the backbeat")
-        : "Hold a steady backbeat.", x: 20, y: 8, size: 16, color: .labelColor)
+        : "Eighth-note rock groove", x: 20, y: 8, size: 16, color: .labelColor)
     text("\(Int(c.tempo)) BPM · \(c.modeNames[c.mode])", x: bounds.width - 240, y: 12)
+    if !c.running {
+      text(
+        "Count 1 & 2 & 3 & 4 &. The snare on beats 2 and 4 is the backbeat.", x: 20, y: 30, size: 11
+      )
+    }
     NSColor.controlBackgroundColor.setFill()
     surface(0, 1).fill()
     if c.mode == 2 {
@@ -156,39 +161,44 @@ final class PracticeView: NSView {
         NSBezierPath(roundedRect: rect, xRadius: 5, yRadius: 5).fill()
       }
     }
-    // All visual events come from the scoring core's expected-event list.
-    for index in 0..<dx_core_event_count(c.core) {
-      var event = DXEvent()
-      guard dx_core_event(c.core, index, &event) == 1 else { continue }
-      let ahead = event.time_seconds - songTime
-      if ahead < -0.015 || ahead > look { continue }
-      if c.mode == 2 || (c.mode == 1 && Int(event.time_seconds * c.tempo / 240) % 2 == 1) {
-        continue
-      }
-      let d = CGFloat(max(0, 1 - ahead / look))
-      let y = yy(d)
-      let pad = Int(event.pad)
-      let alpha: CGFloat = event.hit == 1 ? 0.25 : 1
-      colors[pad].withAlphaComponent(alpha).setFill()
-      if pad == 2 {
-        NSBezierPath(
-          roundedRect: NSRect(x: center - half(d) + 3, y: y - 3, width: 2 * half(d) - 6, height: 6),
-          xRadius: 3, yRadius: 3
-        ).fill()
-        NSBezierPath(
-          roundedRect: NSRect(x: center - 3, y: y - 4, width: 6, height: 13), xRadius: 2, yRadius: 2
-        ).fill()
-      } else {
-        let x = handX(pad, d)
-        let width = (pad == 0 ? 42.0 : 48.0) * (0.7 + 0.3 * d)
-        NSBezierPath(
-          roundedRect: NSRect(x: x - width / 2, y: y - 10, width: width, height: 20),
-          xRadius: pad == 0 ? 3 : 9, yRadius: pad == 0 ? 3 : 9
-        ).fill()
-        if c.showHands {
-          text(
-            pad == 0 ? "R" : "L", x: x, y: y - 7, size: 11, color: dark ? .black : .white,
-            centered: true)
+    // Draw foot bars first so simultaneous hand notes remain legible.
+    // All visual events still come from the scoring core's expected-event list.
+    for renderPad in [2, 0, 1] {
+      for index in 0..<dx_core_event_count(c.core) {
+        var event = DXEvent()
+        guard dx_core_event(c.core, index, &event) == 1, event.pad == renderPad else { continue }
+        let ahead = event.time_seconds - songTime
+        if ahead < -0.015 || ahead > look { continue }
+        if c.mode == 2 || (c.mode == 1 && Int(event.time_seconds * c.tempo / 240) % 2 == 1) {
+          continue
+        }
+        let d = CGFloat(max(0, 1 - ahead / look))
+        let y = yy(d)
+        let pad = Int(event.pad)
+        let alpha: CGFloat = event.hit == 1 ? 0.25 : 1
+        colors[pad].withAlphaComponent(alpha).setFill()
+        if pad == 2 {
+          NSBezierPath(
+            roundedRect: NSRect(
+              x: center - half(d) + 3, y: y - 3, width: 2 * half(d) - 6, height: 6),
+            xRadius: 3, yRadius: 3
+          ).fill()
+          NSBezierPath(
+            roundedRect: NSRect(x: center - 3, y: y - 4, width: 6, height: 13), xRadius: 2,
+            yRadius: 2
+          ).fill()
+        } else {
+          let x = handX(pad, d)
+          let width = (pad == 0 ? 42.0 : 48.0) * (0.7 + 0.3 * d)
+          NSBezierPath(
+            roundedRect: NSRect(x: x - width / 2, y: y - 10, width: width, height: 20),
+            xRadius: pad == 0 ? 3 : 9, yRadius: pad == 0 ? 3 : 9
+          ).fill()
+          if c.showHands {
+            text(
+              pad == 0 ? "R" : "L", x: x, y: y - 7, size: 11, color: dark ? .black : .white,
+              centered: true)
+          }
         }
       }
     }

@@ -1,5 +1,53 @@
 {
-  "status": "introductory draft",
+  "status": "curriculum and literacy draft; not an implemented course",
+  "schemaDraftVersion": 2,
+  "implementationScope": "Framework-independent lesson proposals. The native timing lab currently uses a fixed groove and does not load this course, render staff notation, or verify progression.",
+  "sourceReferences": [
+    {
+      "id": "pas-rudiments",
+      "url": "https://pas.org/rudiments/",
+      "role": "Canonical rudiment names and conventional sticking reference; no chart artwork or recordings included."
+    },
+    {
+      "id": "pas-chart",
+      "url": "https://pas.org/wp-content/uploads/2024/04/pas-rudiments.pdf",
+      "role": "Primary reference for PAS identifiers 1, 6, and 16."
+    },
+    {
+      "id": "moises-introduction",
+      "url": "https://moises.ai/blog/tips/drum-rudiments/",
+      "role": "User-supplied introduction to rudiments and musical application; not a validation of this lesson order."
+    }
+  ],
+  "progressionPolicy": {
+    "status": "proposed and unevaluated",
+    "targetBpmMeaning": "Suggested practice tempo, never a mastery requirement. Lower tempo when necessary.",
+    "separateEvidence": [
+      "timing and instrument coverage",
+      "spoken counts and terminology",
+      "staff reading without the game lane",
+      "click-only recall and a changed application",
+      "self-check or teacher observation of physical technique"
+    ],
+    "masteryRule": "Do not infer mastery from BPM or a timing percentage. Record aids used and revisit the skill in a later session.",
+    "handVerification": "Standard MIDI identifies notes or zones, not the striking hand. R/L is an instruction, not a verified result.",
+    "dynamicsVerification": "Velocity depends on trigger settings. Timing accuracy does not verify accents, grip, rebound, posture, or foot technique."
+  },
+  "learningViews": {
+    "status": "planned",
+    "sharedMusicalSource": "Generate staff notation, counts, sticking, accents, and game targets from the same lesson steps.",
+    "sequence": [
+      "hear and name",
+      "count with paired game lane and staff",
+      "read static staff without lane",
+      "click-only recall",
+      "apply a small variation",
+      "explain to a teacher and revisit later"
+    ],
+    "readingOnly": "Keep the conventional staff visible; hide the game lane.",
+    "strictRecall": "Hide staff, count text, expected events, beat animation, and live evaluation until the phrase ends. Label and record any optional aid.",
+    "notationRights": "Create original notation from these exercise events. Link to PAS rather than reproducing its complete chart, artwork, or audio."
+  },
   "lessons": [
     {
       "id": "find-the-pulse",
@@ -43,11 +91,47 @@
         }
       ],
       "focus": "Steady quarter notes",
-      "durationSeconds": 60
+      "durationSeconds": 60,
+      "canonicalName": "Steady quarter-note pulse",
+      "exerciseType": "foundation",
+      "rudimentReference": null,
+      "literacy": {
+        "meter": {
+          "beatsPerBar": 4,
+          "beatUnitDenominator": 4
+        },
+        "bars": 1,
+        "countSyllables": [
+          "1",
+          "2",
+          "3",
+          "4"
+        ],
+        "countingNote": "Each token aligns to one step. Say & as and; keep the quarter-note pulse through any rest.",
+        "terms": [
+          "pulse",
+          "quarter note",
+          "beat",
+          "bar",
+          "4/4"
+        ],
+        "notation": {
+          "status": "planned; no notation graphics bundled",
+          "system": "conventional percussion staff",
+          "staffKey": "snare study",
+          "noteValueDenominator": 4,
+          "accentSymbol": ">",
+          "sharedSource": "The same steps, simultaneous voices, optional suggested hand, and accent flags as the game view."
+        },
+        "transferChecks": [
+          "Count one bar aloud and explain how many quarter-note beats it contains.",
+          "Read and play four quarter notes without the moving lane."
+        ]
+      }
     },
     {
       "id": "single-strokes",
-      "title": "Single strokes",
+      "title": "Single Stroke Roll",
       "subtitle": "Build an even conversation.",
       "category": "Rudiments",
       "level": "02",
@@ -115,11 +199,54 @@
         }
       ],
       "focus": "Even alternating strokes",
-      "durationSeconds": 90
+      "durationSeconds": 90,
+      "canonicalName": "Single Stroke Roll",
+      "exerciseType": "rudiment",
+      "rudimentReference": {
+        "sourceId": "pas-chart",
+        "pasNumber": 1,
+        "canonicalName": "Single Stroke Roll"
+      },
+      "literacy": {
+        "meter": {
+          "beatsPerBar": 4,
+          "beatUnitDenominator": 4
+        },
+        "bars": 1,
+        "countSyllables": [
+          "1",
+          "&",
+          "2",
+          "&",
+          "3",
+          "&",
+          "4",
+          "&"
+        ],
+        "countingNote": "Each token aligns to one step. Say & as and; keep the quarter-note pulse through any rest.",
+        "terms": [
+          "Single Stroke Roll",
+          "alternating sticking",
+          "eighth note",
+          "subdivision"
+        ],
+        "notation": {
+          "status": "planned; no notation graphics bundled",
+          "system": "conventional percussion staff",
+          "staffKey": "snare study",
+          "noteValueDenominator": 8,
+          "accentSymbol": ">",
+          "sharedSource": "The same steps, simultaneous voices, optional suggested hand, and accent flags as the game view."
+        },
+        "transferChecks": [
+          "Name the Single Stroke Roll and explain alternating hands.",
+          "Count and play one bar of eighth notes from staff notation, then try a left-hand lead."
+        ]
+      }
     },
     {
       "id": "double-strokes",
-      "title": "Double strokes",
+      "title": "Double Stroke Open Roll",
       "subtitle": "Two strokes, one hand.",
       "category": "Rudiments",
       "level": "03",
@@ -243,11 +370,62 @@
         }
       ],
       "focus": "Balanced pairs",
-      "durationSeconds": 90
+      "durationSeconds": 90,
+      "canonicalName": "Double Stroke Open Roll",
+      "exerciseType": "rudiment",
+      "rudimentReference": {
+        "sourceId": "pas-chart",
+        "pasNumber": 6,
+        "canonicalName": "Double Stroke Open Roll"
+      },
+      "literacy": {
+        "meter": {
+          "beatsPerBar": 4,
+          "beatUnitDenominator": 4
+        },
+        "bars": 1,
+        "countSyllables": [
+          "1",
+          "e",
+          "&",
+          "a",
+          "2",
+          "e",
+          "&",
+          "a",
+          "3",
+          "e",
+          "&",
+          "a",
+          "4",
+          "e",
+          "&",
+          "a"
+        ],
+        "countingNote": "Each token aligns to one step. Say & as and; keep the quarter-note pulse through any rest.",
+        "terms": [
+          "Double Stroke Open Roll",
+          "double stroke",
+          "sixteenth note",
+          "rebound"
+        ],
+        "notation": {
+          "status": "planned; no notation graphics bundled",
+          "system": "conventional percussion staff",
+          "staffKey": "snare study",
+          "noteValueDenominator": 16,
+          "accentSymbol": ">",
+          "sharedSource": "The same steps, simultaneous voices, optional suggested hand, and accent flags as the game view."
+        },
+        "transferChecks": [
+          "Explain two distinct strokes per hand and count four sixteenths per beat.",
+          "Have a teacher observe the second stroke and rebound; a MIDI timing result cannot verify them."
+        ]
+      }
     },
     {
       "id": "single-paradiddle",
-      "title": "Single paradiddle",
+      "title": "Single Paradiddle",
       "subtitle": "Single, single, double.",
       "category": "Rudiments",
       "level": "04",
@@ -371,7 +549,58 @@
         }
       ],
       "focus": "Changing the lead hand",
-      "durationSeconds": 120
+      "durationSeconds": 120,
+      "canonicalName": "Single Paradiddle",
+      "exerciseType": "rudiment",
+      "rudimentReference": {
+        "sourceId": "pas-chart",
+        "pasNumber": 16,
+        "canonicalName": "Single Paradiddle"
+      },
+      "literacy": {
+        "meter": {
+          "beatsPerBar": 4,
+          "beatUnitDenominator": 4
+        },
+        "bars": 1,
+        "countSyllables": [
+          "1",
+          "e",
+          "&",
+          "a",
+          "2",
+          "e",
+          "&",
+          "a",
+          "3",
+          "e",
+          "&",
+          "a",
+          "4",
+          "e",
+          "&",
+          "a"
+        ],
+        "countingNote": "Each token aligns to one step. Say & as and; keep the quarter-note pulse through any rest.",
+        "terms": [
+          "Single Paradiddle",
+          "diddle",
+          "leading hand",
+          "accent"
+        ],
+        "notation": {
+          "status": "planned; no notation graphics bundled",
+          "system": "conventional percussion staff",
+          "staffKey": "snare study",
+          "noteValueDenominator": 16,
+          "accentSymbol": ">",
+          "sharedSource": "The same steps, simultaneous voices, optional suggested hand, and accent flags as the game view."
+        },
+        "transferChecks": [
+          "Count a bar and identify the double strokes and changing lead hand.",
+          "Explain the accent mark and maintain loud-soft contrast without shifting note timing."
+        ]
+      }
     },
     {
       "id": "accent-control",
@@ -499,7 +728,54 @@
         }
       ],
       "focus": "Strong beats, quiet taps",
-      "durationSeconds": 90
+      "durationSeconds": 90,
+      "canonicalName": "Downbeat accents on alternating sixteenth notes",
+      "exerciseType": "foundation",
+      "rudimentReference": null,
+      "literacy": {
+        "meter": {
+          "beatsPerBar": 4,
+          "beatUnitDenominator": 4
+        },
+        "bars": 1,
+        "countSyllables": [
+          "1",
+          "e",
+          "&",
+          "a",
+          "2",
+          "e",
+          "&",
+          "a",
+          "3",
+          "e",
+          "&",
+          "a",
+          "4",
+          "e",
+          "&",
+          "a"
+        ],
+        "countingNote": "Each token aligns to one step. Say & as and; keep the quarter-note pulse through any rest.",
+        "terms": [
+          "accent",
+          "tap",
+          "dynamic contrast",
+          "sixteenth note"
+        ],
+        "notation": {
+          "status": "planned; no notation graphics bundled",
+          "system": "conventional percussion staff",
+          "staffKey": "snare study",
+          "noteValueDenominator": 16,
+          "accentSymbol": ">",
+          "sharedSource": "The same steps, simultaneous voices, optional suggested hand, and accent flags as the game view."
+        },
+        "transferChecks": [
+          "Identify accented notes on the staff and keep unaccented notes softer.",
+          "Explain why an accent changes emphasis rather than note duration."
+        ]
+      }
     },
     {
       "id": "first-groove",
@@ -563,7 +839,46 @@
         }
       ],
       "focus": "Kick and snare coordination",
-      "durationSeconds": 120
+      "durationSeconds": 120,
+      "canonicalName": "Eighth-note backbeat groove",
+      "exerciseType": "groove",
+      "rudimentReference": null,
+      "literacy": {
+        "meter": {
+          "beatsPerBar": 4,
+          "beatUnitDenominator": 4
+        },
+        "bars": 1,
+        "countSyllables": [
+          "1",
+          "&",
+          "2",
+          "&",
+          "3",
+          "&",
+          "4",
+          "&"
+        ],
+        "countingNote": "Each token aligns to one step. Say & as and; keep the quarter-note pulse through any rest.",
+        "terms": [
+          "groove",
+          "backbeat",
+          "simultaneous voices",
+          "bass drum"
+        ],
+        "notation": {
+          "status": "planned; no notation graphics bundled",
+          "system": "conventional percussion staff",
+          "staffKey": "starter drum set with visible instrument legend",
+          "noteValueDenominator": 8,
+          "accentSymbol": ">",
+          "sharedSource": "The same steps, simultaneous voices, optional suggested hand, and accent flags as the game view."
+        },
+        "transferChecks": [
+          "Explain the backbeat on two and four and identify simultaneous notes.",
+          "Read one bar from the staff and play the next bar from memory."
+        ]
+      }
     },
     {
       "id": "kick-on-the-and",
@@ -627,7 +942,45 @@
         }
       ],
       "focus": "An independent bass drum",
-      "durationSeconds": 120
+      "durationSeconds": 120,
+      "canonicalName": "Eighth-note groove with kick on the and of three",
+      "exerciseType": "groove",
+      "rudimentReference": null,
+      "literacy": {
+        "meter": {
+          "beatsPerBar": 4,
+          "beatUnitDenominator": 4
+        },
+        "bars": 1,
+        "countSyllables": [
+          "1",
+          "&",
+          "2",
+          "&",
+          "3",
+          "&",
+          "4",
+          "&"
+        ],
+        "countingNote": "Each token aligns to one step. Say & as and; keep the quarter-note pulse through any rest.",
+        "terms": [
+          "offbeat",
+          "and of three",
+          "coordination"
+        ],
+        "notation": {
+          "status": "planned; no notation graphics bundled",
+          "system": "conventional percussion staff",
+          "staffKey": "starter drum set with visible instrument legend",
+          "noteValueDenominator": 8,
+          "accentSymbol": ">",
+          "sharedSource": "The same steps, simultaneous voices, optional suggested hand, and accent flags as the game view."
+        },
+        "transferChecks": [
+          "Point to and count the extra kick on the and of three.",
+          "Explain the difference from the basic backbeat groove and play both."
+        ]
+      }
     },
     {
       "id": "groove-to-fill",
@@ -743,7 +1096,54 @@
         }
       ],
       "focus": "A smooth return to the groove",
-      "durationSeconds": 120
+      "durationSeconds": 120,
+      "canonicalName": "Groove with an alternating eighth-note snare fill",
+      "exerciseType": "fill-application",
+      "rudimentReference": null,
+      "literacy": {
+        "meter": {
+          "beatsPerBar": 4,
+          "beatUnitDenominator": 4
+        },
+        "bars": 2,
+        "countSyllables": [
+          "1",
+          "&",
+          "2",
+          "&",
+          "3",
+          "&",
+          "4",
+          "&",
+          "1",
+          "&",
+          "2",
+          "&",
+          "3",
+          "&",
+          "4",
+          "&"
+        ],
+        "countingNote": "Each token aligns to one step. Say & as and; keep the quarter-note pulse through any rest.",
+        "terms": [
+          "fill",
+          "phrase",
+          "barline",
+          "return to one"
+        ],
+        "notation": {
+          "status": "planned; no notation graphics bundled",
+          "system": "conventional percussion staff",
+          "staffKey": "starter drum set with visible instrument legend",
+          "noteValueDenominator": 8,
+          "accentSymbol": ">",
+          "sharedSource": "The same steps, simultaneous voices, optional suggested hand, and accent flags as the game view."
+        },
+        "transferChecks": [
+          "Count both bars without restarting the count during the fill.",
+          "Identify where the fill starts and return to kick plus hi-hat on the next one."
+        ]
+      }
     }
   ]
 }
