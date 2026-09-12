@@ -4,6 +4,13 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Connect coached pulse and refine the playing experience
+
+- Connect the shared tempo policy to native Mac and shared Mac/Windows preparation and review. Offer one recommended action, direct checkpoint attempts, optional faster challenges, and an explicit free-practice route with independent saved choices.
+- Introduce the first versioned tempo unlock while retaining previously available lessons and legacy scores. Preserve immutable take settings, compare exact input conditions, reevaluate disconnected setups, and support same-ID corrections without double counting.
+- Add a compact pace card, visible checkpoint criteria, contextual lesson-star labels, stronger button hierarchy, readable focus states, and restrained shaded catcher surfaces with a short neutral contact highlight. Keep the established timeline, perspective, and instrument positions.
+- Pass 7,900 source and exported Mac checks, 57 native Swift tempo checks, and the full native regression suite. Extend CI with the pure Swift adapter checks and native Mac app compilation, alongside both shared desktop packages. The full visual acceptance and real-MIDI playtest remain open; a successful automated build is not a visual sign-off.
+
 ### Share the first tempo-coaching policy
 
 - Add one deterministic C evaluator for Find the pulse: 60/66/72 BPM preparation, an exact 72 BPM checkpoint, guided-to-hidden-to-click-only recommendations, and separate optional faster paces.

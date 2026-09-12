@@ -12,14 +12,18 @@ mkdir -p "$DRUMX_APP/Contents/MacOS"
 mkdir -p "$DRUMX_APP/Contents/Resources"
 cp -R "$DRUMX_ROOT/native/assets/BigRusty" "$DRUMX_APP/Contents/Resources/"
 xcrun clang++ -target "$DRUMX_TARGET" -std=c++17 -O2 -Wall -Wextra -pedantic -c "$DRUMX_ROOT/native/core/drumx_core.cpp" -o "$DRUMX_BUILD/drumx_core.o"
+xcrun clang++ -target "$DRUMX_TARGET" -std=c++17 -O2 -Wall -Wextra -pedantic -c "$DRUMX_ROOT/native/core/drumx_tempo.cpp" -o "$DRUMX_BUILD/drumx_tempo.o"
 xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -O -parse-as-library \
-  -import-objc-header "$DRUMX_ROOT/native/core/drumx_core.h" \
+  -import-objc-header "$DRUMX_ROOT/native/macos/DrumxBridging.h" \
   "$DRUMX_ROOT/native/macos/DrumxIO.swift" \
   "$DRUMX_ROOT/native/macos/DrumxSampler.swift" \
   "$DRUMX_ROOT/native/macos/DrumxLesson.swift" \
   "$DRUMX_ROOT/native/macos/DrumxCourse.swift" \
   "$DRUMX_ROOT/native/macos/DrumxProgress.swift" \
   "$DRUMX_ROOT/native/macos/DrumxUnlocks.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxTempoCoach.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxTempoController.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxTempoView.swift" \
   "$DRUMX_ROOT/native/macos/DrumxKitSetup.swift" \
   "$DRUMX_ROOT/native/macos/DrumxMenuInput.swift" \
   "$DRUMX_ROOT/native/macos/DrumxSettingsViews.swift" \
@@ -37,7 +41,7 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -O -parse-as-library \
   "$DRUMX_ROOT/native/macos/DrumxProjection.swift" \
   "$DRUMX_ROOT/native/macos/PracticeView.swift" \
   "$DRUMX_ROOT/native/macos/DrumxLab.swift" \
-  "$DRUMX_BUILD/drumx_core.o" -Xlinker -lc++ \
+  "$DRUMX_BUILD/drumx_core.o" "$DRUMX_BUILD/drumx_tempo.o" -Xlinker -lc++ \
   -framework AppKit -framework AVFoundation -framework AVFAudio \
   -framework CoreMIDI -framework CoreAudio -framework AudioToolbox \
   -o "$DRUMX_BUILD/DrumxLab.new"

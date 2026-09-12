@@ -51,14 +51,9 @@ func _ready() -> void:
 func ensure_fonts() -> void:
 	if font != null:
 		return
-	for weight in [500, 400, 600]:
-		var face := SystemFont.new()
-		face.font_names = PackedStringArray([".AppleSystemUIFont", "SF Pro Text", "Segoe UI", "Helvetica Neue"])
-		face.font_weight = weight
-		face.allow_system_fallback = true
-		if weight == 500: font = face
-		elif weight == 400: regular_font = face
-		else: semibold_font = face
+	font = preload("res://scripts/main_menu.gd").make_font(500)
+	regular_font = preload("res://scripts/main_menu.gd").make_font(400)
+	semibold_font = preload("res://scripts/main_menu.gd").make_font(600)
 
 func caption(value: String, x: float, y: float, font_size: int = 11,
 		color: Color = MUTED, alignment: int = HORIZONTAL_ALIGNMENT_LEFT,
@@ -181,7 +176,18 @@ func draw_catchers(slots: Array, hits: Array) -> void:
 		var used := pad >= 0
 		var color: Color = PAD_COLORS[pad] if used else QUIET
 		var shape := catcher_path(slot)
+		# A small shaded lip makes the catcher read as a physical landing surface.
+		# This lighting treatment preserves every original projected vertex.
+		if used: soft_shadow(shape, Color(Color.BLACK, 0.32), 3, Vector2(0, 3))
 		draw_colored_polygon(shape, Color(BACKGROUND, 0.9))
+		if used:
+			var bounds := Rect2(shape[0], Vector2.ZERO)
+			for vertex in shape: bounds = bounds.expand(vertex)
+			var tones := PackedColorArray()
+			for vertex in shape:
+				var depth := clampf((vertex.y - bounds.position.y) / maxf(1, bounds.size.y), 0, 1)
+				tones.append(Color(color, lerpf(0.20, 0.025, depth)))
+			draw_polygon(shape, tones)
 		outline(shape, Color(color, 0.65 if used else 0.47), 1.5 if used else 1.0)
 		var newest: Dictionary = {}
 		for hit in hits:
@@ -202,6 +208,10 @@ func draw_catchers(slots: Array, hits: Array) -> void:
 		soft_shadow(response, Color(color, 0.48 * strength), 6 if reduce_motion else 11)
 		draw_colored_polygon(response, Color(color, 0.25 * strength))
 		outline(response, Color(color, 0.94 * strength), 1.8)
+		var contact := maxf(0, 1.0 - age / 0.065) * float(newest.strength)
+		if contact > 0:
+			outline(response, Color(INK, contact * 0.52), 1)
+			draw_colored_polygon(response, Color(INK, contact * 0.12))
 
 func draw_hit_bursts(pads: Array, hits: Array, reveal: bool) -> void:
 	if not reveal: return

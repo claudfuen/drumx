@@ -1,6 +1,6 @@
 # Guided tempo and meaningful progression
 
-**Status: shared evaluator implemented; application integration in progress.** The C policy and Godot binding are tested for Find the pulse only. The sections below define the complete M1 coaching slice; app behavior remains unchanged until its screens and persistence are connected. Visual and physical-kit acceptance remain separate gates.
+**Status: first pulse slice implemented in the native Mac and experimental shared apps.** Find the pulse uses the shared C policy for coached preparation, review, independent guided/free-practice resume, and its 72 BPM unlock. The other lessons retain their existing rules. End-to-end learner testing, visual acceptance, and physical-kit measurements remain open M1 gates.
 
 ## Who decides the tempo?
 
@@ -10,7 +10,7 @@ A beginner should see a useful next action, such as **Build a steady pulse · 60
 
 ### Example: Find the pulse
 
-The numbers below are initial product hypotheses for testing, not validated teaching standards or committed course targets.
+The implemented values below are initial product hypotheses for testing, not validated teaching standards.
 
 | Moment | Suggested pace | Player-facing meaning |
 | --- | --- | --- |
@@ -40,9 +40,9 @@ Keep the current uninterrupted 16-bar default. Hold tempo and scoring conditions
 
 Change one demand at a time. A new lesson restores guidance and uses its own starting plan. A successful recall check can lead to a tempo variation, but must not silently add both a higher pace and a denser pattern.
 
-For the first evaluator prototype, test an **earned steady pace** using two qualifying takes among the last three comparable completed takes. A candidate qualifying take has at least 16 bars, at least 95% of expected notes matched, at least 90% of expected notes inside the existing timing band, and extras no greater than 2% of expected notes. Check each required instrument so a strong hi-hat cannot conceal a weak kick. Use integer comparisons without rounding a near miss into a pass. These thresholds and the repeat count are tunable hypotheses; they do not redefine stars or certify technique.
+The first evaluator records an **earned steady pace** when any historical window has two qualifying takes among three comparable completed takes. A later difficult take does not erase this evidence, but a corrected attempt is reevaluated. A candidate qualifying take has at least 16 bars, at least 95% of expected notes matched, at least 90% of expected notes inside the existing timing band, and extras no greater than 2% of expected notes. This first policy covers snare pulse only. Before extending it to coordination lessons, check each required instrument so a strong hi-hat cannot conceal a weak kick. Use integer comparisons without rounding a near miss into a pass. These thresholds and the repeat count are tunable hypotheses; they do not redefine stars or certify technique.
 
-A shorter or single excellent take can justify trying a challenge without granting that achievement. This distinction gives an experienced player a quick route through easy material while requiring repeatability for the recorded claim. Avoid treating slower as the universal remedy: consistently shifted timing warrants checking the listening/input conditions and coaching context, not blindly ratcheting BPM down.
+One qualifying full phrase at 60 or 66 BPM can suggest the next pace without granting a repeatability achievement. Short takes never qualify; the direct checkpoint action is available without grinding through the opening paces. This distinction gives an experienced player a quick route through easy material while requiring repeatability for the recorded claim. Avoid treating slower as the universal remedy: consistently shifted timing warrants checking the listening/input conditions and coaching context, not blindly ratcheting BPM down.
 
 The first evaluator can use recorded aggregate evidence. A claim that timing stayed steady through the final bars requires additional per-bar evidence; the current archives do not establish that. Add and verify that evidence before making the claim. Likewise, comfortable grip, rebound, and hand choice remain player/teacher observations because MIDI does not verify them.
 
@@ -52,11 +52,19 @@ The first evaluator can use recorded aggregate evidence. A claim that timing sta
 
 **Recorded control:** use specific labels such as **Steady at 72 BPM**, **Recalled at 72 BPM**, and **Tried at 84 BPM**. Never collapse those into an unqualified mastered badge. Reading, immediate recall with a click, later retention, physical technique, and musical application remain separate evidence.
 
-**Stars:** keep five stars as the existing challenge for a complete, perfectly timed take. Show the pace and assistance beside the stars. A five-star 60 BPM guided take remains a valid result; it does not complete an unattempted 72 BPM checkpoint. The course browser needs to stop presenting its best-across-all-conditions stars as if they established the lesson's checkpoint.
+**Stars:** keep five stars as the existing challenge for a complete, perfectly timed take. Show the pace and assistance beside the stars. A five-star 60 BPM guided take remains a valid result; it does not complete an unattempted 72 BPM checkpoint. The course browser shows the pace and assistance beside its best-across-all-conditions stars; these do not establish the lesson's checkpoint.
 
 **Free practice:** allow manual tempo, length, and guidance. Keep those attempts and their personal bests. A free-practice take can count toward a checkpoint only when it satisfies that checkpoint's exact versioned conditions and the UI identifies it as eligible before play. Arbitrary higher BPM does not automatically prove control at a specified lower pace.
 
 **Independence:** offer reduced guidance at an already controlled pace. Immediate click-only recall and recalling the pattern on another day are different observations. A later lesson may explicitly require recall, but speed alone never stands in for it.
+
+## Implemented boundary
+
+- Policy 1 applies only to `find-the-pulse-v1`. New takes capture policy and monitoring intent before play. Legacy attempts remain visible but cannot acquire missing checkpoint evidence retroactively.
+- Guided and free practice keep separate saved choices. Existing players return to their prior manual context; new players start coached. Course access earned before this change is preserved independently of the new badge.
+- Evidence stays within an exact device, mapping, monitoring, calibration, length, tempo, and assistance group. A checkpoint earned on one kit keeps course access after unplugging; a new setup receives its own coaching. A changed source on review forces preparation to reevaluate before starting a recommended challenge.
+- Optional 84/96 BPM challenges become available after the checkpoint. Repeated severe coverage difficulty can restore guidance or offer the previous authored pace, 96 → 84 → 72 → 66 → 60. No-input and interrupted takes do not lower tempo.
+- Source, packaged-app, C-interface, Swift-adapter, migration, and correction checks protect the shared behavior. Automated geometry and fit checks support visual review; they do not establish visual acceptance.
 
 ## Implementation and acceptance
 
@@ -64,7 +72,7 @@ The first evaluator can use recorded aggregate evidence. A claim that timing sta
 2. Implement a deterministic evaluator shared by the Mac and Windows paths, with common content and fixture cases. It returns the current evidence, one recommended action, and a plain-language reason. It does not run the transport or mutate raw scores.
 3. Key evidence by player, lesson/content version, policy version, tempo, assistance, input conditions, and phrase requirements. Upsert corrected attempts by the same ID; recompute derived evidence without counting the correction as another repetition. Keep raw history and existing course access intact.
 4. Persist the chosen guided plan and the free-practice choice separately. Reopening returns to that player's plan. Legacy history is preserved, but missing policy/assistance evidence cannot be invented for a new checkpoint.
-5. Reuse the restored preparation/review hierarchy. Show the recommended pace, its purpose, and a primary **Play next** action. Put **More time**, **Repeat**, and **Free practice** in secondary routes. Keep the highway geometry and capture feedback unchanged.
+5. Reuse the restored preparation/review hierarchy. Show the recommended pace, its purpose, and a primary **Play next** action. Put **More time**, **Repeat**, and **Free practice** in secondary routes. Preserve the highway geometry and input timing while refining its visual treatment. This slice adds restrained catcher shading and contact lighting, with the same projected vertices.
 6. Verify that a sparse perfect one-bar take, extra-hit spam, a single lucky result, missing input, mismatched assistance, or another player's history cannot grant a checkpoint. Test deliberate checkpoint attempts, changing instruments, late corrections, restart/resume, and both desktop builds.
 7. Observe a beginner and an already-playing tester. Each should understand who chose the tempo, why the next pace was suggested, what opens the next lesson, and why a slower clean result is still worthwhile. Check whether the first pulse feels welcoming or tedious. Complete the remaining shared-port visual checks before increasing scope.
 

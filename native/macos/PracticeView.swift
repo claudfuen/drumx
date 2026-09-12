@@ -112,13 +112,28 @@ final class PracticeView: NSView {
       let used = pad >= 0
       let color = used ? PracticePalette.pads[pad] : PracticePalette.quiet
       let outline = catcherPath(slot: slot, projection: projection)
+      NSGraphicsContext.saveGraphicsState()
+      let depth = NSShadow(); depth.shadowColor = NSColor.black.withAlphaComponent(used ? 0.36 : 0.15)
+      depth.shadowBlurRadius = used ? 5 : 2; depth.shadowOffset = NSSize(width: 0, height: -2)
+      depth.set()
       PracticePalette.background.withAlphaComponent(0.90).setFill()
       outline.fill()
+      NSGraphicsContext.restoreGraphicsState()
+      if used {
+        NSGradient(starting: color.withAlphaComponent(0.20), ending: color.withAlphaComponent(0.025))?
+          .draw(in: outline, angle: 90)
+      }
       color.withAlphaComponent(used ? 0.65 : 0.47).setStroke()
       outline.lineWidth = used ? 1.5 : 1
       outline.stroke()
       guard used, let hit = hits.last(where: { $0.pulse.pad == pad }) else { continue }
       let age = hit.progress * DrumxHitFeedback.duration
+      // Brief physical contact is neutral. It is identical for matched, extra,
+      // and hidden-feedback strikes, so this light never reveals a judgment.
+      if age < 0.065 {
+        NSColor.white.withAlphaComponent(0.22 * CGFloat(1 - age / 0.065)).setFill()
+        outline.fill()
+      }
       let envelope = CGFloat(max(0, 1 - age / 0.27))
       guard envelope > 0 else { continue }
       let strength = envelope * (0.65 + CGFloat(hit.pulse.velocity) * 0.35)

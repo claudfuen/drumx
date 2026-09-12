@@ -39,6 +39,29 @@ enum DrumxCheckKind: String, Codable {
   case clickOnlyAttempt
 }
 
+/// The guided plan remembers the last explicitly started condition. Free practice
+/// has its own controls; switching routes never overwrites the other route.
+struct DrumxPulsePractice: Codable, Equatable {
+  var policyVersion: Int = 1
+  var isFreePractice: Bool
+  var guided: PracticeResume
+  var free: PracticeResume
+
+  static func initial(resume: PracticeResume, existingPlayer: Bool) -> DrumxPulsePractice {
+    let initial = PracticeResume(lessonVersion: "find-the-pulse-v1", sessionFormatVersion: 1)
+    return DrumxPulsePractice(isFreePractice: existingPlayer,
+      guided: initial, free: resume.lessonID == "find-the-pulse" ? resume : initial)
+  }
+
+  fileprivate var isValid: Bool {
+    policyVersion == 1 && guided.isValid && free.isValid
+      && guided.lessonID == "find-the-pulse" && free.lessonID == "find-the-pulse"
+      && guided.lessonVersion == "find-the-pulse-v1" && guided.bars == 16
+      && [60.0, 66, 72, 84, 96].contains(guided.tempo)
+      && ((guided.mode == 0 || guided.mode == 1) ? guided.liveFeedback : !guided.liveFeedback)
+  }
+}
+
 /// Versioned evidence of an explicit learner action. A self-check is not an
 /// observed technique assessment. Practice flags mean tried, never mastery.
 struct DrumxCheckEvidence: Codable, Equatable {
@@ -61,6 +84,7 @@ struct DrumxPlayerProfile: Codable, Equatable, Identifiable {
   fileprivate(set) var resume: PracticeResume
   fileprivate(set) var checks: [DrumxCheckEvidence]
   fileprivate let usesLegacyHistory: Bool
+  fileprivate(set) var pulsePractice: DrumxPulsePractice? = nil
 
   var lastLessonID: String { resume.lessonID }
 
@@ -75,7 +99,8 @@ struct DrumxPlayerProfile: Codable, Equatable, Identifiable {
   }
 
   fileprivate var isValid: Bool {
-    guard validPlayerName(name), name == name.trimmingCharacters(in: .whitespacesAndNewlines),
+    guard pulsePractice?.isValid ?? true,
+      validPlayerName(name), name == name.trimmingCharacters(in: .whitespacesAndNewlines),
       createdAt.timeIntervalSinceReferenceDate.isFinite, resume.isValid, checks.count <= 2048,
       checks.allSatisfy({ $0.isValid && $0.recordedAt >= createdAt })
     else { return false }
@@ -230,6 +255,16 @@ final class DrumxProgress {
     }
     guard resume != selectedProfile.resume else { return true }
     return updateSelected { $0.resume = resume }
+  }
+
+  @discardableResult
+  func updatePulsePractice(_ practice: DrumxPulsePractice) -> Bool {
+    guard practice.isValid else {
+      lastError = "The pulse practice plan could not be saved."
+      return false
+    }
+    guard practice != selectedProfile.pulsePractice else { return true }
+    return updateSelected { $0.pulsePractice = practice }
   }
 
   @discardableResult

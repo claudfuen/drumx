@@ -81,8 +81,8 @@ extension LabController {
   func resetKitMenuFocus() {
     kitMenuActions.forEach { $0.selectedByKit = false }
     switch currentPage {
-    case .prepare: kitMenuActions = [startButton, hearButton, courseButton]
-    case .review: kitMenuActions = [retryButton, nextLessonButton, challengeButton, loopButton, courseButton]
+    case .prepare: kitMenuActions = [startButton, hearButton, pulseCheckpointButton, practiceRouteButton, courseButton]
+    case .review: kitMenuActions = [retryButton, repeatPulseButton, nextLessonButton, challengeButton, loopButton, courseButton]
     case .pause: kitMenuActions = [pauseRestart, pauseReviewButton, pauseHome]
     default: kitMenuActions = []
     }
@@ -114,5 +114,6 @@ extension LabController {
   func refreshPracticeSummary() {
     let seconds = Int((Double(lessonBars * 4) * 60 / tempo).rounded())
     practiceSummary.stringValue = "\(seconds) seconds of playing · \(lessonBars) bars · \(Int(tempo)) BPM · \(modeNames[mode])"
+    if isPulseLesson { refreshPulsePreparation() }
   }
 }

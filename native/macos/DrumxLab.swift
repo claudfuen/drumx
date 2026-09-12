@@ -111,6 +111,12 @@ final class LabController: NSObject {
   let startButton = LessonButton(title: "Start playing", target: nil, action: nil)
   let hearButton = LessonButton(title: "Hear the pattern", target: nil, action: nil)
   let optionsButton = LessonButton(title: "Practice options", target: nil, action: nil)
+  let pulseCheckpointButton = LessonButton(title: "Try 72 BPM", target: nil, action: nil)
+  let repeatPulseButton = LessonButton(title: "Repeat this pace", target: nil, action: nil)
+  let pulseCoachView = DrumxTempoView()
+  let practiceRouteButton = LessonButton(title: "Free practice", target: nil, action: nil)
+  let slowButton = LessonButton(title: "Slow it down", target: nil, action: nil)
+  var pulsePractice = DrumxPulsePractice.initial(resume: PracticeResume(), existingPlayer: false)
   var practiceControls: NSStackView?
   let practiceSummary = NSTextField(labelWithString: "")
   let pauseRestart = LessonButton(title: "Restart with count-in", target: nil, action: nil)
@@ -138,7 +144,7 @@ final class LabController: NSObject {
   let lessonSubtitle = NSTextField(wrappingLabelWithString: "")
   let lessonExplanation = NSTextField(wrappingLabelWithString: "")
   let lessonPractice = NSTextField(labelWithString: "")
-  let lessonEvidence = NSTextField(labelWithString: "")
+  let lessonEvidence = NSTextField(wrappingLabelWithString: "")
   let notation = DrumxNotationView()
   let lengthMenu = DrumxPopUpButton()
   let kitCheckStatus = NSTextField(labelWithString: "Play hi-hat, snare, and kick to check your input.")
@@ -422,6 +428,7 @@ final class LabController: NSObject {
     lessonPractice.font = .systemFont(ofSize: 12)
     lessonEvidence.font = .systemFont(ofSize: 12)
     lessonEvidence.textColor = lime
+    lessonEvidence.maximumNumberOfLines = 2
     tempoSlider.target = self; tempoSlider.action = #selector(settingsChanged)
     tempoSlider.widthAnchor.constraint(equalToConstant: 115).isActive = true
     tempoSlider.setAccessibilityLabel("Practice tempo")
@@ -441,12 +448,17 @@ final class LabController: NSObject {
     startButton.target = self; startButton.action = #selector(beginLesson); startButton.primary = true; startButton.isBordered = false
     hearButton.target = self; hearButton.action = #selector(hearDemo); hearButton.isBordered = false
     optionsButton.target = self; optionsButton.action = #selector(togglePracticeOptions); optionsButton.isBordered = false; optionsButton.quiet = true
+    practiceRouteButton.target = self; practiceRouteButton.action = #selector(togglePulseRoute)
+    practiceRouteButton.isBordered = false; practiceRouteButton.quiet = true
+    pulseCheckpointButton.target = self; pulseCheckpointButton.action = #selector(startPulseCheckpoint)
+    pulseCheckpointButton.isBordered = false; pulseCheckpointButton.quiet = true
+    pulseCheckpointButton.setAccessibilityLabel("Try the guided 72 BPM checkpoint directly")
     practiceSummary.font = .systemFont(ofSize: 13); practiceSummary.textColor = .secondaryLabelColor
     practiceControls = controls; controls.isHidden = true
-    let actions = row([startButton, hearButton, button("Lesson check", #selector(showLearningCheck)), optionsButton], spacing: 12)
+    let actions = row([startButton, hearButton, button("Lesson check", #selector(showLearningCheck)), optionsButton, pulseCheckpointButton, practiceRouteButton], spacing: 10)
     let stack = column([label("HEAR IT. COUNT IT. MAKE IT YOURS.", 11, weight: .semibold, color: lime),
-      lessonHeading, lessonSubtitle, lessonExplanation, notation, lessonPractice, practiceSummary, controls, actions, lessonEvidence], spacing: 16)
-    [lessonSubtitle, lessonExplanation, notation, controls].forEach {
+      lessonHeading, lessonSubtitle, lessonExplanation, notation, lessonPractice, practiceSummary, pulseCoachView, controls, actions, lessonEvidence], spacing: 12)
+    [lessonSubtitle, lessonExplanation, notation, controls, lessonEvidence, pulseCoachView].forEach {
       $0.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
     }
     center(stack, in: prepareView)
@@ -482,8 +494,11 @@ final class LabController: NSObject {
     loopButton.isBordered = false
     loopButton.target = self
     loopButton.action = #selector(repairBar)
+    slowButton.target = self; slowButton.action = #selector(slowerTake); slowButton.isBordered = false
+    repeatPulseButton.target = self; repeatPulseButton.action = #selector(repeatPulse)
+    repeatPulseButton.isBordered = false; repeatPulseButton.quiet = true
     let actions = row([
-      retryButton, button("Slow it down", #selector(slowerTake)), loopButton, challengeButton,
+      retryButton, repeatPulseButton, slowButton, loopButton, challengeButton,
     ])
     nextLessonButton.isBordered = false; nextLessonButton.target = self; nextLessonButton.action = #selector(nextLesson)
     unlockCaption.font = .systemFont(ofSize: 12); unlockCaption.textColor = lime
@@ -532,6 +547,7 @@ final class LabController: NSObject {
     case .prepare:
       refreshLesson(); pageTitle.stringValue = "FOUNDATIONS / LESSON"
     case .review:
+      refreshPulseReview(stopped: finishedNaturally ? nil : snapshot, takeID: takeID)
       refreshUnlockReview(); pageTitle.stringValue = "TAKE REVIEW"
     case .welcome:
       if previousPage != .settings { welcomeName.stringValue = progress.selectedProfile.name }
@@ -704,7 +720,8 @@ final class LabController: NSObject {
     switch currentPage {
     case .welcome: finishWelcome()
     case .mainMenu: mainMenuView.activateSelection()
-    case .prepare, .review: startTake()
+    case .prepare: startButton.performClick(nil)
+    case .review: retryButton.performClick(nil)
     case .pause: restartPaused()
     default: break
     }
@@ -713,12 +730,14 @@ final class LabController: NSObject {
   @objc func retryTake() { startTake() }
   @objc func stopAction() { stopTake() }
   @objc func slowerTake() {
+    if isGuidedPulse { openFreePractice(); return }
     tempo = max(48, tempo - 8)
     tempoSlider.doubleValue = tempo
     tempoLabel.stringValue = "\(Int(tempo)) BPM"
     startTake()
   }
   @objc func repairBar() {
+    if isGuidedPulse { openFreePractice(); return }
     // Each foundation exercise is one authored bar. Isolate it without changing its notes.
     lessonBars = lessonBars == 1 ? 4 : 1
     mode = 0
@@ -726,6 +745,7 @@ final class LabController: NSObject {
     startTake()
   }
   @objc func nextChallenge() {
+    if isGuidedPulse { startTake(); return }
     if mode == 0 {
       mode = 1
       if lessonBars == 1 { lessonBars = 4 }
@@ -773,9 +793,16 @@ final class LabController: NSObject {
     results.stringValue = "LISTEN  /  COUNT OUT LOUD"
     setStatus("Listen, then count aloud: \(lesson.counts).")
   }
-  func startTake() {
+  func startTake(advanceGuided: Bool = true) {
     guard !transportActive else { return }
     offsetChanged()
+    if isGuidedPulse, currentPage == .review, let captured = takeSettings,
+      !DrumxTempoCoach.sameInputConditions(captured, pulseTakeSettings()) {
+      completed = false; resetCore(); showPage(.prepare)
+      setStatus("Your input conditions changed. Review the current coaching before starting.")
+      return
+    }
+    if advanceGuided && !(currentPage == .review && !finishedNaturally) { applyNextGuidedCondition() }
     learning = nil
     io.setMIDILearnActive(false)
     io.stopDemo()
@@ -783,11 +810,7 @@ final class LabController: NSObject {
     resetCore()
     usedLiveFeedback = showLive
     takeID = UUID()
-    takeSettings = TakeSettings(
-      tempo: tempo, mode: mode, liveFeedback: showLive, bars: lessonBars,
-      calibrationMS: calibrationMS,
-      inputIdentity: io.selectedSourceID.map { "midi:\($0)" } ?? "keyboard", mapping: mappings,
-      lessonVersion: lesson.version, handHints: showHands)
+    takeSettings = pulseTakeSettings()
     previousBestPoints = takeSettings.flatMap { history.best(matching: $0) }
       .map { DrumxRunScore(attempt: $0).points }
     clickStart = DrumxIO.hostNowSeconds() + 0.75
@@ -942,6 +965,7 @@ final class LabController: NSObject {
     loopButton.title = lessonBars == 1 ? "Back to four bars" : "Work on one bar"
     challengeButton.title =
       mode == 0 ? "Hide a phrase" : mode == 1 || showLive ? "Try click-only" : "Repeat click-only"
+    refreshPulseReview(stopped: finishedNaturally ? nil : snapshot, takeID: takeID)
     results.stringValue = finishedNaturally ? "TAKE COMPLETE" : "TAKE STOPPED"
     refreshUnlockReview()
   }

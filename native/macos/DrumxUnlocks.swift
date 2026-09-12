@@ -40,7 +40,15 @@ enum DrumxUnlocks {
         $0.settings.lessonVersion == lesson.version
           && $0.expected == lesson.events.count * $0.settings.bars
       }
-      if current.contains(where: {
+      if lesson.version == DrumxTempoCoach.lessonVersion {
+        if DrumxTempoCoach.checkpointEarned(history: current) { cleared.insert(lesson.id) }
+        // The prior rule already opened lesson two. Preserve that access without
+        // relabelling legacy records as evidence for today's coached checkpoint.
+        if current.contains(where: {
+          $0.settings.tempoPolicyVersion == nil && $0.settings.bars >= minimumBars
+            && $0.matched * 5 >= $0.expected * 4
+        }) { preservedThrough = max(preservedThrough, min(index + 1, course.count - 1)) }
+      } else if current.contains(where: {
         $0.settings.bars >= minimumBars && $0.matched * 5 >= $0.expected * 4
       }) { cleared.insert(lesson.id) }
 
@@ -103,7 +111,9 @@ enum DrumxUnlocks {
   }
 
   private static func practiceAction(_ lesson: DrumxLessonDefinition) -> String {
-    "Finish \(lesson.title): 4+ bars with at least 80% of notes matched."
+    lesson.version == DrumxTempoCoach.lessonVersion
+      ? "Earn the 72 BPM checkpoint in \(lesson.title): two steady 16-bar guided takes in three comparable attempts."
+      : "Finish \(lesson.title): 4+ bars with at least 80% of notes matched."
   }
 
   private static func readingAction(_ lesson: DrumxLessonDefinition) -> String {

@@ -11,11 +11,15 @@ struct TakeSettings: Codable, Equatable {
   let mapping: [[Int]]
   let lessonVersion: String
   let handHints: Bool
+  /// Absent in legacy archives. Policy 1 applies only to the authored pulse lesson.
+  let tempoPolicyVersion: Int?
+  /// Nil means the older archive did not record the monitoring route.
+  let monitoring: Bool?
 
   init(
     tempo: Double, mode: Int, liveFeedback: Bool, bars: Int, calibrationMS: Double,
     inputIdentity: String, mapping: [[Int]], lessonVersion: String = "first-backbeat-v1",
-    handHints: Bool = true
+    handHints: Bool = true, tempoPolicyVersion: Int? = nil, monitoring: Bool? = nil
   ) {
     self.tempo = tempo
     self.mode = mode
@@ -27,14 +31,17 @@ struct TakeSettings: Codable, Equatable {
     self.mapping = mapping.map { Array(Set($0)).sorted() }
     self.lessonVersion = lessonVersion
     self.handHints = handHints
+    self.tempoPolicyVersion = tempoPolicyVersion
+    self.monitoring = monitoring
   }
 
-  fileprivate var isValid: Bool {
+  var isValid: Bool {
     tempo.isFinite && (30...240).contains(tempo) && (0...2).contains(mode)
       && (1...64).contains(bars) && calibrationMS.isFinite
       && !inputIdentity.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       && !lessonVersion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       && mapping.count == 3 && mapping.flatMap { $0 }.allSatisfy { (0...127).contains($0) }
+      && (tempoPolicyVersion.map { $0 == 1 && lessonVersion == "find-the-pulse-v1" && monitoring != nil } ?? true)
   }
 }
 

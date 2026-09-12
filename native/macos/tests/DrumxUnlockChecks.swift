@@ -36,7 +36,7 @@ private func thresholdChecks(defaults: UserDefaults) {
   let first = course[0], second = course[1]
   let initial = DrumxUnlocks.evaluate(course: course, history: [], progress: progress)
   check(initial.availableIDs == [first.id] && initial.clearedIDs.isEmpty, "new player begins with exactly the first lesson")
-  check(initial.recommendedID == first.id && initial.nextRequiredAction.contains("80%"), "new player receives an actionable pattern goal")
+  check(initial.recommendedID == first.id && initial.nextRequiredAction.contains("72 BPM"), "new player receives an actionable pattern goal")
   check(initial.reasonByID[second.id]?.contains(first.title) == true, "locked next lesson names its prerequisite")
   check(initial.practisedIDs.isEmpty && initial.readingIDs.isEmpty && initial.recallIDs.isEmpty, "fresh profile has no achievements")
 
@@ -44,25 +44,25 @@ private func thresholdChecks(defaults: UserDefaults) {
   let below = DrumxUnlocks.evaluate(course: course, history: [attempt(first, bars: 5, matched: 15)], progress: progress)
   check(!below.clearedIDs.contains(first.id) && !below.availableIDs.contains(second.id), "75% does not clear an 80% goal")
   let exact = DrumxUnlocks.evaluate(course: course, history: [attempt(first, bars: 5, matched: 16)], progress: progress)
-  check(exact.clearedIDs == [first.id] && exact.availableIDs == [first.id, second.id], "exactly 80% clears and unlocks next lesson")
+  check(exact.clearedIDs.isEmpty && exact.availableIDs == [first.id, second.id], "legacy 80% preserves next access without earning the new checkpoint")
   check(exact.readingIDs.isEmpty, "within-chapter unlock does not manufacture or require reading evidence")
   check(exact.recommendedID == second.id, "next unlocked lesson is recommended")
   let minimum = DrumxUnlocks.evaluate(course: course, history: [attempt(first, matched: 13)], progress: progress)
-  check(minimum.clearedIDs.contains(first.id), "13 of 16 clears a four-bar take")
+  check(minimum.clearedIDs.isEmpty && minimum.availableIDs.contains(second.id), "legacy 13 of 16 preserves previously earned access")
   let tooFew = DrumxUnlocks.evaluate(course: course, history: [attempt(first, matched: 12)], progress: progress)
   check(!tooFew.clearedIDs.contains(first.id), "12 of 16 remains below the threshold")
   let short = DrumxUnlocks.evaluate(course: course, history: [attempt(first, bars: 3)], progress: progress)
   check(short.practisedIDs.contains(first.id) && !short.clearedIDs.contains(first.id), "three bars count as practice but cannot clear")
   let looseTiming = DrumxUnlocks.evaluate(course: course,
     history: [attempt(first, bars: 5, matched: 16, extra: 30, onTime: 0)], progress: progress)
-  check(looseTiming.clearedIDs.contains(first.id), "goal uses expected-note coverage, not timing precision or penalized score")
+  check(looseTiming.clearedIDs.isEmpty && looseTiming.availableIDs.contains(second.id), "legacy access keeps its old coverage rule without a new tempo achievement")
   let assisted = DrumxUnlocks.evaluate(course: course,
     history: [attempt(first, tempo: 30)], progress: progress)
-  check(assisted.clearedIDs.contains(first.id), "slow guided practice can clear beginner work")
+  check(assisted.clearedIDs.isEmpty && assisted.availableIDs.contains(second.id), "legacy slow practice keeps prior access")
   let memoryLive = DrumxUnlocks.evaluate(course: course,
     history: [attempt(first, mode: 2, live: true)], progress: progress)
-  check(memoryLive.clearedIDs.contains(first.id) && memoryLive.recallIDs.isEmpty,
-        "memory with live feedback can clear but is not a click-only achievement")
+  check(memoryLive.availableIDs.contains(second.id) && memoryLive.clearedIDs.isEmpty && memoryLive.recallIDs.isEmpty,
+        "legacy memory with live feedback preserves access but is not click-only evidence")
   let clickOnly = DrumxUnlocks.evaluate(course: course,
     history: [attempt(first, mode: 2, live: false)], progress: progress)
   check(clickOnly.recallIDs.contains(first.id), "archived click-only conditions are tracked separately")
@@ -186,8 +186,8 @@ private func archiveAdmissionChecks(defaults: UserDefaults) {
   check(history.record(id: UUID(), settings: settings, snapshot: snapshot, completedNaturally: true) != nil,
         "real naturally completed take is admitted to the archive")
   let complete = DrumxUnlocks.evaluate(course: course, history: history.attempts, progress: progress)
-  check(complete.clearedIDs == [lesson.id] && complete.availableIDs.contains(course[1].id),
-        "real archived 13-of-16 take unlocks the next lesson without on-time precision")
+  check(complete.clearedIDs.isEmpty && complete.availableIDs.contains(course[1].id),
+        "real legacy archive preserves next access without earning the new pulse checkpoint")
 }
 
 private func completeSequenceChecks(defaults: UserDefaults) {
@@ -199,7 +199,7 @@ private func completeSequenceChecks(defaults: UserDefaults) {
           "lesson \(index + 1) is the sequential recommendation before its take")
     history.append(attempt(lesson))
     var after = DrumxUnlocks.evaluate(course: course, history: history, progress: progress)
-    check(after.clearedIDs.contains(lesson.id), "lesson \(index + 1) clears on its own authored chart")
+    check(index == 0 ? !after.clearedIDs.contains(lesson.id) : after.clearedIDs.contains(lesson.id), "legacy pulse retains access; later lessons clear on their own authored charts")
     if index + 1 < course.count {
       let next = course[index + 1]
       if next.chapter != lesson.chapter {
@@ -214,7 +214,7 @@ private func completeSequenceChecks(defaults: UserDefaults) {
     }
   }
   let end = DrumxUnlocks.evaluate(course: course, history: history, progress: progress)
-  check(end.availableIDs == Set(course.map(\.id)) && end.clearedIDs == Set(course.map(\.id)),
+  check(end.availableIDs == Set(course.map(\.id)) && end.clearedIDs == Set(course.dropFirst().map(\.id)),
         "complete twelve-lesson sequence preserves all available pattern goals")
   check(end.recallIDs.isEmpty, "finishing the course never fabricates a memory achievement")
 }

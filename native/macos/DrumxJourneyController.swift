@@ -27,6 +27,7 @@ extension LabController {
     lesson = DrumxCourse.lesson(id: resume.lessonID) ?? DrumxCourse.lessons[0]
     let plan = DrumxPracticePlan.restore(resume: resume, lesson: lesson)
     tempo = plan.tempo; mode = plan.mode; showLive = plan.liveFeedback; lessonBars = plan.bars
+    restorePulseRoute()
     playerButton.title = progress.selectedProfile.name
     tempoSlider.doubleValue = tempo; tempoLabel.stringValue = "\(Int(tempo)) BPM"
     if modeMenu.numberOfItems > mode { modeMenu.selectItem(at: mode) }
@@ -37,6 +38,7 @@ extension LabController {
   func saveResume() {
     // Merely navigating setup must not replace unreadable saved progress with its fallback.
     guard progress.selectedProfile.hasCompletedWelcome else { return }
+    storePulseCondition()
     _ = progress.updateResume(PracticeResume(lessonID: lesson.id, tempo: tempo, mode: mode,
                                            liveFeedback: showLive, bars: lessonBars, lessonVersion: lesson.version, sessionFormatVersion: DrumxPracticePlan.currentSessionFormatVersion))
     if let error = progress.lastError { setStatus(error) }
@@ -99,12 +101,21 @@ extension LabController {
         : reading && played ? "Practised + read" : played ? "Practised" : reading ? "Reading checked" : "New"
     }
     let state = unlockState
+    var bestStars: [String: Int] = [:], bestConditions: [String: String] = [:]
+    for item in DrumxCourse.lessons {
+      guard let best = history.attempts.filter({ $0.settings.lessonVersion == item.version }).max(by: {
+        let lhs = DrumxRunScore(attempt: $0).points, rhs = DrumxRunScore(attempt: $1).points
+        return lhs == rhs ? $0.endedAt < $1.endedAt : lhs < rhs
+      }) else { continue }
+      bestStars[item.id] = DrumxRunScore(attempt: best).stars
+      let settings = best.settings
+      let assistance = settings.mode == 2 && !settings.liveFeedback ? "Click-only"
+        : settings.mode == 2 ? "Memory + live" : modeNames[settings.mode] + (settings.liveFeedback ? "" : " · feedback after")
+      bestConditions[item.id] = "\(Int(settings.tempo)) BPM · \(assistance)"
+    }
     courseView.update(lesson: lesson, player: progress.selectedProfile.name, statuses: statuses, practised: practised,
       availability: state.availableIDs, cleared: state.clearedIDs, lockReasons: state.reasonByID,
-      recommendedID: state.recommendedID, bestStarsByID: Dictionary(uniqueKeysWithValues: DrumxCourse.lessons.compactMap { item in
-        let stars = history.attempts.filter { $0.settings.lessonVersion == item.version }.map { DrumxRunScore(attempt: $0).stars }.max()
-        return stars.map { (item.id, $0) }
-      }))
+      recommendedID: state.recommendedID, bestStarsByID: bestStars, bestConditionsByID: bestConditions)
   }
 
   func selectLesson(_ id: String) {
@@ -113,7 +124,9 @@ extension LabController {
       setStatus(unlockState.reasonByID[id] ?? "Complete the previous lesson to open this one."); return
     }
     if selected.id != lesson.id {
+      saveResume()
       lesson = selected; tempo = selected.suggestedBPM; mode = 0; showLive = true; lessonBars = DrumxPracticePlan.standardBars
+      if isPulseLesson { applyPulseCondition(pulsePractice.isFreePractice ? pulsePractice.free : pulsePractice.guided) }
     }
     saveResume(); openCurrentLesson()
   }
@@ -142,9 +155,10 @@ extension LabController {
     lessonEvidence.stringValue = "\(takes.count) takes with matched hits  ·  Reading \(reading ? "checked" : "to try")  ·  Recall \(recall ? "tried" : "to try")"
     window.title = "Drumx · \(lesson.title)"
     let state = unlockState
-    if !state.clearedIDs.contains(lesson.id) {
+    if !state.clearedIDs.contains(lesson.id) && !isPulseLesson {
       lessonEvidence.stringValue += "  ·  Unlock next: 4+ bars, 80% caught"
     }
+    refreshPulsePreparation()
   }
 
   @objc func backToCourse() {

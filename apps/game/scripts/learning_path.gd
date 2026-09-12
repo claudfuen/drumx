@@ -100,6 +100,7 @@ class PathButton extends Button:
 class CourseStars extends Control:
 	var stars := 0
 	var has_record := false
+	var conditions := "Build toward five stars."
 	var label_font: Font
 	var detail_font: Font
 
@@ -126,7 +127,7 @@ class CourseStars extends Control:
 				points.append(points[0])
 				draw_polyline(points, Color(PAPER, 0.18), 1, true)
 		draw_string(detail_font, Vector2(0, 112 + detail_font.get_ascent(14)),
-			"Build toward five stars.", HORIZONTAL_ALIGNMENT_CENTER, 290, 14, PAPER)
+			conditions, HORIZONTAL_ALIGNMENT_CENTER, 290, 14, PAPER)
 		draw_set_transform(Vector2.ZERO)
 
 
@@ -209,6 +210,7 @@ func _refresh() -> void:
 	_step_hint.text = lock_reason(featured_index) if not available else "Step complete. Repeat for a steadier score, or explore your next step." if complete else _available_hint(featured_index)
 	_play.tooltip_text = _step_hint.text
 	var best: Dictionary = model.best(featured_index)
+	_stars.conditions = "%d BPM · %s" % [int(best.settings.bpm), ["Guided", "Hidden bars", "Click-only"][int(best.settings.guidance)]] if not best.is_empty() else "72 BPM · guided checkpoint" if featured_index == 0 else "Build toward five stars."
 	_stars.has_record = not best.is_empty()
 	_stars.stars = DataModel.stars(int(best.get("points", 0)), true)
 	_stars.accessibility_name = "%d of 5 stars recorded for %s. Build toward five stars." % [_stars.stars, lesson.title] if _stars.has_record else "Build toward five stars for %s." % lesson.title
@@ -290,12 +292,15 @@ func lock_reason(index: int) -> String:
 	if model == null or index <= int(model.frontier()): return ""
 	var prerequisite: int = model.frontier()
 	var title: String = model.course.lessons[prerequisite].title
+	if prerequisite == 0:
+		return "Build two strong guided takes at 72 BPM in Find the pulse. Keep the same kit setup for both."
 	if _needs_reading(prerequisite) and _has_qualifying_take(prerequisite):
 		return "Pass the reading check in %s." % title
 	return "Finish %s: 4+ bars with at least 80%% of notes matched." % title
 
 
 func _available_hint(index: int) -> String:
+	if index == 0: return "Start at a coached pace. Two strong guided takes at 72 BPM open your next step."
 	if _needs_reading(index) and _has_qualifying_take(index):
 		return "Playing check complete. Pass this lesson's reading check to open the next chapter."
 	return "Your playing and reading check move you to the next step."

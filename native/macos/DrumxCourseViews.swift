@@ -81,6 +81,7 @@ private final class CoursePathButton: NSButton {
 }
 
 private final class CourseStarsView: NSView {
+  var conditions = "" { didSet { needsDisplay = true } }
   var stars = 0 { didSet { needsDisplay = true } }
   var hasRecordedScore = false { didSet { needsDisplay = true } }
   override var isFlipped: Bool { true }
@@ -104,8 +105,8 @@ private final class CourseStarsView: NSView {
       if index < stars { CourseInk.lime.setFill(); path.fill() }
       else { CourseInk.paper.withAlphaComponent(0.18).setStroke(); path.lineWidth = scale; path.stroke() }
     }
-    CourseInk.text("Build toward five stars.", in: NSRect(x: 0, y: 112 * scale, width: bounds.width, height: 24 * scale),
-      size: 14 * scale, color: CourseInk.paper, alignment: .center)
+    CourseInk.text(hasRecordedScore ? conditions : "Score and checkpoint are separate.", in: NSRect(x: 0, y: 112 * scale, width: bounds.width, height: 24 * scale),
+      size: 12 * scale, color: CourseInk.paper, alignment: .center)
   }
 }
 
@@ -132,6 +133,7 @@ final class DrumxCourseMenuView: NSView {
   private var clearedIDs = Set<String>()
   private var lockReasons: [String: String] = [:]
   private var bestStarsByID: [String: Int] = [:]
+  private var bestConditionsByID: [String: String] = [:]
   private var featuredID = ""
   private var contextID = ""
   private var displayedPlayer = ""
@@ -219,7 +221,8 @@ final class DrumxCourseMenuView: NSView {
 
   func update(lesson: DrumxLessonDefinition, player: String, statuses: [String: String], practised: Int,
               availability: Set<String>? = nil, cleared: Set<String> = [], lockReasons: [String: String] = [:],
-              recommendedID: String? = nil, bestStarsByID: [String: Int] = [:]) {
+              recommendedID: String? = nil, bestStarsByID: [String: Int] = [:],
+              bestConditionsByID: [String: String] = [:]) {
     let available = availability ?? Set(DrumxCourse.lessons.map(\.id))
     let recommended = recommendedID.flatMap { available.contains($0) ? DrumxCourse.lesson(id: $0) : nil }
       ?? DrumxCourse.lessons.first { available.contains($0.id) && !cleared.contains($0.id) }
@@ -229,7 +232,7 @@ final class DrumxCourseMenuView: NSView {
     }
     displayedPlayer = player; contextID = recommended.id
     availableIDs = available; clearedIDs = cleared; self.lockReasons = lockReasons
-    self.bestStarsByID = bestStarsByID
+    self.bestStarsByID = bestStarsByID; self.bestConditionsByID = bestConditionsByID
     subtitle.stringValue = "\(player)’s foundations. A steady pulse, then your first fill."
     progressLabel.stringValue = "\(cleared.count) / \(DrumxCourse.lessons.count) steps complete"
     progressLabel.setAccessibilityValue("\(cleared.count) steps complete. \(practised) lessons practised.")
@@ -251,10 +254,16 @@ final class DrumxCourseMenuView: NSView {
     stepHint.stringValue = available ? complete ? "Step complete. Repeat for a steadier score, or explore your next step."
       : "Your playing and reading check move you to the next step."
       : lockReasons[featuredID] ?? "Complete the previous step to open this lesson."
+    if available && lesson.version == DrumxTempoCoach.lessonVersion {
+      stepHint.stringValue = complete
+        ? "72 BPM checkpoint earned. Scores, reading and recall remain separate."
+        : "Play the coached pulse to earn the 72 BPM checkpoint. Earlier access stays available."
+    }
     starsView.stars = min(5, max(0, bestStarsByID[featuredID] ?? 0))
     starsView.hasRecordedScore = bestStarsByID[featuredID] != nil
+    starsView.conditions = bestConditionsByID[featuredID] ?? "Recorded game score"
     starsView.setAccessibilityLabel(starsView.hasRecordedScore
-      ? "\(starsView.stars) of 5 stars recorded for \(lesson.title). Build toward five stars."
+      ? "\(starsView.stars) of 5 stars recorded for \(lesson.title). \(starsView.conditions). Score is separate from the checkpoint."
       : "Build toward five stars for \(lesson.title).")
     for node in nodes {
       let definition = DrumxCourse.lessons[node.tag]

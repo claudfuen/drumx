@@ -8,6 +8,9 @@ const NotationContract = preload("res://scripts/notation_contract.gd")
 const VisualContract = preload("res://scripts/visual_contract.gd")
 const PracticeStage = preload("res://scripts/practice_stage.gd")
 const ScoreReview = preload("res://scripts/score_review.gd")
+const TempoCard = preload("res://scripts/tempo_card.gd")
+const TempoContract = preload("res://scripts/tempo_contract.gd")
+const TempoBindingChecks = preload("res://scripts/pulse_tempo_contract.gd")
 const ScoreHUD = preload("res://scripts/score_hud.gd")
 const SettingsPanel = preload("res://scripts/settings_panel.gd")
 const INK = Color("0c1012")
@@ -59,6 +62,10 @@ var check_return := "prepare"
 var check_overlay: Control
 var modal_focus: Array = []
 var options_open := false
+var pulse_intent := "guided"
+var tempo_card: Control
+var coached_action: Button
+var coaching: Dictionary = {}
 var result_detail: Label
 var result_best: Label
 var score_before := -1
@@ -78,6 +85,7 @@ func _ready() -> void:
 		return
 	if ClassDB.class_exists("DrumxEngine"):
 		engine = ClassDB.instantiate("DrumxEngine")
+	model.tempo_engine = engine
 	if smoke:
 		get_window().size = Vector2i(1140, 830)
 		call_deferred("smoke_test")
@@ -88,6 +96,7 @@ func _ready() -> void:
 	model.load_progress()
 	lesson_index = clampi(int(model.save.selected), 0, 11)
 	tempo = float(model.course.lessons[lesson_index].bpm)
+	if lesson_index == 0: restore_pulse_plan()
 	var saved: Dictionary = model.save.get("settings", {})
 	volume = clampf(float(saved.get("volume", 0.7)), 0, 1)
 	monitoring = bool(saved.get("monitoring", true))
@@ -118,8 +127,8 @@ func setup_theme() -> void:
 	for control in ["Button", "OptionButton"]:
 		for state in ["normal", "hover", "pressed", "focus", "disabled"]:
 			var box := StyleBoxFlat.new()
-			box.bg_color = Color(PAPER, 0.025 if state == "normal" else 0.075)
-			box.border_color = LIME if state == "focus" else Color(PAPER, 0.11)
+			box.bg_color = Color.TRANSPARENT if state == "focus" else Color(PAPER, 0.035 if state == "normal" else 0.11 if state == "hover" else 0.055)
+			box.border_color = LIME if state == "focus" else Color(PAPER, 0.22 if state == "hover" else 0.10)
 			box.set_border_width_all(2 if state == "focus" else 1)
 			box.set_corner_radius_all(9)
 			box.content_margin_left = 22
@@ -166,7 +175,6 @@ func build_shell() -> void:
 	for navigation in [back, settings_button]:
 		navigation.custom_minimum_size.y = 43
 		navigation.add_theme_font_size_override("font_size", 14)
-		navigation.add_theme_font_override("font", MainMenu.make_font(600))
 		for state in ["normal", "hover", "pressed"]:
 			var empty := StyleBoxEmpty.new()
 			empty.content_margin_left = 18
@@ -204,13 +212,20 @@ func label(value: String, font_size: int = 17, color: Color = PAPER, wrap: bool 
 func button(value: String, action: Callable, primary: bool = false) -> Button:
 	var item := Button.new()
 	item.text = value
+	item.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	item.add_theme_font_override("font", MainMenu.make_font(600))
 	item.custom_minimum_size.y = 48
 	item.pressed.connect(action)
 	if primary:
 		for state in ["normal", "hover", "pressed"]:
 			var box := StyleBoxFlat.new()
-			box.bg_color = LIME if state == "normal" else Color("def5a2")
+			box.bg_color = LIME if state == "normal" else Color("def5a2") if state == "hover" else Color("b4ce72")
 			box.set_corner_radius_all(9)
+			box.border_color = Color(PAPER, 0.34)
+			box.border_width_top = 1
+			box.shadow_color = Color(0, 0, 0, 0.18)
+			box.shadow_size = 6 if state != "pressed" else 1
+			box.shadow_offset = Vector2(0, 3 if state != "pressed" else 1)
 			box.content_margin_left = 28
 			box.content_margin_right = 28
 			box.content_margin_top = 18
@@ -252,6 +267,8 @@ func clear_page(destination: String) -> void:
 	result_metrics.clear()
 	result_detail = null
 	result_best = null
+	tempo_card = null
+	coached_action = null
 	for child in content.get_children():
 		content.remove_child(child)
 		child.queue_free()
@@ -334,6 +351,7 @@ func show_prepare(index: int) -> void:
 		tempo = float(model.course.lessons[index].bpm)
 		bars = 16
 		guidance = 0
+		if index == 0: restore_pulse_plan()
 	build_prepare()
 
 func centered_column(spacing: int = 16) -> VBoxContainer:
@@ -354,17 +372,28 @@ func build_prepare() -> void:
 	stack.add_child(label("HEAR IT. COUNT IT. MAKE IT YOURS.", 11, LIME))
 	stack.add_child(label(lesson.title, 42, PAPER, true))
 	stack.add_child(label(lesson.objective, 18, Color(PAPER, 0.8), true))
-	stack.add_child(label(lesson.explanation, 14, MUTED, true))
+	if lesson_index != 0: stack.add_child(label(lesson.explanation, 14, MUTED, true))
 	canvas = load("res://scripts/drum_notation.gd").new()
 	canvas.authored = lesson.events
 	canvas.lesson_title = lesson.title
 	stack.add_child(canvas)
 	stack.add_child(label("Count " + str(lesson.counts) + "  ·  R and L are suggested sticking, not verified hands.", 12, MUTED, true))
-	stage_feedback = label("", 13, MUTED)
+	if lesson_index == 0 and pulse_intent == "guided":
+		coaching = model.pulse_decision(current_take_settings())
+		if int(coaching.get("reason", -1)) == 11:
+			guidance = int(coaching.next_guidance)
+			remember_pulse_plan()
+			coaching = model.pulse_decision(current_take_settings())
+		tempo_card = TempoCard.new()
+		stack.add_child(tempo_card)
+		var cue := "Settle into the pulse." if tempo == 60 else "A little more pace." if tempo == 66 else "An optional pace challenge." if tempo > 72 else "Make it repeatable." if guidance == 0 else "Keep counting as notes disappear." if guidance == 1 else "Trust your pulse."
+		var detail := "One click. One stroke. Count 1, 2, 3, 4." if tempo < 72 else "Two strong takes at 72 BPM open the next step." if guidance == 0 and not coaching.get("checkpoint_earned", false) else "Your checkpoint is earned. Build confidence by ear." if bool(coaching.get("checkpoint_earned", false)) else "Build this pace with your current kit setup."
+		tempo_card.update_plan(int(tempo), guidance, coaching, cue, detail)
+	stage_feedback = label("", 12, MUTED)
 	stack.add_child(stage_feedback)
 	update_prepare_summary()
 	var controls := row()
-	controls.visible = options_open
+	controls.visible = options_open and (lesson_index != 0 or pulse_intent == "free")
 	stack.add_child(controls)
 	controls.add_child(label("TEMPO", 10, MUTED))
 	var speed = SettingsPanel.VolumeSlider.new()
@@ -380,7 +409,7 @@ func build_prepare() -> void:
 	var tempo_label := label("%d BPM" % tempo, 13, PAPER)
 	tempo_label.custom_minimum_size.x = 70
 	controls.add_child(tempo_label)
-	speed.value_changed.connect(func(value): tempo = value; tempo_label.text = "%d BPM" % tempo; speed.tooltip_text = tempo_label.text; update_prepare_summary())
+	speed.value_changed.connect(func(value): tempo = value; tempo_label.text = "%d BPM" % tempo; speed.tooltip_text = tempo_label.text; remember_pulse_plan(); update_prepare_summary())
 	var length := OptionButton.new()
 	for caption in ["1 bar · repair", "4 bars · short", "8 bars", "16 bars · practice", "32 bars"]:
 		length.add_item(caption)
@@ -393,26 +422,119 @@ func build_prepare() -> void:
 	mode.item_selected.connect(func(choice):
 		guidance = choice
 		if guidance == 1 and bars == 1: bars = 4; length.select(1)
+		remember_pulse_plan()
 		update_prepare_summary())
 	length.item_selected.connect(func(choice):
 		bars = [1, 4, 8, 16, 32][choice]
 		if bars == 1 and guidance == 1: guidance = 0; mode.select(0)
+		remember_pulse_plan()
 		update_prepare_summary())
 	controls.add_child(mode)
 	var actions := row()
 	stack.add_child(actions)
-	var start := button("Start playing", start_take, true)
+	var start := button("Play at %d BPM" % tempo if lesson_index == 0 and pulse_intent == "guided" else "Start playing", start_take, true)
 	start.disabled = engine == null
 	actions.add_child(start)
 	actions.add_child(button("Lesson check", show_learning_check))
-	var options := button("Practice options", func(): options_open = not options_open; controls.visible = options_open)
-	actions.add_child(options)
-	stack.add_child(label("Reading check saved." if model.save.read.get(lesson.version, false) else "Read the bar, then keep counting as you play.", 12, LIME))
+	if lesson_index == 0:
+		if pulse_intent == "guided":
+			var earned := bool(coaching.get("checkpoint_earned", false))
+			var challenge := 96 if tempo >= 84 else 84
+			var challenge_button := button("Try %d BPM" % challenge if earned else "Try the checkpoint", func(): choose_coached_pace(challenge if earned else 72, 0))
+			challenge_button.tooltip_text = "Optional pace challenge. Your next lesson is already available." if earned else "Already comfortable? Try the 72 BPM checkpoint directly."
+			actions.add_child(challenge_button)
+		else:
+			actions.add_child(button("Coached practice", func(): switch_pulse_intent("guided")))
+		actions.add_child(button("Free practice" if pulse_intent == "guided" else "Practice options", func():
+			if pulse_intent == "guided": switch_pulse_intent("free")
+			else: options_open = not options_open; controls.visible = options_open))
+	else:
+		actions.add_child(button("Practice options", func(): options_open = not options_open; controls.visible = options_open))
+	if lesson_index == 0:
+		stack.add_child(label("Checkpoint: 2 of 3 full takes at 72 BPM · 95% hits · 90% within ±50 ms · At most 2% extras.", 11, MUTED))
+	else:
+		stack.add_child(label("Reading check saved." if model.save.read.get(lesson.version, false) else "Read the bar, then keep counting as you play.", 12, LIME))
 	if not smoke: start.call_deferred("grab_focus")
 
 func update_prepare_summary() -> void:
 	if stage_feedback != null:
-		stage_feedback.text = "%d BPM · %d bars · About %d seconds of playing · Four-beat count-in" % [tempo, bars, roundi(bars * 4 * 60 / tempo)]
+		stage_feedback.text = "%d BPM · %d bars · About %d seconds · Four-beat count-in" % [tempo, bars, roundi(bars * 4 * 60 / tempo)]
+		if lesson_index == 0 and pulse_intent == "free":
+			stage_feedback.text += " · Free practice"
+			if tempo == 72 and bars >= 16 and guidance == 0: stage_feedback.text += " · Checkpoint eligible"
+
+func current_take_settings() -> Dictionary:
+	var settings := {"bpm": tempo, "bars": bars, "guidance": guidance, "source": source_id, "mapping": mappings.duplicate(true)}
+	if lesson_index == 0:
+		settings.merge({"tempo_policy": 1, "live_feedback": guidance != 2, "monitoring": monitoring, "calibration_ms": 0})
+	return settings
+
+func restore_pulse_plan() -> void:
+	var preferences: Dictionary = model.pulse_preferences()
+	pulse_intent = str(preferences.intent)
+	var plan: Dictionary = preferences[pulse_intent]
+	tempo = float(plan.bpm)
+	bars = int(plan.bars)
+	guidance = int(plan.guidance)
+
+func remember_pulse_plan() -> void:
+	if lesson_index == 0 and not smoke:
+		model.remember_pulse(pulse_intent, tempo, bars, guidance)
+
+func switch_pulse_intent(intent: String) -> void:
+	remember_pulse_plan()
+	var preferences: Dictionary = model.pulse_preferences()
+	var plan: Dictionary = preferences[intent]
+	pulse_intent = intent
+	tempo = float(plan.bpm)
+	bars = int(plan.bars)
+	guidance = int(plan.guidance)
+	remember_pulse_plan()
+	options_open = intent == "free"
+	build_prepare()
+
+func choose_coached_pace(pace: float, mode: int) -> void:
+	pulse_intent = "guided"
+	tempo = pace
+	bars = 16
+	guidance = mode
+	remember_pulse_plan()
+	build_prepare()
+
+func coaching_copy(decision: Dictionary) -> Array:
+	if not bool(decision.get("ok", false)):
+		return ["Coaching unavailable", "Your scores are preserved. Try reopening Drumx.", "Coaching unavailable"]
+	if int(decision.get("reason", -1)) == 11:
+		return ["Settle into this setup.", "Build the guided checkpoint with your current kit setup.", "Restore the track"]
+	var pace := int(decision.get("next_bpm", tempo))
+	match int(decision.get("action", 0)):
+		2: return ["Ready for a little more pace.", "A strong phrase. Keep the same relaxed stroke.", "Try %d BPM" % pace]
+		3: return ["Checkpoint earned.", "Next lesson open. Or keep this pace and play by ear.", "Hide alternate bars"]
+		4: return ["You kept the pulse by ear.", "Now try a full phrase with only the click.", "Try click-only"]
+		5: return ["Your pulse is becoming yours.", "Guided and recalled at 72 BPM. Your next step is ready.", "Continue learning"]
+		6: return ["Give yourself a little more room.", "One easier phrase. Keep counting all the way through.", "Try %d BPM" % pace if int(decision.get("next_guidance", guidance)) == guidance else "Restore the track"]
+		7: return ["Let's check your input.", "No notes matched. Check your kit before trying again.", "Check kit & sound"]
+		8: return ["Take your time.", "Finish the full phrase to build comparable evidence.", "Restart with count-in"]
+		1:
+			var strong_count := int(decision.get("recent_qualifying", 0))
+			return ["Make it repeatable." if strong_count > 0 else "Listen to the spaces.", "%d strong of the last %d comparable takes." % [strong_count, int(decision.get("recent_completed", 0))] if strong_count > 0 else "Repeat this pace. Aim for even strokes with the click.", "Confirm %d BPM" % int(tempo) if strong_count > 0 else "Repeat %d BPM" % int(tempo)]
+	return ["Settle into the pulse.", "One click. One stroke. Count 1, 2, 3, 4.", "Play at %d BPM" % int(tempo)]
+
+func accept_coaching() -> void:
+	if not bool(coaching.get("ok", false)): return
+	if model.pulse_context(current_take_settings()).conditions_key != model.pulse_context(take_settings).conditions_key:
+		# A review describes the captured setup. Never start its next challenge
+		# after a disconnect or setup change without reevaluating the new context.
+		build_prepare()
+		return
+	match int(coaching.get("action", 0)):
+		5: show_prepare(mini(11, lesson_index + 1)); return
+		7: show_settings(); return
+	if int(coaching.get("action", 0)) != 8:
+		tempo = float(coaching.get("next_bpm", tempo))
+		bars = int(coaching.get("next_bars", 16))
+		guidance = int(coaching.get("next_guidance", guidance))
+	start_take()
 
 func start_take() -> void:
 	if engine == null:
@@ -423,7 +545,8 @@ func start_take() -> void:
 		preserve_error = "This lesson could not be loaded by the timing engine."
 		update_footer()
 		return
-	take_settings = {"bpm": tempo, "bars": bars, "guidance": guidance, "source": source_id, "mapping": mappings.duplicate(true)}
+	take_settings = current_take_settings()
+	remember_pulse_plan()
 	score_before = int(model.best(lesson_index, take_settings).get("points", -1))
 	take_lesson_index = lesson_index
 	saved_fingerprint = ""
@@ -482,6 +605,9 @@ func show_result() -> void:
 	stack.add_child(label("Your take." if bool(snapshot.get("naturally_completed", false)) else "Take stopped.", 36))
 	result_detail = label("", 17, Color(PAPER, 0.75), true)
 	stack.add_child(result_detail)
+	if lesson_index == 0 and pulse_intent == "guided":
+		tempo_card = TempoCard.new()
+		stack.add_child(tempo_card)
 	result_visual = ScoreReview.new()
 	stack.add_child(result_visual)
 	var metrics := row()
@@ -499,21 +625,30 @@ func show_result() -> void:
 	stack.add_child(result_best)
 	var actions := row()
 	stack.add_child(actions)
-	actions.add_child(button("Play again", start_take, true))
-	actions.add_child(button("Slow it down", func(): tempo = maxf(30, tempo - 6); start_take()))
-	actions.add_child(button("Work on one bar", func(): bars = 1; guidance = 0 if guidance == 1 else guidance; start_take()))
-	actions.add_child(button("Try less help" if guidance < 2 else "Repeat click-only", func():
-		if guidance == 2: start_take(); return
-		guidance += 1
-		if guidance == 1 and bars == 1: bars = 4
-		build_prepare()))
+	if lesson_index == 0 and pulse_intent == "guided":
+		coached_action = button("Play again", accept_coaching, true)
+		actions.add_child(coached_action)
+		actions.add_child(button("Repeat this pace", start_take))
+		actions.add_child(button("Free practice", func(): switch_pulse_intent("free")))
+	else:
+		actions.add_child(button("Play again", start_take, true))
+		actions.add_child(button("Slow it down", func(): tempo = maxf(30, tempo - 6); start_take()))
+		actions.add_child(button("Work on one bar", func(): bars = 1; guidance = 0 if guidance == 1 else guidance; start_take()))
+		if lesson_index == 0:
+			actions.add_child(button("Coached practice", func(): switch_pulse_intent("guided")))
+		else:
+			actions.add_child(button("Try less help" if guidance < 2 else "Repeat click-only", func():
+				if guidance == 2: start_take(); return
+				guidance += 1
+				if guidance == 1 and bars == 1: bars = 4
+				build_prepare()))
 	var next_actions := row()
 	stack.add_child(next_actions)
 	next_actions.add_child(button("Lesson check", show_learning_check))
 	next_lesson_button = button("Next lesson", func(): show_prepare(mini(11, lesson_index + 1)))
 	next_lesson_button.disabled = lesson_index >= 11 or lesson_index >= model.frontier()
 	next_actions.add_child(next_lesson_button)
-	next_actions.add_child(button("Practice options", func(): options_open = true; build_prepare()))
+	if lesson_index != 0: next_actions.add_child(button("Practice options", func(): options_open = true; build_prepare()))
 	next_actions.add_child(button("Learning path", func(): show_learn(model.frontier())))
 	update_result()
 
@@ -578,7 +713,7 @@ func answer_reading(answer: int) -> void:
 			model.save.read = previous
 			stage_feedback.text = model.error
 			return
-		stage_feedback.text = "That's right. " + ("Next step open." if model.cleared(lesson_index) else "Match 80% of the notes in a complete take to open the next step.")
+		stage_feedback.text = "That's right. " + ("Next step open." if model.cleared(lesson_index) else "Build two strong guided takes at 72 BPM to open the next step." if lesson_index == 0 else "Match 80% of the notes in a complete take to open the next step.")
 	else:
 		stage_feedback.text = "Try again. " + lesson.explanation
 
@@ -587,19 +722,19 @@ func update_result() -> void:
 		return
 	var complete := bool(snapshot.get("naturally_completed", false))
 	var points_value := DataModel.points(snapshot, complete)
-	var grade_fingerprint := JSON.stringify([points_value, snapshot.get("matched"), snapshot.get("missed"), snapshot.get("extra"), snapshot.get("best_streak")])
+	var grade_fingerprint := JSON.stringify([complete, points_value, snapshot.get("expected"), snapshot.get("on_time"), snapshot.get("matched"), snapshot.get("missed"), snapshot.get("extra"), snapshot.get("best_streak")])
 	if complete and grade_fingerprint != result_grade_fingerprint:
 		model.record(take_id, take_lesson_index, snapshot, take_settings)
 		result_grade_fingerprint = grade_fingerprint
+	var fingerprint := JSON.stringify([grade_fingerprint, model.progress_revision, model.error, source_id, pulse_intent])
+	if fingerprint == result_fingerprint: return
+	result_fingerprint = fingerprint
 	var comparable_attempts: Array = model.save.attempts.filter(func(attempt): return attempt.lesson == model.course.lessons[lesson_index].id and attempt.version == model.course.lessons[lesson_index].version and attempt.settings == take_settings)
 	var saved := comparable_attempts.any(func(attempt):
 		if attempt.id != take_id or int(attempt.points) != points_value: return false
 		for key in ["matched", "on_time", "missed", "extra", "expected", "best_streak"]:
 			if int(attempt[key]) != int(snapshot.get(key, 0)): return false
 		return true)
-	var fingerprint := JSON.stringify([grade_fingerprint, saved, model.error, model.frontier(), comparable_attempts])
-	if fingerprint == result_fingerprint: return
-	result_fingerprint = fingerprint
 	if next_lesson_button != null:
 		next_lesson_button.disabled = lesson_index >= 11 or lesson_index >= model.frontier()
 	result_visual.update_score(snapshot, score_before, comparable_attempts, take_id if saved else "")
@@ -614,6 +749,17 @@ func update_result() -> void:
 		result_detail.text = "No matched notes yet. Check your input, then follow the count."
 	else:
 		result_detail.text = "Keep the spaces even. Listen to the click and make one adjustment for your next take."
+	if tempo_card != null:
+		coaching = model.pulse_decision(take_settings)
+		if not complete or not saved:
+			coaching = coaching.duplicate()
+			coaching.action = 8
+			coaching.reason = 9
+		var copy := coaching_copy(coaching)
+		tempo_card.update_plan(int(tempo), guidance, coaching, copy[0], copy[1])
+		coached_action.text = copy[2]
+		coached_action.disabled = engine == null or not bool(coaching.get("ok", false))
+		result_detail.text = "A full phrase, at your own pace." if complete else "Your records are unchanged. Start again when you are ready."
 	var comparable: Dictionary = model.best(lesson_index, take_settings)
 	result_best.text = ("New personal best. " if complete and saved and points_value > score_before and score_before >= 0 else "") + ("Best with these settings: %d points." % int(comparable.points) if not comparable.is_empty() else "Complete a full take to save your first record.")
 	if model.error != "":
@@ -799,7 +945,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if get_viewport().gui_get_focus_owner() is LineEdit or get_viewport().gui_get_focus_owner() is TextEdit:
 		return
 	if event.keycode == KEY_ENTER and page in ["prepare", "result", "pause"]:
-		start_take()
+		if page == "result" and coached_action != null: accept_coaching()
+		else: start_take()
 		get_viewport().set_input_as_handled()
 		return
 	if engine != null and page in ["prepare", "settings"]:
@@ -860,7 +1007,9 @@ func smoke_test() -> void:
 		"points": 5000, "matched": 60, "on_time": 32, "missed": 4, "extra": 0, "expected": 64, "best_streak": 6}
 	verify(model.valid_attempt(evidence), "complete late-heavy take is valid")
 	model.save.attempts = [evidence]
-	verify(model.cleared(0), "matched-note evidence opens ordinary next step independently of stars")
+	verify(not model.cleared(0), "legacy evidence cannot earn a tempo checkpoint")
+	model.ensure_tempo_coach(true)
+	verify(model.frontier() == 1, "migration preserves previously unlocked second lesson")
 	evidence = evidence.duplicate(true)
 	evidence.id = "chapter"
 	evidence.lesson = model.course.lessons[3].id
@@ -886,7 +1035,8 @@ func smoke_test() -> void:
 	var disk_fixture = DataModel.new()
 	disk_fixture.load_course()
 	disk_fixture.save_path = "user://.smoke-progress-%d-%d.json" % [OS.get_process_id(), Time.get_ticks_usec()]
-	var disk_settings: Dictionary = {"bpm": 60, "bars": 16, "guidance": 0, "source": "", "mapping": mappings}
+	var disk_settings: Dictionary = {"bpm": 60.0, "bars": 16, "guidance": 0, "source": "", "mapping": mappings,
+		"tempo_policy": 1, "live_feedback": true, "monitoring": true, "calibration_ms": 0}
 	var disk_score: Dictionary = {"naturally_completed": true, "expected": 64, "matched": 64, "missed": 0, "on_time": 64, "extra": 0, "best_streak": 64}
 	verify(disk_fixture.record("isolated-take", 0, disk_score, disk_settings), "write isolated completed attempt")
 	disk_score.matched = 63
@@ -899,6 +1049,9 @@ func smoke_test() -> void:
 	disk_reopen.save_path = disk_fixture.save_path
 	disk_reopen.load_progress()
 	verify(not disk_reopen.blocked and disk_reopen.save.attempts.size() == 1 and int(disk_reopen.save.attempts[0].points) == 9843, "reload corrected same-ID take without duplicates")
+	var reopened_best: Dictionary = disk_reopen.best(0, disk_settings)
+	verify(reopened_best.get("id") == "isolated-take" and int(reopened_best.get("points", 0)) == 9843, "comparable personal best survives reopening with normalized tempo policy and calibration")
+	verify(disk_reopen.save.attempts[0].settings == disk_settings, "reloaded captured settings equal current settings after JSON number normalization")
 	var corrupt_file := FileAccess.open(disk_fixture.save_path, FileAccess.WRITE)
 	if verify(corrupt_file != null, "open isolated corrupt-file fixture"):
 		corrupt_file.store_string("{broken")
@@ -929,6 +1082,12 @@ func smoke_test() -> void:
 	if native_required:
 		verify(engine != null, "native DrumxEngine binding exists")
 	if engine != null:
+		var persistence_checks := TempoContract.run_checks(engine)
+		smoke_checks += int(persistence_checks.checks)
+		verify(persistence_checks.failures.is_empty(), "tempo persistence and migration contracts")
+		var tempo_checks := TempoBindingChecks.run_checks(engine)
+		smoke_checks += int(tempo_checks.checks)
+		verify(tempo_checks.failures.is_empty(), "shared tempo binding contracts")
 		var sample_result: bool = engine.load_sample_bank("res://assets/BigRusty", false)
 		verify(sample_result and bool(engine.snapshot().get("samples_ready", false)), "native decodes all24 FLAC without audio output")
 		var mapped: bool = engine.set_mapping(mappings)
@@ -978,6 +1137,114 @@ func smoke_test() -> void:
 			_process(0)
 			smoke = true
 		verify(root_stack.get_combined_minimum_size().x <= size.x - 40 and root_stack.get_combined_minimum_size().y <= size.y - 40, destination + " fits minimum logical viewport")
+	# Coached UI regressions use a separate, permanently blocked model. Preserve
+	# controller state so these examples never become another smoke test's input.
+	if engine != null:
+		var original_model = model
+		var original_engine: Object = engine
+		var controller_fixture_state := {}
+		for property in ["lesson_index", "tempo", "bars", "guidance", "source_id", "monitoring", "mappings", "pulse_intent", "options_open", "take_settings", "take_id", "take_lesson_index", "snapshot", "score_before", "preserve_error", "coaching", "result_fingerprint", "result_grade_fingerprint", "saved_fingerprint", "stage_done", "page"]:
+			var value: Variant = get(property)
+			controller_fixture_state[property] = value.duplicate(true) if value is Dictionary or value is Array else value
+		model = DataModel.new()
+		model.course = original_model.course
+		model.tempo_engine = original_engine
+		model.blocked = true
+		model.ensure_tempo_coach(false)
+		lesson_index = 0
+		source_id = "smoke-fixture-midi-A"
+		monitoring = true
+		mappings = [[42, 44, 46], [38, 40], [35, 36]]
+		preserve_error = ""
+		snapshot = {}
+		take_id = ""
+		options_open = false
+		var check_coached_layout := func(description: String) -> void:
+			verify(root_stack.get_combined_minimum_size().x <= size.x - 40 and root_stack.get_combined_minimum_size().y <= size.y - 40, description + " fits minimum logical viewport")
+			for control in content.find_children("*", "Button", true, false):
+				if control.is_visible_in_tree():
+					verify(Rect2(Vector2.ZERO, size).encloses(control.get_global_rect()), description + " keeps visible action inside viewport: " + control.text)
+		var archived_phrase := func(identifier: String, mode: int) -> Dictionary:
+			return {"id": identifier, "lesson": "find-the-pulse", "version": "find-the-pulse-v1",
+				"settings": {"bpm": 72.0, "bars": 16, "guidance": mode, "source": source_id, "mapping": mappings.duplicate(true),
+					"tempo_policy": 1, "live_feedback": mode != 2, "monitoring": monitoring, "calibration_ms": 0},
+				"points": 10000, "matched": 64, "on_time": 64, "missed": 0, "extra": 0, "expected": 64, "best_streak": 64}
+		restore_pulse_plan()
+		build_prepare()
+		await get_tree().process_frame
+		await get_tree().process_frame
+		verify(pulse_intent == "guided" and tempo == 60 and bars == 16 and guidance == 0, "fresh coached preparation restores sixty BPM and sixteen bars")
+		verify(tempo_card != null and not tempo_card.checkpoint, "fresh coaching card has no invented checkpoint")
+		check_coached_layout.call("fresh coached preparation")
+		model.save.tempo_coach.intent = "free"
+		model.save.tempo_coach.free = {"bpm": 72, "bars": 16, "guidance": 0}
+		restore_pulse_plan()
+		options_open = true
+		build_prepare()
+		await get_tree().process_frame
+		await get_tree().process_frame
+		verify(pulse_intent == "free" and tempo_card == null and stage_feedback.text.contains("Checkpoint eligible"), "free options retain explicit eligible checkpoint conditions")
+		check_coached_layout.call("free preparation with options open")
+		model.save.tempo_coach.intent = "guided"
+		options_open = false
+		var fixture_phases := ["checkpoint", "hidden", "recall"]
+		for phase in range(3):
+			for repetition in range(2):
+				model.save.attempts.append(archived_phrase.call("ui-%s-%d" % [fixture_phases[phase], repetition], phase))
+			model.save.tempo_coach.guided = {"bpm": 72, "bars": 16, "guidance": phase}
+			restore_pulse_plan()
+			build_prepare()
+			await get_tree().process_frame
+			await get_tree().process_frame
+			verify(tempo == 72 and bars == 16 and guidance == phase and tempo_card.checkpoint, "restored " + fixture_phases[phase] + " preserves authored pace and assistance")
+			check_coached_layout.call("restored " + fixture_phases[phase] + " preparation")
+			take_settings = current_take_settings()
+			take_id = str(model.save.attempts.back().id)
+			take_lesson_index = 0
+			score_before = 10000
+			snapshot = {"naturally_completed": true, "completed": true, "running": false,
+				"expected": 64, "matched": 64, "on_time": 64, "missed": 0, "extra": 0, "best_streak": 64}
+			show_result()
+			await get_tree().process_frame
+			await get_tree().process_frame
+			verify(int(coaching.get("action", -1)) == [3, 4, 5][phase], "restored " + fixture_phases[phase] + " review offers the correct next phase")
+			verify(coached_action != null and not coached_action.disabled, "completed " + fixture_phases[phase] + " review has an available primary action")
+			check_coached_layout.call("restored " + fixture_phases[phase] + " review")
+		# Keep only checkpoint evidence from kit A. No endpoint is connected; these
+		# source names are merely immutable identity values in the blocked fixture.
+		model.save.attempts = [archived_phrase.call("stale-a", 0), archived_phrase.call("stale-b", 0)]
+		guidance = 0
+		take_settings = current_take_settings()
+		take_id = "stale-b"
+		show_result()
+		verify(bool(coaching.get("checkpoint_earned", false)) and int(coaching.get("action", -1)) == 3, "stale-review fixture begins with an earned kit-A recommendation")
+		var transport_sentinel := GDScript.new()
+		transport_sentinel.source_code = "extends RefCounted\nvar transport_calls := 0\nfunc cancel_learning():\n\ttransport_calls += 1\nfunc get_mapping():\n\treturn [[42,44,46],[38,40],[35,36]]\nfunc load_chart(_bpm, _bars, _events):\n\ttransport_calls += 1\n\treturn false\nfunc start(_beats):\n\ttransport_calls += 1\n\treturn -1.0\n"
+		if verify(transport_sentinel.reload() == OK, "transport sentinel compiles without audio or hardware"):
+			engine = transport_sentinel.new()
+			source_id = "smoke-fixture-midi-B"
+			accept_coaching()
+			await get_tree().process_frame
+			await get_tree().process_frame
+			verify(page == "prepare" and int(engine.transport_calls) == 0, "changed MIDI review conditions return to preparation without any transport call")
+			verify(not bool(coaching.get("checkpoint_earned", true)) and guidance == 0, "changed MIDI setup has no pooled checkpoint or stale hidden-note challenge")
+			check_coached_layout.call("changed MIDI setup preparation")
+		engine = original_engine
+		guidance = 1
+		var changed_setup_decision := model.pulse_decision(current_take_settings())
+		verify(int(changed_setup_decision.get("reason", -1)) == 11 and not bool(changed_setup_decision.get("checkpoint_earned", true)), "hidden plan on a new setup requires the guided checkpoint")
+		var changed_setup_copy := coaching_copy(changed_setup_decision)
+		verify(changed_setup_copy[0] == "Settle into this setup." and changed_setup_copy[2] == "Restore the track" and not str(changed_setup_copy).to_lower().contains("checkpoint earned"), "reason eleven copy never claims an unearned checkpoint")
+		build_prepare()
+		await get_tree().process_frame
+		await get_tree().process_frame
+		verify(guidance == 0 and tempo_card != null and not tempo_card.checkpoint and not tempo_card.detail.contains("Your checkpoint is earned"), "restored hidden plan returns to truthful guided preparation for new conditions")
+		check_coached_layout.call("restored new-setup preparation")
+		verify(model.blocked, "all coached UI fixtures keep real persistence blocked")
+		model = original_model
+		engine = original_engine
+		for property in controller_fixture_state:
+			set(property, controller_fixture_state[property])
 	build_prepare()
 	show_learning_check()
 	verify(not modal_focus.is_empty() and modal_focus.all(func(item): return item[0].focus_mode == Control.FOCUS_NONE), "quiz prevents keyboard focus reaching underlying actions")

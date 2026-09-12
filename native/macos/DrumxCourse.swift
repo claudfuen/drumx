@@ -29,7 +29,7 @@ struct DrumxLessonDefinition {
   let readingAnswer: Int
 }
 
-/// A small foundation unit, available in full regardless of game scores.
+/// A small foundation unit. Access rules are owned by the progression model.
 /// Suggested practice adds up to 96 minutes across repeated short sessions.
 /// Playback, scoring, and notation should consume these same one-bar events.
 /// Guidance, tempo changes, attempt evidence, and readiness belong to the caller.

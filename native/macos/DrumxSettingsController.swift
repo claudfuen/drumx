@@ -181,7 +181,7 @@ extension LabController {
     showPage(.pause)
   }
   @objc func restartPaused() {
-    if pausedDemo { hearDemo() } else { startTake() }
+    if pausedDemo { hearDemo() } else { startTake(advanceGuided: false) }
   }
   @objc func reviewPaused() {
     showPage(.review)
