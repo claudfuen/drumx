@@ -24,6 +24,8 @@ The active milestone is a player outcome: **a new drummer can connect their kit,
 
 **Active slice: coached pulse, with a visual-quality gate.** Find the pulse now chooses a 60 BPM opening, suggests 66 and 72 BPM from completed takes, and separates its 72 BPM checkpoint from optional faster challenges and recall. Coached and free-practice choices save independently. The native Mac and experimental shared apps use the same [tempo policy](docs/guided-tempo.md). The next gate is a complete kit-connected playtest plus visual inspection of preparation, gameplay, review, and resizing on both systems. The other 11 lessons retain their existing practice and unlock rules. The [coached-pulse playtest](docs/coached-pulse-playtest.md) defines the next review and its exit criteria.
 
+**Active quality gate: [a premium 30-minute practice session](docs/premium-quality-gate.md).** The current pass covers every existing screen, control state, navigation route, resize, feedback mode, and recovery path. It closes with zero blocking or major issues, an observed complete session, rendered Mac/Windows comparisons, and verified paired packages. **Status: open.** Interactive visual review, frame-pacing measurement, and physical-kit testing remain required.
+
 **Quality bar: a small, finished game that could belong on Steam.** The first unit should feel deliberately designed from launch through the return visit: clear onboarding, cohesive visuals and sound, responsive play, satisfying feedback, and dependable recovery. Steam distribution and possible paid release are aspirations to evaluate; availability, pricing, and a source-code license are not decided.
 
 | Milestone | Status | What the player gains |
@@ -110,8 +112,8 @@ No MIDI kit is required to try the lesson:
 
 1. Enter a player name on the welcome page, then choose **Let's play** to reach the main menu.
 2. Choose **Continue** to open **Find the pulse**, or **Learn** to inspect the lesson path. Read the counts and choose **Hear the pattern**.
-3. Choose **Start playing** and come in after the four-beat count-in. The new-lesson default is 16 bars at its suggested tempo; **Practice options** lets you change it.
-4. Read the review. Try **Play again**, **Slow it down**, or **Work on one bar**. Use **Lesson check** to connect the pattern to drum language.
+3. Follow the primary coached-pace action and come in after the four-beat count-in. A new player starts Find the pulse at 60 BPM for 16 bars. **Free practice** provides manual choices; other lessons use **Practice options**.
+4. Read the review and its recommended next action, or repeat the same pace. Free practice offers manual slower/repair choices. Use **Lesson check** to connect the pattern to drum language.
 5. When comfortable, try **Hide a phrase**, then **Try click-only**, or open **Next lesson** when unlocked. A locked next step explains what remains. **Main menu** returns to Continue, Learn, and Settings.
 
 Try five minutes of listening, playing, and reviewing first. A 16-bar block lasts 64 seconds at 60 BPM or about 53 seconds at 72 BPM, plus the count-in. It ends in review; there is no endless automatic loop. Your completed attempts are archived on this Mac and the course remembers your reading and practice evidence. Add another local player from the player button to keep their progress separate.

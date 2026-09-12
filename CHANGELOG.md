@@ -4,6 +4,12 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Define the premium practice quality gate
+
+- Make the next M1 gate a coherent 30-minute practice session across the existing menus, lesson, settings, gameplay, review, and return journey.
+- Specify visual/control/navigation/recovery criteria, display and frame-pacing targets, real-kit and learner evidence, paired-build integrity, severity levels, and zero blocking/major issues for closure.
+- Keep interactive visual review, actual frame measurements, and physical-kit sessions explicitly pending. Automated tests and offscreen component renders cannot close those checks.
+
 ### Verify the coached desktop pair and refine its cues
 
 - Both exported apps passed 7,900 checks at `20f30fc` and the follow-up `21e709f` in hosted CI; the same run passed the 57 Swift adapter checks, compiled the native Mac app, and verified matching clean-commit packages. Link the verified test downloads from the README.
