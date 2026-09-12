@@ -4,6 +4,12 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Verify the coached desktop pair and refine its cues
+
+- Both exported apps passed 7,900 checks at `20f30fc` in hosted CI; the same run passed the 57 Swift adapter checks, compiled the native Mac app, and verified matching clean-commit packages. Link the verified test downloads from the README.
+- Inspect an offscreen render of the native pace component, soften its accent to the shared palette, and avoid marking untested opening paces as earned after a direct checkpoint attempt. A no-input review now points to kit and sound settings.
+- Keep the complete rendered-window review and physical MIDI session open; component inspection and packaged execution establish different things.
+
 ### Connect coached pulse and refine the playing experience
 
 - Connect the shared tempo policy to native Mac and shared Mac/Windows preparation and review. Offer one recommended action, direct checkpoint attempts, optional faster challenges, and an explicit free-practice route with independent saved choices.

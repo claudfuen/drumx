@@ -132,6 +132,9 @@ extension LabController {
       history: history.attempts, settings: pulseTakeSettings(), stopped: stopped, stoppedID: takeID)
     else { return }
     retryButton.title = recommendation.actionTitle
+    if recommendation.decision.action == Int32(DX_TEMPO_CHECK_INPUT.rawValue) {
+      retryButton.title = "Check kit & sound"; retryButton.action = #selector(showSetup)
+    }
     if recommendation.decision.action == Int32(DX_TEMPO_CONTINUE.rawValue) {
       retryButton.title = "Continue to next lesson"; retryButton.action = #selector(nextLesson)
     }

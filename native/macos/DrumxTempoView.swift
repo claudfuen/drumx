@@ -8,7 +8,7 @@ final class DrumxTempoView: NSView {
   private var detail = ""
   private var checkpoint = false
   private var recalled = false
-  private let lime = NSColor(srgbRed: 0.77, green: 0.96, blue: 0.36, alpha: 1)
+  private let lime = NSColor(srgbRed: 0.79, green: 0.91, blue: 0.49, alpha: 1)
   override var isFlipped: Bool { true }
   override var intrinsicContentSize: NSSize { NSSize(width: NSView.noIntrinsicMetric, height: 100) }
 
@@ -41,7 +41,7 @@ final class DrumxTempoView: NSView {
     let labels = ["60", "66", "72", "Recall"]
     for index in labels.indices {
       let x = start + CGFloat(index) * 39
-      let earned = index < 3 ? checkpoint : recalled
+      let earned = index == 2 ? checkpoint : index == 3 ? recalled : false
       let current = index < 3 ? bpm == [60.0, 66, 72][index] : checkpoint && !recalled
       if index < 3 {
         NSColor(white: 0.27, alpha: 1).setStroke()

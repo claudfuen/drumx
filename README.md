@@ -86,12 +86,12 @@ Stars on **Learn** show your best saved result for that lesson version, with its
 
 ## Experimental desktop test builds
 
-The shared port is under regression review. The native Mac app above remains the primary experience. These packages come from commit `7f15952`; both exported executables passed 7,717 checks on their target operating systems in the [verified paired run](https://github.com/claudfuen/drumx/actions/runs/34713689821).
+The shared port is under regression review. The native Mac app above remains the primary experience. These coached-pulse packages come from commit `20f30fc`; both exported executables passed 7,900 checks on their target operating systems in the [verified paired run](https://github.com/claudfuen/drumx/actions/runs/34715554977). The same run passed 57 native Swift coaching checks and compiled the native Mac app.
 
 | Platform | Test package |
 | --- | --- |
-| Apple Silicon Mac | [Download Mac ARM64 artifact](https://github.com/claudfuen/drumx/actions/runs/34713689821/artifacts/10304476030) |
-| Windows 64-bit | [Download Windows x64 artifact](https://github.com/claudfuen/drumx/actions/runs/34713689821/artifacts/10304770498) |
+| Apple Silicon Mac | [Download Mac ARM64 artifact](https://github.com/claudfuen/drumx/actions/runs/34715554977/artifacts/10303903876) |
+| Windows 64-bit | [Download Windows x64 artifact](https://github.com/claudfuen/drumx/actions/runs/34715554977/artifacts/10303804094) |
 
 GitHub requires sign-in for artifacts and retains these for 14 days. Open the downloaded artifact ZIP, then extract the enclosed Drumx ZIP completely. Public releases remain on hold while visual parity and physical-kit testing are incomplete. The port uses a separate progress store and still lacks some native Mac features. Read the [inspection guide and known gaps](docs/desktop-preview.md) before testing.
 
