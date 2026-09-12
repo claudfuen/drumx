@@ -1,0 +1,44 @@
+native/macos/DrumxLesson.swift
+  s_f983bef49b9fee::t_938c15b415415d 14-17,22,34-35,38,44
+native/macos/DrumxTempoController.swift
+  s_f983bef49b9fee::t_fed5b954a008e9 1-77,79-115,117-140,142-146
+scripts/test-tempo-adapter.sh
+  s_f983bef49b9fee::t_464123954981e7 1-36
+native/macos/DrumxLab.swift
+  s_f983bef49b9fee::t_fed5b954a008e9 117-119,147,431,451-455,458,460-461,497-499,501,550,723-724,733,740,748,796,799-805,813,968
+native/macos/DrumxTempoCoach.swift
+  s_f983bef49b9fee::t_cffe2c6ee3c3d8 1-8,10-15,17-44,48-70,72,75,78-79,82-131,135-139
+native/macos/DrumxJourneyController.swift
+  s_f983bef49b9fee::t_fed5b954a008e9 30,41,104-115,118,127,129,158,161
+native/macos/DrumxSettingsController.swift
+  s_f983bef49b9fee::t_fed5b954a008e9 184
+apps/game/scripts/main.gd
+  s_f983bef49b9fee::t_30e5d5660d58ef 11-13,65-68,88,99,130-131,215-216,222,224-228,270-271,354,375,381-392,396,412,425,430,435,439-456,461-537,548-549,608-610,628-644,651,716,725,729-731,752-762,948-949,1010-1012,1085-1090,1140-1168,1170-1209,1211-1247
+  s_f983bef49b9fee::t_5bd53c7eb9d6fe 1169,1210
+  s_f983bef49b9fee::t_69a4a218713e00 1038-1039,1052-1054
+apps/game/scripts/tempo_contract.gd
+  s_f983bef49b9fee::t_d3023225fb439b 16,136-144
+  s_f983bef49b9fee::t_f0549e57310ed8 1-15,17-135,145-180
+.github/workflows/desktop-preview.yml
+  s_f983bef49b9fee::t_464123954981e7 12,16-18,29,33-35,75-82,131-132
+native/macos/DrumxBridging.h
+  s_f983bef49b9fee::t_938c15b415415d 1-2
+native/macos/DrumxProgress.swift
+  s_f983bef49b9fee::t_938c15b415415d 42-64,87,102-103,260-267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "20f30fccbd84b3d437ffd25e61e4daf2e2621fea",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
