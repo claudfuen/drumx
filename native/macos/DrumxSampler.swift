@@ -140,6 +140,87 @@ struct DrumxSampleBank {
     }
 }
 
+struct DrumxDemoHit: Equatable {
+    let pad: Int
+    let beat: Double
+    let velocity: Int
+}
+
+/// A finite, sample-accurate arrangement prepared before playback. Rendering it
+/// does not consume the live sampler's round-robin counters or emit input events.
+struct DrumxDemoAudio {
+    let buffer: AVAudioPCMBuffer
+    let hits: [DrumxDemoHit]
+    var durationSeconds: Double { Double(buffer.frameLength) / buffer.format.sampleRate }
+
+    static func pattern(bars: Int) throws -> [DrumxDemoHit] {
+        guard bars == 1 || bars == 4 else {
+            throw DrumxSamplerError.invalid("The groove demo supports one or four bars.")
+        }
+        var hits: [DrumxDemoHit] = []
+        for bar in 0..<bars {
+            let start = Double(bar * 4)
+            for eighth in 0..<8 {
+                hits.append(DrumxDemoHit(pad: 0, beat: start + Double(eighth) / 2,
+                                        velocity: eighth.isMultiple(of: 2) ? 90 : 78))
+            }
+            for beat in [1, 3] { hits.append(DrumxDemoHit(pad: 1, beat: start + Double(beat), velocity: 108)) }
+            for beat in [0, 2] { hits.append(DrumxDemoHit(pad: 2, beat: start + Double(beat), velocity: 112)) }
+        }
+        return hits.sorted { $0.beat == $1.beat ? $0.pad < $1.pad : $0.beat < $1.beat }
+    }
+
+    static func render(bank: DrumxSampleBank, bpm: Double, bars: Int) throws -> DrumxDemoAudio {
+        guard bpm.isFinite, bpm >= 20, bpm <= 400 else {
+            throw DrumxSamplerError.invalid("The groove demo needs a tempo between 20 and 400 BPM.")
+        }
+        let hits = try pattern(bars: bars)
+        let framesPerBeat = bank.format.sampleRate * 60 / bpm
+        var selection = bank.selector
+        var clips: [(Int, Int)] = []
+        var totalFrames = Int(ceil(Double(bars * 4) * framesPerBeat))
+        for hit in hits {
+            guard let index = selection.select(pad: hit.pad, velocity: hit.velocity) else {
+                throw DrumxSamplerError.invalid("The demo requires hi-hat, snare and kick samples.")
+            }
+            let start = Int((hit.beat * framesPerBeat).rounded())
+            clips.append((index, start))
+            totalFrames = max(totalFrames, start + Int(bank.buffers[index].frameLength))
+        }
+        guard let mixed = AVAudioPCMBuffer(pcmFormat: bank.format,
+                                           frameCapacity: AVAudioFrameCount(totalFrames)),
+              let output = mixed.floatChannelData else {
+            throw DrumxSamplerError.invalid("Could not prepare the groove demo.")
+        }
+        mixed.frameLength = AVAudioFrameCount(totalFrames)
+        for channel in 0..<Int(bank.format.channelCount) {
+            output[channel].update(repeating: 0, count: totalFrames)
+        }
+        for (index, start) in clips {
+            let sample = bank.buffers[index]
+            guard let input = sample.floatChannelData else { continue }
+            for channel in 0..<Int(bank.format.channelCount) {
+                for frame in 0..<Int(sample.frameLength) {
+                    output[channel][start + frame] += input[channel][frame]
+                }
+            }
+        }
+        // Preserve the mix's relative dynamics. Apply global headroom only when
+        // overlapping samples would exceed full scale; never normalize each hit.
+        var peak: Float = 0
+        for channel in 0..<Int(bank.format.channelCount) {
+            for frame in 0..<totalFrames { peak = max(peak, abs(output[channel][frame])) }
+        }
+        if peak > 0.98 {
+            let gain: Float = 0.98 / peak
+            for channel in 0..<Int(bank.format.channelCount) {
+                for frame in 0..<totalFrames { output[channel][frame] *= gain }
+            }
+        }
+        return DrumxDemoAudio(buffer: mixed, hits: hits)
+    }
+}
+
 struct DrumxSamplerDiagnostics {
     let loadedSamples: Int
     let velocityLayers: Int
@@ -151,6 +232,9 @@ struct DrumxSamplerDiagnostics {
     let activeVoices: Int
     let maximumVoices: Int
     let lastSampleFile: String?
+    let demoScheduled: Bool
+    let demoDurationSeconds: Double
+    let demoFirstBeatHostTime: Double?
 }
 
 /// A bounded voice pool controlled on one dedicated serial queue. MIDI scheduling
@@ -165,6 +249,7 @@ final class DrumxSampler {
 
     /// Assigned/read on main; delivery always marshals to main.
     var onStatusChanged: ((String) -> Void)?
+    var onAudioInterrupted: ((String) -> Void)?
     private let queue = DispatchQueue(label: "org.drumx.sampler", qos: .userInteractive)
     private let queueKey = DispatchSpecificKey<Bool>()
     private let pendingHits = Atomic<Int>(0)
@@ -188,6 +273,15 @@ final class DrumxSampler {
     private var staleHits: UInt64 = 0
     private var stolenVoices: UInt64 = 0
     private var lastSampleFile: String?
+    private var demoPlayer: AVAudioPlayerNode?
+    private var demoBuffer: AVAudioPCMBuffer?
+    private var demoGeneration: UInt64 = 0
+    private var demoStartHostTime: Double?
+    private var demoLength = 0.0
+    private var demoStatus = "Groove demo stopped"
+
+    var demoDurationSeconds: Double { queue.sync { demoLength } }
+    var demoStatusDescription: String { queue.sync { demoStatus } }
 
     init() { queue.setSpecific(key: queueKey, value: true) }
 
@@ -211,6 +305,10 @@ final class DrumxSampler {
                 newEngine.connect(player, to: newEngine.mainMixerNode, format: newBank.format)
                 players.append(player)
             }
+            let demonstration = AVAudioPlayerNode()
+            newEngine.attach(demonstration)
+            newEngine.connect(demonstration, to: newEngine.mainMixerNode, format: newBank.format)
+            demoPlayer = demonstration
             newEngine.mainMixerNode.outputVolume = volume * 0.65
             newEngine.prepare()
             engine = newEngine
@@ -220,9 +318,12 @@ final class DrumxSampler {
                 self?.queue.async { [weak self, weak newEngine] in
                     guard let self, let newEngine, self.engine === newEngine else { return }
                     self.enabled = false
+                    self.stopDemoOnQueue()
                     self.silenceVoices()
                     newEngine.stop()
-                    self.report("Drum sound paused after an audio device change. Toggle it on to restart.")
+                    let reason = "Audio device changed. Restart playback."
+                    self.report(reason)
+                    DispatchQueue.main.async { [weak self] in self?.onAudioInterrupted?(reason) }
                 }
             }
             report("Drum samples loaded · \(newBank.buffers.count) recordings")
@@ -266,6 +367,60 @@ final class DrumxSampler {
             self.volume = min(1, max(0, value))
             self.engine?.mainMixerNode.outputVolume = self.volume * 0.65
         }
+    }
+
+    /// firstBeatHostTime is the estimated presentation time in the same native
+    /// host-seconds domain as the click. The entire phrase is scheduled once.
+    /// Monitoring/learn state controls live inputs only, not this explicit demo.
+    @discardableResult
+    func startDemo(bpm: Double, firstBeatHostTime: Double, bars: Int) -> Bool {
+        queue.sync {
+            stopDemoOnQueue()
+            guard firstBeatHostTime.isFinite, firstBeatHostTime > DrumxIO.hostNowSeconds(),
+                  let bank, let engine, let player = demoPlayer else {
+                demoStatus = "Load drum samples and choose a future demo start time."
+                return false
+            }
+            do {
+                let audio = try DrumxDemoAudio.render(bank: bank, bpm: bpm, bars: bars)
+                if !engine.isRunning { try engine.start() }
+                let latency = max(0, player.outputPresentationLatency)
+                let renderStart = firstBeatHostTime - latency
+                guard renderStart > DrumxIO.hostNowSeconds() + 0.020 else {
+                    demoStatus = "The demo missed its start time. Try again with a longer count-in."
+                    return false
+                }
+                demoBuffer = audio.buffer
+                demoLength = audio.durationSeconds
+                demoStartHostTime = firstBeatHostTime
+                let generation = demoGeneration
+                player.scheduleBuffer(audio.buffer, at: nil, options: [], completionHandler: nil)
+                player.play(at: AVAudioTime(hostTime: AVAudioTime.hostTime(forSeconds: renderStart)))
+                demoStatus = "Groove demo scheduled"
+                // Cleanup is not the musical clock. The PCM buffer ends by itself
+                // even if this serial queue is busy; no per-note timer is involved.
+                let remaining = firstBeatHostTime + demoLength - DrumxIO.hostNowSeconds() + 0.020
+                queue.asyncAfter(deadline: .now() + max(0, remaining)) { [weak self] in
+                    guard let self, self.demoGeneration == generation else { return }
+                    self.stopDemoOnQueue()
+                }
+                return true
+            } catch {
+                demoStatus = "Groove demo unavailable: \(error.localizedDescription)"
+                return false
+            }
+        }
+    }
+
+    /// Synchronous cancellation also invalidates cleanup from any earlier demo.
+    func stopDemo() { queue.sync { stopDemoOnQueue() } }
+
+    private func stopDemoOnQueue() {
+        demoGeneration &+= 1
+        demoPlayer?.stop()
+        demoBuffer = nil
+        demoStartHostTime = nil
+        demoStatus = "Groove demo stopped"
     }
 
     func setMapping(_ notesByPad: [[Int]]) {
@@ -372,7 +527,8 @@ final class DrumxSampler {
                 scheduledHits: scheduledHits, staleHitsDropped: staleHits,
                 queuedHitsDropped: overflowHits.load(ordering: .relaxed), voicesStolen: stolenVoices,
                 activeVoices: voiceEnds.filter { $0 > now }.count, maximumVoices: Self.voiceLimit,
-                lastSampleFile: lastSampleFile)
+                lastSampleFile: lastSampleFile, demoScheduled: demoStartHostTime != nil,
+                demoDurationSeconds: demoLength, demoFirstBeatHostTime: demoStartHostTime)
         }
     }
 
@@ -393,6 +549,8 @@ final class DrumxSampler {
     private func tearDownEngine() {
         if let observer { NotificationCenter.default.removeObserver(observer) }
         observer = nil
+        stopDemoOnQueue()
+        demoPlayer = nil
         silenceVoices()
         engine?.stop()
         engine = nil

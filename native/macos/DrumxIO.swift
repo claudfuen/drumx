@@ -22,6 +22,7 @@ final class DrumxIO {
     var onSamplerStatusChanged: ((String) -> Void)?
     private(set) var samplerStatusDescription = "Drum samples not loaded"
     var samplerDiagnostics: DrumxSamplerDiagnostics { sampler.diagnostics() }
+    var demoDurationSeconds: Double { sampler.demoDurationSeconds }
 
     private(set) var sources: [MIDISourceInfo] = []
     private(set) var selectedSourceID: Int32?
@@ -57,6 +58,7 @@ final class DrumxIO {
             self?.samplerStatusDescription = message
             self?.onSamplerStatusChanged?(message)
         }
+        sampler.onAudioInterrupted = { [weak self] reason in self?.interruptAudio(reason) }
         let result = MIDIClientCreateWithBlock("Drumx Timing Lab" as CFString, &midiClient) {
             [weak self] _ in
             DispatchQueue.main.async { [weak self] in self?.refreshSources() }
@@ -310,6 +312,7 @@ final class DrumxIO {
 
     private func interruptAudio(_ reason: String) {
         stopClick()
+        stopDemo()
         audioStatusDescription = reason
         updateStatus(reason)
         onAudioInterrupted?(reason)
@@ -359,6 +362,15 @@ final class DrumxIO {
     func setMIDILearnActive(_ active: Bool) { sampler.setLearnActive(active) }
     /// Use for keyboard input. Native MIDI is already monitored before UI dispatch.
     func playPad(pad: Int, velocity: Int) { sampler.playPad(pad: pad, velocity: velocity) }
+
+    @discardableResult
+    func startDemo(bpm: Double, firstBeatHostTime: Double, bars: Int) -> Bool {
+        let started = sampler.startDemo(bpm: bpm, firstBeatHostTime: firstBeatHostTime, bars: bars)
+        if !started { updateStatus(sampler.demoStatusDescription) }
+        return started
+    }
+
+    func stopDemo() { sampler.stopDemo() }
 }
 
 /// One instance belongs exclusively to one CoreMIDI receive port. Streaming

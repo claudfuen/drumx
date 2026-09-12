@@ -1,5 +1,6 @@
 import Foundation
 import CoreMIDI
+import AVFoundation
 import Darwin
 
 @main
@@ -147,6 +148,7 @@ struct Checks {
         precondition(selector.select(pad: 0, velocity: 128) == nil)
         precondition(selector.select(pad: 99, velocity: 100) == nil)
         print("PASS sample bank: 24 non-silent PCM recordings, 12 layers, distinct alternates, all velocity boundaries, deterministic round robin")
+        try checkDemoRendering(bank)
 
         let sampler = DrumxSampler()
         try sampler.load(manifestURL: manifestURL)
@@ -220,5 +222,68 @@ struct Checks {
         io.setMonitoring(enabled: false)
         io.connect(sourceID: nil)
         print("PASS native MIDI monitoring while main/UI delivery is stalled")
+        let hitsBeforeDemo = io.samplerDiagnostics.scheduledHits
+        let demoStart = DrumxIO.hostNowSeconds() + 3
+        precondition(io.startDemo(bpm: 120, firstBeatHostTime: demoStart, bars: 1))
+        let demo = io.samplerDiagnostics
+        precondition(!demo.monitoring && demo.demoScheduled && demo.demoFirstBeatHostTime == demoStart)
+        precondition(io.demoDurationSeconds >= 2 && demo.scheduledHits == hitsBeforeDemo)
+        io.setMonitoring(enabled: false)
+        io.setMIDILearnActive(true)
+        precondition(io.samplerDiagnostics.demoScheduled, "Monitoring and learn controls must not cancel the demo")
+        io.setMIDILearnActive(false)
+        let replacementStart = DrumxIO.hostNowSeconds() + 4
+        precondition(io.startDemo(bpm: 120, firstBeatHostTime: replacementStart, bars: 4))
+        precondition(io.samplerDiagnostics.demoFirstBeatHostTime == replacementStart && io.demoDurationSeconds >= 8)
+        precondition(io.samplerDiagnostics.scheduledHits == hitsBeforeDemo && uiDeliveries == 0)
+        io.stopDemo()
+        precondition(!io.samplerDiagnostics.demoScheduled)
+        io.stopDemo() // Cancellation is idempotent and removes future playback.
+        precondition(!io.startDemo(bpm: 120, firstBeatHostTime: DrumxIO.hostNowSeconds() - 1, bars: 1))
+        precondition(!io.startDemo(bpm: 120, firstBeatHostTime: DrumxIO.hostNowSeconds() + 3, bars: 2))
+        print("PASS native demo: future host-clock schedule, one/four bars, independent of monitoring/learn, no input callbacks, replacement, immediate cancellation, invalid schedules rejected")
+    }
+
+    static func checkDemoRendering(_ realBank: DrumxSampleBank) throws {
+        let format = AVAudioFormat(standardFormatWithSampleRate: 8_000, channels: 2)!
+        let entries = (0..<3).map {
+            DrumxSampleEntry(pad: $0, velocityMin: 1, velocityMax: 127, roundRobin: 0, file: "impulse-\($0)")
+        }
+        let samples: [AVAudioPCMBuffer] = (0..<3).map { pad in
+            let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 8)!
+            buffer.frameLength = 8
+            for channel in 0..<2 {
+                buffer.floatChannelData![channel].update(repeating: 0, count: 8)
+                buffer.floatChannelData![channel][0] = Float(pad + 1) / 10
+            }
+            return buffer
+        }
+        let bank = DrumxSampleBank(selector: try DrumxSampleSelector(entries: entries), buffers: samples, format: format)
+        let audio = try DrumxDemoAudio.render(bank: bank, bpm: 120, bars: 1)
+        precondition(audio.hits.count == 12 && audio.buffer.frameLength == 16_000)
+        precondition(audio.hits.filter { $0.pad == 1 }.map(\.beat) == [1, 3])
+        precondition(audio.hits.filter { $0.pad == 2 }.map(\.beat) == [0, 2])
+        precondition(audio.hits.filter { $0.pad == 0 }.map(\.beat) == (0..<8).map { Double($0) / 2 })
+        for channel in 0..<2 {
+            let output = audio.buffer.floatChannelData![channel]
+            for (frame, expected) in [(0, Float(0.4)), (2_000, 0.1), (4_000, 0.3),
+                                      (8_000, 0.4), (12_000, 0.3), (14_000, 0.1)] {
+                precondition(abs(output[frame] - expected) < 0.00001,
+                             "Simultaneous instruments must mix at their exact sample frame")
+            }
+            precondition(output[1_000] == 0 && output[15_999] == 0)
+        }
+        let four = try DrumxDemoAudio.render(bank: realBank, bpm: 120, bars: 4)
+        precondition(four.hits.count == 48 && four.durationSeconds >= 8)
+        let left = four.buffer.floatChannelData![0]
+        let peak = (0..<Int(four.buffer.frameLength)).reduce(Float(0)) { max($0, abs(left[$1])) }
+        precondition(peak > 0.01 && peak <= 0.981)
+        for (bpm, bars) in [(0.0, 1), (Double.nan, 1), (120.0, 2)] {
+            do {
+                _ = try DrumxDemoAudio.render(bank: bank, bpm: bpm, bars: bars)
+                preconditionFailure("Invalid demo specification accepted")
+            } catch is DrumxSamplerError { }
+        }
+        print("PASS demo PCM: exact eighth-note sample positions, simultaneous hits, 2/4 snare, 1/3 kick, one/four bars, audible source data and mix headroom")
     }
 }
