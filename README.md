@@ -6,7 +6,7 @@ Drumx is a desktop trainer for real MIDI drum kits: the pull of a rhythm game, b
 
 Start with **Find the pulse**, then work through **12 foundation lessons**: count quarter and eighth notes, give rests their space, combine hands and feet, build a backbeat, and return to one after a short fill. Every lesson connects real drum notation, recorded drum sounds, and the same focused practice highway.
 
-**Current build:** a playable native macOS app with a main menu, an explorable chapter journey, lesson unlocks, full-page settings, separate local players, and saved progress. The unit suggests **96 minutes of repeat practice**, taken at your pace across listening, playing, checks, and recall. A release installer, deeper rudiments, the production renderer, and Windows are still ahead.
+**Current build:** a playable native macOS app with a responsive main menu, a 12-step lesson path, lesson unlocks, visual kit setup, separate local players, and saved progress. Practice starts with an uninterrupted **16-bar block**, about a minute at the foundation tempos. The unit suggests **96 minutes of repeat practice**, taken at your pace across listening, playing, checks, and recall. A release installer, deeper rudiments, the production renderer, and a Windows app are still ahead.
 
 [Run it](#quick-start) · [Current milestone](#current-milestone) · [Lesson guide](docs/native-lab.md) · [Changelog](CHANGELOG.md)
 
@@ -56,9 +56,9 @@ Checked items have implementation and verification evidence. The remaining accep
 | **2 · Build your backbeat** | Hand/foot coordination, hat/snare coordination, the full groove, and a quarter-note variation. |
 | **3 · Read, vary, and remember** | Alternating hands, an offbeat kick, counting through a gap, and a groove-to-fill phrase. |
 
-Each lesson offers a clear objective, counts, a staff study, an audible demonstration, short repeatable takes, a reading question, and a technique self-check. Choose 1, 4, or 8 bars; vary the tempo; reduce assistance when comfortable. Suggested minutes are practice guidance, not a timer or a promise of learning speed.
+Each lesson offers a clear objective, counts, a staff study, an audible demonstration, repeatable practice blocks, a reading question, and a technique self-check. Start at the lesson's suggested tempo with 16 bars. **Practice options** opens tempo, 1/4/8/16-bar lengths, guidance, and live timing when you need them. Suggested minutes are practice guidance, not a timer or a promise of learning speed.
 
-**Learn** opens three illustrated chapter cards and their lesson steps. You can inspect every chapter. For a new player, completing at least four bars with **80% of expected notes matched** opens the next lesson; entering a new chapter also requires the preceding lesson's reading check. One-bar practice remains useful for repair. Existing players retain access through their saved progress. This is a prototype unlock rule, separate from stars and broader learning readiness.
+**Learn** shows one featured step and a numbered path through three chapters. Inspect any of the 12 steps, then play an available lesson; locked steps explain what opens them. For a new player, completing at least four bars with **80% of expected notes matched** opens the next lesson; entering a new chapter also requires the preceding lesson's reading check. One-bar practice remains useful for repair. Existing players retain access through their saved progress. This is a prototype unlock rule, separate from stars and broader learning readiness.
 
 | You can do this now | What it teaches |
 | --- | --- |
@@ -68,7 +68,7 @@ Each lesson offers a clear objective, counts, a staff study, an audible demonstr
 | **Catch the note** | Fixed bottom receptors react to every strike, capture matched notes, and distinguish extra hits when live feedback is on. |
 | **Make one adjustment** | Review hits, misses, extras, and recent early/late tendencies; retry slower or work on one bar. |
 | **Chase a clean phrase** | Earn up to five stars and 10,000 points; build a combo, then compare the last six matching takes and your previous best. |
-| **Use your own kit** | Select a MIDI input, learn pad mappings, and choose app sounds or your module's sounds. |
+| **Use your own kit** | Select a MIDI input, see raw notes and velocity, add pad aliases, and choose app sounds or your module's sounds. |
 | **Return to your practice** | Continue the selected player's lesson with saved tempo, phrase length, and guidance. Reading and recall evidence stay separate. |
 
 The main menu gives each visit three clear routes: **Continue** opens your saved lesson, **Learn** explores the course, and **Settings** configures the kit, sound, playing preferences, and players. The [menu architecture](docs/menu-architecture.md) explains how this grows into multiple courses and a separate practice space when those experiences exist.
@@ -77,7 +77,9 @@ The foundation unit plays **hi-hat, snare, and kick**. Seven stable hand-instrum
 
 Five stars mean a complete take with every target within the current ±50 ms timing band and no misses or extras. Points use the whole phrase, so an early streak cannot finish the challenge. Click-only practice reveals its score after the phrase. [Scoring and comparisons](docs/native-lab.md#scores-and-saved-attempts) describe the tiers and saved conditions; a perfect game result is evidence about that take, not a technique or mastery certificate.
 
-**Cross-platform work is now running alongside the Mac app:** CMake builds the scoring core and a real C API consumer, with automated Debug/Release checks on macOS and Windows. Local Mac checks pass; the first hosted Windows run is pending. The interface and device layers still need a production-engine decision. [Platform contracts and early risks](docs/cross-platform.md)
+Stars on **Learn** show your best saved result for that lesson version across any tempo, phrase length, or assistance. The review's personal best and comparison strip use matching practice conditions.
+
+**Cross-platform work runs alongside the Mac app:** the C++ scoring core and C API consumer passed Debug/Release checks on macOS and Windows, plus Mac sanitizers, in the [first hosted CI run](https://github.com/claudfuen/drumx/actions/runs/34710014677). This verifies the core build and contracts; Windows graphics, MIDI, and audio remain to be implemented. [Platform contracts and early risks](docs/cross-platform.md)
 
 ## Quick start
 
@@ -93,12 +95,12 @@ open .build/DrumxLab.app
 No MIDI kit is required to try the lesson:
 
 1. Enter a player name on the welcome page, then choose **Let's play** to reach the main menu.
-2. Choose **Continue** to open **Find the pulse**, or **Learn** to inspect the chapter journey. Read the counts and choose **Hear the pattern**.
-3. Select a comfortable tempo and four bars, choose **Start playing**, and come in after the four-beat count-in.
+2. Choose **Continue** to open **Find the pulse**, or **Learn** to inspect the lesson path. Read the counts and choose **Hear the pattern**.
+3. Choose **Start playing** and come in after the four-beat count-in. The new-lesson default is 16 bars at its suggested tempo; **Practice options** lets you change it.
 4. Read the review. Try **Play again**, **Slow it down**, or **Work on one bar**. Use **Lesson check** to connect the pattern to drum language.
 5. When comfortable, try **Hide a phrase**, then **Try click-only**, or open **Next lesson** when unlocked. A locked next step explains what remains. **Main menu** returns to Continue, Learn, and Settings.
 
-Try five minutes of short takes first. A four-bar take lasts 16 seconds at 60 BPM, plus the count-in. Your completed attempts are archived on this Mac and the course remembers your reading and practice evidence. Add another local player from the player button to keep their progress separate.
+Try five minutes of listening, playing, and reviewing first. A 16-bar block lasts 64 seconds at 60 BPM or about 53 seconds at 72 BPM, plus the count-in. It ends in review; there is no endless automatic loop. Your completed attempts are archived on this Mac and the course remembers your reading and practice evidence. Add another local player from the player button to keep their progress separate.
 
 | Control | Action |
 | --- | --- |
@@ -114,7 +116,9 @@ Try five minutes of short takes first. A four-bar take lasts 16 seconds at 60 BP
 
 Pause stops the current phrase. **Restart with count-in** begins it again; it does not resume in the middle of a bar. An unfinished take does not change personal bests or unlock a lesson.
 
-For a physical kit, open **Settings → Your kit**, choose its MIDI source, and check each pad before playing. **Sound** controls app monitoring and volume. The [lesson guide](docs/native-lab.md) covers setup, navigation, and sound routing.
+For a physical kit, open **Settings → Your kit**, choose its MIDI source, and strike the hi-hat, snare, and kick. The visual kit shows receipts and raw MIDI notes, including unmapped input. Select a pad and use **Add MIDI note** when needed. **Sound** controls app monitoring and volume. Follow the [first-kit session](docs/first-kit-session.md) for the hardware checks.
+
+**Settings → Playing → Navigate with my drums** optionally maps hi-hat to previous, snare to next, and two quick kick hits to choose. It works on the main menu, lesson preparation, review, and pause. Use keyboard or mouse for Learn, Settings, and setup; drum-menu commands are inactive during playing and listening. The [lesson guide](docs/native-lab.md) covers the full controls and sound route.
 
 ## Sound and timing
 
@@ -145,7 +149,7 @@ Versioned foundation exercises live in [DrumxCourse.swift](native/macos/DrumxCou
 bash scripts/test-native.sh
 ```
 
-The native checks exercise scoring boundaries, simultaneous notes, late input, MIDI parsing and virtual input, sample integrity, audio/demo behavior, projection and count-in continuity, comparable lesson history, and unlock sequencing. They validate software behavior, not physical pad-to-sound latency.
+The native checks exercise scoring boundaries, simultaneous notes, late input, MIDI parsing and virtual input, kit mapping, menu gestures, practice-plan migration, sample integrity, audio/demo behavior, projection and count-in continuity, comparable lesson history, and unlock sequencing. They validate software behavior, not physical pad-to-sound latency. The [portable build guide](docs/cross-platform.md#build-and-test) runs the C++ and C contracts without the Mac app.
 
 Start with the [scoring interface](native/core/drumx_core.h), [journey controller](native/macos/DrumxJourneyController.swift), [practice drawing](native/macos/PracticeView.swift), [notation](native/macos/DrumxNotationView.swift), or [review/history model](native/macos/DrumxLesson.swift).
 

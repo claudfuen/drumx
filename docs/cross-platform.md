@@ -35,9 +35,11 @@ CTest runs two contracts:
 
 The [portable workflow](../.github/workflows/portable-core.yml) runs on relevant pushes to main, pull requests, and manual dispatch. It uses a pinned checkout action, read-only repository permission, and no project secrets. A passing Windows job establishes compiler/linker and core-test behavior on that runner. It does not establish Windows graphics, MIDI, audible latency, or a successful physical-kit session.
 
-## What was established locally
+## What has been verified
 
-Local validation on September 12, 2026 used Apple Silicon macOS, Apple Clang 21.0.0, and CMake 4.4.3 installed only under the ignored `.build/portable-tools` directory. **Debug, Release, and address/undefined-behavior sanitizer builds each passed both CTest contracts.** The C++ suite reported 852 checks; the separate C consumer linked and verified its chord/miss snapshot. Hosted macOS/Windows job results remain pending until the workflow is committed and runs; link the actual run before describing Windows CI as passed.
+Local validation on September 12, 2026 used Apple Silicon macOS, Apple Clang 21.0.0, and CMake 4.4.3 installed only under the ignored `.build/portable-tools` directory. **Debug, Release, and address/undefined-behavior sanitizer builds each passed both CTest contracts.** The C++ suite reported 852 checks; the separate C consumer linked and verified its chord/miss snapshot.
+
+The [first hosted run](https://github.com/claudfuen/drumx/actions/runs/34710014677), at commit `5905c3c`, passed all five jobs: macOS Debug/Release, Windows Debug/Release, and macOS sanitizers. Both CTest contracts ran successfully in each job. This is execution evidence for the core and C consumer on hosted Windows runners. No Windows interface, MIDI input, audio output, or physical kit was exercised.
 
 Godot **4.7.2 stable**, released August 18, 2026, was verified against the [official release archive](https://godotengine.org/download/archive/4.7.2-stable/). The official Mac editor was downloaded into ignored `.build/godot-4.7.2`, checked against the release SHA-512 list, and reported `4.7.2.stable.official.ed1daf0bf`. No engine is selected for production. The replay scene and Windows export are deferred; no export-template package or scene implementation is included.
 

@@ -10,15 +10,17 @@ This document describes navigation and its expansion boundaries. The [native gui
 | --- | --- | --- |
 | Welcome | Establish a starting point | Name a local player, try the keyboard, or connect a kit. Let's play opens the main menu. |
 | Main menu | Choose what to do now | Continue opens the saved lesson; Learn explores Foundations; Settings opens preferences. The player name identifies whose progress is active. |
-| Learn | See the path ahead | Three illustrated chapter cards reveal four lesson steps each. Future chapters are inspectable. Available cards start lesson preparation; locked cards explain a prerequisite and cannot start. |
-| Lesson | Understand and prepare | Objective, counts, original staff study, demonstration, tempo, phrase length, guidance, and a lesson check. |
-| Practice stage | Play the phrase | Count-in, one musical timeline, stable kit positions, selected aids, and captured input. |
+| Learn | See the path ahead | A 12-node path groups the lessons into three chapters. Selecting any node, including a locked step, updates one featured lesson. Its play action opens preparation only when available. |
+| Lesson | Understand and prepare | Objective, counts, original staff study, demonstration, and a lesson check. Start playing uses the saved plan; collapsed Practice options holds tempo, phrase length, and assistance. |
+| Practice stage | Settle into the pattern | A four-beat count-in leads into a finite block, with one musical timeline, stable kit positions, selected aids, and captured input. New lessons default to 16 bars at their suggested tempo. |
 | Review | Choose the next useful action | Inspect the take, retry, slow down, isolate a bar, reduce help, answer a reading check, or open the next available lesson. |
 | Settings | Make the shared setup comfortable | Four sections cover kit, sound, playing preferences, and players/progress. |
 
 **Continue means the saved selected lesson.** It opens preparation with that player's saved tempo, guidance, live timing, and phrase length. It does not automatically start playback, jump to a newly unlocked lesson, or resume an interrupted bar. Choosing another available lesson changes that saved destination.
 
-The main menu carries the return-to-practice action. The chapter journey spends its space on chapters, sequence, and access rather than repeating a large resume panel. Its original rhythm graphics distinguish chapters; actual staff notation remains in the lesson.
+The responsive main menu carries the return-to-practice action. Learn presents one featured step and a compact path so exploration has a clear destination. Its five-star display shows the player's best saved result for the current lesson version across any conditions; review keeps condition-matched personal bests. Actual staff notation remains in the lesson.
+
+The default 16-bar block lasts about 53–64 seconds at the unit's 60–72 BPM starting tempos, plus count-in. It gives a player more uninterrupted repetition before review. One-, four-, and eight-bar choices remain available in Practice options; one-bar repair is still a finite take. The cadence is a product hypothesis, not a learning gate or an endless automatic loop. See the [practice-loop note](first-practice-loop.md).
 
 ## Navigation and interruption rules
 
@@ -30,6 +32,8 @@ The current pause page offers **Restart with count-in**, **Review this take** fo
 
 Keep these controls predictable as screens grow. A new overlay must dismiss before navigation acts behind it. A new transport mode must define exactly what pause, restart, and completion mean before inheriting the existing labels.
 
+**Navigate with my drums** is opt-in under Settings → Playing. With a MIDI source selected, hi-hat selects previous, snare selects next, and two quick kick hits activate the highlighted action. The current scope is the main menu, lesson preparation, review, and pause; it is inactive during transport, mapping, and open sheets. Learn, Settings, player management, and detailed options retain keyboard/mouse navigation. Do not advertise this as a complete hands-free setup or browsing flow.
+
 ## Identity and settings have different jobs
 
 The player name on the main menu answers **who is playing**. It opens the same player manager as Settings → Players & progress. Switching or adding a player selects a separate lesson position, practice archive, and learning checks. Renaming preserves those records. There are no accounts, profile deletion, or cloud synchronization.
@@ -38,12 +42,14 @@ Settings answers **how this setup should work**:
 
 | Section | Stable responsibility |
 | --- | --- |
-| Your kit | Input source, pad mappings, and evidence that the selected source is reaching the expected instruments. |
+| Your kit | Visual instrument selection, input source, note aliases, and raw note/velocity receipts, including unmapped input. |
 | Sound | App monitoring, drum/demo volume, and listening-route explanation. |
-| Playing | Sticking suggestions, scoring offset, and guidance about accessibility and lesson controls. |
+| Playing | Optional drum-menu controls, sticking suggestions, scoring offset, and guidance about accessibility and lesson controls. |
 | Players & progress | Manage local identities and understand what is saved. |
 
-Kit mappings, source preference, sound, volume, sticking suggestions, and scoring offset are shared on the Mac. Lesson tempo, phrase length, and assistance belong to the player's current practice. Keep those decisions near the lesson rather than duplicating them in global settings. Settings changes save automatically; leaving Settings or quitting commits an edited offset. Unreadable profile/archive data is preserved and practice-storage errors appear in the status.
+Kit mappings, source preference, sound, volume, sticking suggestions, drum-menu preference, and scoring offset are shared on the Mac. Lesson tempo, phrase length, and assistance belong to the player's current practice. Keep those decisions near the lesson rather than duplicating them in global settings. Settings changes save automatically; leaving Settings or quitting commits an edited offset. Unreadable profile/archive data is preserved and practice-storage errors appear in the status.
+
+Adding a MIDI note preserves the selected instrument's other aliases and moves a conflicting note from its former owner. Raw receipts help distinguish an unassigned note from absent input. This remains a three-instrument mapping surface, with physical-kit validation outstanding; it does not yet distinguish every drum zone or hi-hat articulation.
 
 ## Unlocks invite another step
 
@@ -71,7 +77,7 @@ The lasting hierarchy is **Learn → course → chapter → lesson → practice 
 
 Menus, cards, selectors, toggles, and sliders should share the game's typography, spacing, colors, and state treatments. Custom appearance must retain meaningful keyboard focus, value changes, readable disabled states, accessible labels, and reduced-motion behavior. Hover can reinforce an action; it must not be the only way to discover one. Locked steps need text, not color alone.
 
-The current interface is a custom **Swift/AppKit Mac shell**. AppKit controls do not become a Windows interface because they are drawn differently. The **C++ scoring core and C interface are portable**; authored content, progression, and presentation are separated conceptually, but the current lesson and progress models are Swift. They need extraction or porting. Windows also needs its own input, audio, packaging, and hardware validation.
+The current interface is a custom **Swift/AppKit Mac shell**. AppKit controls do not become a Windows interface because they are drawn differently. The **C++ scoring core and C interface passed hosted macOS/Windows build and test contracts**; authored content, progression, and presentation are separated conceptually, but the current lesson and progress models are Swift. They need extraction or porting. Windows also needs its own interface, input, audio, packaging, and hardware validation. See the [cross-platform baseline](cross-platform.md#what-has-been-verified) for the actual CI evidence and its limits.
 
 Choose the production renderer/engine **before large content expansion**. Carry this navigation and learning contract into that decision, then prove a representative launch → lesson → play → review → return slice with authoritative native timing, accessible controls, and reliable saves. See the [rendering plan](rendering-plan.md). Physical-kit latency, sustained frame pacing, and a real beginner's complete journey remain unverified.
 

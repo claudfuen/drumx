@@ -20,6 +20,11 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -O -parse-as-library \
   "$DRUMX_ROOT/native/macos/DrumxCourse.swift" \
   "$DRUMX_ROOT/native/macos/DrumxProgress.swift" \
   "$DRUMX_ROOT/native/macos/DrumxUnlocks.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxKitSetup.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxMenuInput.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxSettingsViews.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxPracticePlan.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxKitController.swift" \
   "$DRUMX_ROOT/native/macos/DrumxControls.swift" \
   "$DRUMX_ROOT/native/macos/DrumxMainMenuView.swift" \
   "$DRUMX_ROOT/native/macos/DrumxSettingsController.swift" \

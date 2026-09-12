@@ -4,10 +4,18 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Settle into practice and play from the kit
+
+- Make the main menu and lesson path respond to the available window size, with one featured lesson, a connected 12-step path, and personal-best stars.
+- Start lessons at their suggested tempo with 16 bars of continuous practice. Keep tempo, length, and guidance in optional practice controls; migrate the old four-bar default without replacing explicitly saved new choices.
+- Replace the mapping form with a visual three-pad kit, live MIDI note/velocity feedback, additive articulation mapping, and per-connection input checks. Unmapped notes and disconnects have explicit recovery paths.
+- Add opt-in drum navigation for the main menu, preparation, review, and pause: hi-hat previous, snare next, double kick choose. Preserve original MIDI capture timestamps and guard against stale hits and accidental repeats.
+- Validate the complete native suite, responsive geometry at five window sizes, and the isolated app with a virtual CoreMIDI source, including additive aliases, disconnect recovery, welcome routing, and Escape during practice.
+
 ### A portable core checked on both platforms
 
 - Add CMake builds, a true C-language API consumer, and CTest contracts for the existing scoring engine.
-- Run Debug/Release builds on macOS and Windows in GitHub Actions, with a separate Mac sanitizer job. Local configurations pass; hosted Windows results are recorded after the first run.
+- Run Debug/Release builds on macOS and Windows in GitHub Actions, with a separate Mac sanitizer job. All five hosted jobs pass the scoring and C-consumer contracts.
 - Document clock, MIDI, audio, rendering, storage, display scaling, and packaging risks before committing the production interface. The current app remains Mac-only.
 
 ### A game menu and an explorable foundation journey

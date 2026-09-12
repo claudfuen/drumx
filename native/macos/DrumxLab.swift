@@ -10,6 +10,7 @@ private let lime = NSColor(calibratedRed: 0.79, green: 0.91, blue: 0.49, alpha: 
 final class LessonButton: NSButton {
   var primary = false
   var quiet = false
+  var selectedByKit = false { didSet { needsDisplay = true } }
   private var hovered = false
   override var acceptsFirstResponder: Bool { isEnabled }
   override func updateTrackingAreas() {
@@ -40,7 +41,7 @@ final class LessonButton: NSButton {
       NSColor.white.withAlphaComponent(hovered ? 0.26 : 0.12).setStroke()
       path.stroke()
     }
-    if window?.firstResponder === self {
+    if window?.firstResponder === self || selectedByKit {
       lime.withAlphaComponent(0.9).setStroke(); path.lineWidth = 2; path.stroke()
     }
     let attrs: [NSAttributedString.Key: Any] = [
@@ -89,10 +90,31 @@ final class LabController: NSObject {
   let root = LessonRootView()
   let prepareView = NSView(), reviewView = NSView()
   let welcomeView = NSView(), courseView = DrumxCourseMenuView()
-  let mainMenuView = DrumxMainMenuView(), settingsView = NSView(), pauseView = NSView()
+  let mainMenuView = DrumxMainMenuView(), settingsView = DrumxSettingsPage(), pauseView = NSView()
   let pageTitle = NSTextField(labelWithString: "")
   let backButton = LessonButton(title: "← Back", target: nil, action: nil)
   let keyboardLegend = NSTextField(labelWithString: "")
+  let kitSetup = DrumxKitSetup()
+  let kitVisual = DrumxKitCheckView()
+  var selectedKitPad = 1
+  let mappingTitle = NSTextField(labelWithString: "Snare")
+  let mappingNotes = NSTextField(labelWithString: "")
+  let mappingHelp = NSTextField(wrappingLabelWithString: "")
+  let mapNoteButton = LessonButton(title: "Add MIDI note", target: nil, action: nil)
+  let cancelMapButton = LessonButton(title: "Cancel", target: nil, action: nil)
+  let kitMenuToggle = DrumxToggle(checkboxWithTitle: "Navigate with my drums", target: nil, action: nil)
+  let menuInput = DrumxMenuInput()
+  var kitMenusEnabled = false
+  var kitMenuIndex = 0
+  weak var kitSelectedAction: LessonButton?
+  var kitMenuActions: [LessonButton] = []
+  let startButton = LessonButton(title: "Start playing", target: nil, action: nil)
+  let hearButton = LessonButton(title: "Hear the pattern", target: nil, action: nil)
+  let optionsButton = LessonButton(title: "Practice options", target: nil, action: nil)
+  var practiceControls: NSStackView?
+  let practiceSummary = NSTextField(labelWithString: "")
+  let pauseRestart = LessonButton(title: "Restart with count-in", target: nil, action: nil)
+  let pauseHome = LessonButton(title: "Main menu", target: nil, action: nil)
   var settingsOrigin: Page = .mainMenu
   var settingsSection = 0
   var settingsPanels: [NSView] = []
@@ -196,6 +218,10 @@ final class LabController: NSObject {
     {
       mappings = saved.map { $0.filter { (0...127).contains($0) } }
     }
+    _ = kitSetup.replaceMappings(mappings)
+    mappings = kitSetup.mappings
+    kitMenusEnabled = UserDefaults.standard.bool(forKey: "drumx.kitMenuControls")
+    kitMenuToggle.state = kitMenusEnabled ? .on : .off
     let savedOffset = UserDefaults.standard.double(forKey: "drumx.lab.inputOffsetMS")
     calibrationMS = savedOffset.isFinite ? min(200, max(-200, savedOffset)) : 0
     offsetField.stringValue = String(format: "%.0f", calibrationMS)
@@ -229,6 +255,15 @@ final class LabController: NSObject {
     }
     io.onMIDI = { [weak self] note, velocity, time in
       self?.midi(note: note, velocity: velocity, time: time)
+    }
+    io.onConnectionChanged = { [weak self] in
+      guard let self else { return }
+      self.stopTake()
+      self.kitSetup.selectSource(self.io.selectedSourceID)
+      self.kitSetup.invalidateInput()
+      self.learning = nil; self.io.setMIDILearnActive(false)
+      self.menuInput.reset(at: DrumxIO.hostNowSeconds())
+      self.updateSources(self.io.sources)
     }
     io.onSourcesChanged = { [weak self] sources in self?.updateSources(sources) }
     io.onStatusChanged = { [weak self] message in self?.setStatus(message) }
@@ -395,20 +430,22 @@ final class LabController: NSObject {
     modeMenu.addItems(withTitles: modeNames)
     modeMenu.target = self; modeMenu.action = #selector(settingsChanged)
     modeMenu.setAccessibilityLabel("Visual guidance")
-    lengthMenu.addItems(withTitles: ["1 bar", "4 bars", "8 bars"])
-    lengthMenu.selectItem(at: 1); lengthMenu.target = self; lengthMenu.action = #selector(lengthChanged)
+    lengthMenu.addItems(withTitles: ["1 bar · repair", "4 bars · short", "8 bars", "16 bars · practice"])
+    lengthMenu.selectItem(at: 3); lengthMenu.target = self; lengthMenu.action = #selector(lengthChanged)
     lengthMenu.setAccessibilityLabel("Practice phrase length")
     liveToggle.target = self; liveToggle.action = #selector(liveChanged(_:))
     liveToggle.state = showLive ? .on : .off
     liveToggle.toolTip = "Shows early/late and score feedback. Turn off for a click-only memory check."
     let controls = row([label("TEMPO", 10, weight: .semibold), tempoSlider, tempoLabel,
                         spacer(), lengthMenu, modeMenu, liveToggle], spacing: 14)
-    let actions = row([button("Start playing", #selector(beginLesson), primary: true),
-                       button("Hear the pattern", #selector(hearDemo)),
-                       button("Lesson check", #selector(showLearningCheck)),
-                       label("4-beat count-in", 12)], spacing: 16)
+    startButton.target = self; startButton.action = #selector(beginLesson); startButton.primary = true; startButton.isBordered = false
+    hearButton.target = self; hearButton.action = #selector(hearDemo); hearButton.isBordered = false
+    optionsButton.target = self; optionsButton.action = #selector(togglePracticeOptions); optionsButton.isBordered = false; optionsButton.quiet = true
+    practiceSummary.font = .systemFont(ofSize: 13); practiceSummary.textColor = .secondaryLabelColor
+    practiceControls = controls; controls.isHidden = true
+    let actions = row([startButton, hearButton, button("Lesson check", #selector(showLearningCheck)), optionsButton], spacing: 12)
     let stack = column([label("HEAR IT. COUNT IT. MAKE IT YOURS.", 11, weight: .semibold, color: lime),
-      lessonHeading, lessonSubtitle, lessonExplanation, notation, lessonPractice, controls, actions, lessonEvidence], spacing: 16)
+      lessonHeading, lessonSubtitle, lessonExplanation, notation, lessonPractice, practiceSummary, controls, actions, lessonEvidence], spacing: 16)
     [lessonSubtitle, lessonExplanation, notation, controls].forEach {
       $0.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
     }
@@ -510,6 +547,7 @@ final class LabController: NSObject {
     case .stage: pageTitle.stringValue = ""
     }
     if let error = history.lastError ?? progress.lastError { setStatus(error) }
+    resetKitMenuFocus()
     focusStage()
   }
   func focusStage() {
@@ -517,6 +555,7 @@ final class LabController: NSObject {
   }
   func setStatus(_ text: String) {
     status.stringValue = text
+    if currentPage != .settings { return }
     setupStatus.stringValue = text
   }
   func resetCore() {
@@ -536,6 +575,7 @@ final class LabController: NSObject {
     scene.needsDisplay = true
   }
   func refreshMappingLabels() {
+    refreshKitInspector()
     for pad in 0..<mappingButtons.count {
       mappingButtons[pad].title =
         "\(padNames[pad]): \(mappings[pad].map(String.init).joined(separator: "/"))"
@@ -565,6 +605,12 @@ final class LabController: NSObject {
       stopTake()
       io.connect(sourceID: nil)
     }
+    if kitSetup.selectedSourceID != io.selectedSourceID {
+      kitSetup.selectSource(io.selectedSourceID)
+      learning = nil; io.setMIDILearnActive(false)
+      menuInput.reset(at: DrumxIO.hostNowSeconds())
+    }
+    refreshKitCheck(); refreshKitInspector()
   }
 
   @objc func showSetup() {
@@ -573,7 +619,7 @@ final class LabController: NSObject {
     refreshMappingLabels(); refreshKitCheck()
     handsToggle.state = showHands ? .on : .off
     showPage(.settings)
-    setupStatus.stringValue = "Strike each pad to check its input, or select a mapping to change it."
+    refreshKitInspector()
   }
   @objc func closeSetup() {
     leaveSettings()
@@ -581,25 +627,30 @@ final class LabController: NSObject {
   }
   func leaveSettings() {
     offsetChanged()
+    kitSetup.cancelLearning()
     learning = nil
     io.setMIDILearnActive(false)
+    io.stopDemo()
+    refreshKitInspector()
   }
   @objc func sourceChanged() {
-    stopTake()
-    completed = false
-    learning = nil
-    io.setMIDILearnActive(false)
+    stopTake(); completed = false
+    kitSetup.invalidateInput(); learning = nil; io.setMIDILearnActive(false)
     let source = (sourceMenu.selectedItem?.representedObject as? NSNumber)?.int32Value
-    UserDefaults.standard.set(source.map { Int($0) }, forKey: "drumx.lab.lastSourceID")
-    checkedPads.removeAll(); refreshKitCheck()
     io.connect(sourceID: source)
+    kitSetup.selectSource(io.selectedSourceID)
+    UserDefaults.standard.set(io.selectedSourceID.map { Int($0) }, forKey: "drumx.lab.lastSourceID")
+    menuInput.reset(at: DrumxIO.hostNowSeconds())
+    refreshKitCheck(); refreshKitInspector()
   }
   @objc func learnMapping(_ sender: NSButton) {
-    guard !transportActive else { return }
-    completed = false
-    learning = sender.tag
-    io.setMIDILearnActive(true)
-    setStatus("Hit your \(padNames[sender.tag].lowercased()) once to map it.")
+    guard !transportActive, currentPage == .settings else { return }
+    selectedKitPad = sender.tag
+    guard kitSetup.beginLearning(pad: selectedKitPad, at: DrumxIO.hostNowSeconds()) else {
+      mappingHelp.stringValue = kitSetup.lastError ?? "Choose your MIDI module above first."; return
+    }
+    completed = false; learning = kitSetup.pendingPad
+    io.setMIDILearnActive(true); refreshKitInspector()
   }
   @objc func settingsChanged() {
     guard !transportActive else { return }
@@ -610,6 +661,7 @@ final class LabController: NSObject {
       lessonBars = 4; lengthMenu.selectItem(at: 1)
     }
     saveResume()
+    refreshPracticeSummary()
     resetCore()
     focusStage()
   }
@@ -789,34 +841,47 @@ final class LabController: NSObject {
         : "Take stopped. Partial takes don't set personal bests.")
   }
   private func midi(note: Int, velocity: Int, time: Double) {
-    if let pad = learning, !transportActive {
-      for i in 0..<3 { mappings[i].removeAll { $0 == note } }
-      mappings[pad] = [note]
-      checkedPads.insert(pad); refreshKitCheck()
-      learning = nil
+    guard let source = io.selectedSourceID else { return }
+    guard let receipt = kitSetup.receiveMIDI(note: note, velocity: velocity, sourceID: source, at: time) else { return }
+    learning = kitSetup.pendingPad
+    io.setMIDILearnActive(learning != nil)
+    if let change = receipt.mappingChange {
+      mappings = change.mappings
       io.setMIDIMapping(mappings)
-      io.setMIDILearnActive(false)
       UserDefaults.standard.set(mappings, forKey: "drumx.lab.mapping")
       refreshMappingLabels()
-      setStatus("Mapped \(padNames[pad]) to note \(note).")
+      let moved = change.removedFromPads.map { padNames[$0] }.joined(separator: ", ")
+      mappingHelp.stringValue = change.wasAlreadyMapped ? "Note \(note) is already mapped here."
+        : moved.isEmpty ? "Added note \(note). Existing articulations are kept."
+        : "Moved note \(note) from \(moved). Check both pads again."
+    }
+    let hit = receipt.hit
+    let description = "MIDI \(note) · velocity \(velocity) · \(hit.pad.map { padNames[$0] } ?? "unmapped")"
+    kitVisual.showHit(pad: hit.pad, velocity: velocity, description: description)
+    refreshKitCheck()
+    if receipt.mappingChange != nil { return }
+    guard let pad = hit.pad else {
+      if currentPage == .settings { mappingHelp.stringValue = "Receiving note \(note), but it has no sound assigned. Select a pad, choose Add MIDI note, then strike again." }
       return
     }
-    guard let pad = mappings.firstIndex(where: { $0.contains(note) }) else { return }
-    receive(
-      pad: pad, velocity: Double(velocity) / 127, hostTime: time,
-      inputIdentity: io.selectedSourceID.map { "midi:\($0)" } ?? "midi:disconnected")
+    // Late captured strikes still correct the closed take before menu input is considered.
+    receive(pad: pad, velocity: Double(velocity) / 127, hostTime: time, inputIdentity: "midi:\(source)")
+    _ = routeKitMenu(pad: pad, velocity: velocity, at: time)
   }
   func keyboardHit(pad: Int, velocity: Int, hostTime: Double) {
     guard [.welcome, .settings, .prepare, .stage].contains(currentPage) else { return }
     // Capture time stays in the native host clock domain even if UI delivery is late.
     io.playPad(pad: pad, velocity: velocity)
+    _ = kitSetup.receiveKeyboard(pad: pad, velocity: velocity, at: DrumxIO.hostNowSeconds())
+    if currentPage == .settings {
+      kitVisual.showHit(pad: pad, velocity: velocity, description: "Keyboard preview · \(padNames[pad]) · velocity \(velocity)")
+      refreshKitCheck()
+    }
     receive(
       pad: pad, velocity: Double(velocity) / 127, hostTime: hostTime, inputIdentity: "keyboard")
   }
   private func receive(pad: Int, velocity: Double, hostTime: Double, inputIdentity: String) {
     let now = DrumxIO.hostNowSeconds()
-    let selectedInput = io.selectedSourceID.map { "midi:\($0)" } ?? "keyboard"
-    if inputIdentity == selectedInput { checkedPads.insert(pad); refreshKitCheck() }
     var result: DXHitResult?
     if !demonstrating, running || completed,
       let songTime = takeWindow?.songTime(capturedAt: hostTime, inputIdentity: inputIdentity),
@@ -913,6 +978,7 @@ final class LabController: NSObject {
       setStatus("That's the pattern. Count \(lesson.counts), then try it yourself.")
     }
     if now - lastStatusUpdate > 0.12 {
+      updateKitMenuLegend()
       if running {
         if now < practiceStart {
           runScoreHUD.update(score: nil, bestPoints: nil, state: "COUNT-IN")

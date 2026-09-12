@@ -1,6 +1,7 @@
 import Foundation
 
 struct PracticeResume: Codable, Equatable {
+  static let currentSessionFormatVersion = 1
   var lessonID: String
   var tempo: Double
   var mode: Int
@@ -8,21 +9,26 @@ struct PracticeResume: Codable, Equatable {
   var bars: Int
   /// Nil preserves compatibility with resumes saved before lesson revisions were tracked.
   var lessonVersion: String?
+  /// Missing in old saves. The first format migration replaces the old four-bar default.
+  var sessionFormatVersion: Int?
 
-  init(lessonID: String = "find-the-pulse", tempo: Double = 72, mode: Int = 0,
-       liveFeedback: Bool = true, bars: Int = 4, lessonVersion: String? = nil) {
+  init(lessonID: String = "find-the-pulse", tempo: Double = 60, mode: Int = 0,
+       liveFeedback: Bool = true, bars: Int = 16, lessonVersion: String? = nil,
+       sessionFormatVersion: Int? = nil) {
     self.lessonID = lessonID
     self.tempo = tempo
     self.mode = mode
     self.liveFeedback = liveFeedback
     self.bars = bars
     self.lessonVersion = lessonVersion
+    self.sessionFormatVersion = sessionFormatVersion
   }
 
   fileprivate var isValid: Bool {
     validProgressIdentifier(lessonID) && tempo.isFinite && (30...240).contains(tempo)
       && (0...2).contains(mode) && (1...64).contains(bars)
       && (lessonVersion.map(validProgressIdentifier) ?? true)
+      && (sessionFormatVersion.map { $0 == Self.currentSessionFormatVersion } ?? true)
   }
 }
 

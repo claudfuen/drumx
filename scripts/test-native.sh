@@ -43,7 +43,7 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse
   "$DRUMX_ROOT/native/macos/tests/DrumxHitFeedbackChecks.swift" \
   -o "$DRUMX_BUILD/hit-feedback-checks"
 "$DRUMX_BUILD/hit-feedback-checks"
-for DRUMX_MODEL in Course Progress; do
+for DRUMX_MODEL in Course Progress KitSetup MenuInput; do
   xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse-as-library \
     "$DRUMX_ROOT/native/macos/Drumx${DRUMX_MODEL}.swift" \
     "$DRUMX_ROOT/native/macos/tests/Drumx${DRUMX_MODEL}Checks.swift" \
@@ -69,3 +69,11 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse
   -framework AVFoundation -framework CoreMIDI -framework AudioToolbox \
   -o "$DRUMX_BUILD/course-integration-checks"
 "$DRUMX_BUILD/course-integration-checks" "$DRUMX_ROOT/native/assets/BigRusty/manifest.json"
+
+xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse-as-library \
+  "$DRUMX_ROOT/native/macos/DrumxCourse.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxProgress.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxPracticePlan.swift" \
+  "$DRUMX_ROOT/native/macos/tests/DrumxPracticePlanChecks.swift" \
+  -o "$DRUMX_BUILD/practice-plan-checks"
+"$DRUMX_BUILD/practice-plan-checks"

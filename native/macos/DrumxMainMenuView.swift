@@ -21,6 +21,7 @@ private enum MainMenuInk {
 /// menu selection also works when the window routes game-style arrow keys here.
 private final class MainMenuAction: NSButton {
   var primary = false
+  var drawingScale: CGFloat = 1 { didSet { needsDisplay = true } }
   var subtitle = "" { didSet { needsDisplay = true } }
   var selected = false { didSet { needsDisplay = true } }
   var onNavigate: ((Int) -> Void)?
@@ -61,8 +62,15 @@ private final class MainMenuAction: NSButton {
   }
 
   override func draw(_ dirtyRect: NSRect) {
+    // The native button frame grows with the drawing. Only paint coordinates
+    // use the authored scale; hit testing and accessibility stay in real points.
+    NSGraphicsContext.saveGraphicsState()
+    defer { NSGraphicsContext.restoreGraphicsState() }
+    let scale = drawingScale
+    (AffineTransform(scale: scale) as NSAffineTransform).concat()
+    let drawBounds = NSRect(x: 0, y: 0, width: bounds.width / scale, height: bounds.height / scale)
     let active = hovered || selected || window?.firstResponder === self
-    let shape = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
+    let shape = NSBezierPath(roundedRect: drawBounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
     if primary {
       MainMenuInk.lime.withAlphaComponent(isHighlighted ? 0.76 : active ? 1 : 0.91).setFill()
       shape.fill()
@@ -73,11 +81,11 @@ private final class MainMenuAction: NSButton {
     if selected || window?.firstResponder === self {
       MainMenuInk.lime.withAlphaComponent(primary ? 0.6 : 0.9).setFill()
       NSBezierPath(roundedRect: NSRect(x: 0, y: primary ? 19 : 14, width: 3,
-                                      height: bounds.height - (primary ? 38 : 28)),
+                                      height: drawBounds.height - (primary ? 38 : 28)),
                    xRadius: 1.5, yRadius: 1.5).fill()
       if primary {
         MainMenuInk.lime.withAlphaComponent(0.34).setStroke()
-        let focus = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10, yRadius: 10)
+        let focus = NSBezierPath(roundedRect: drawBounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 10, yRadius: 10)
         focus.lineWidth = 1
         focus.stroke()
       }
@@ -90,16 +98,16 @@ private final class MainMenuAction: NSButton {
       .foregroundColor: foreground, .paragraphStyle: paragraph,
     ]
     (title as NSString).draw(in: NSRect(x: 22, y: primary ? 15 : subtitle.isEmpty ? 14 : 6,
-                                      width: bounds.width - 76, height: 31), withAttributes: titleAttributes)
+                                      width: drawBounds.width - 76, height: 31), withAttributes: titleAttributes)
     if !subtitle.isEmpty {
       (subtitle as NSString).draw(in: NSRect(x: 23, y: primary ? 49 : 31,
-                                            width: bounds.width - 78, height: 19),
+                                            width: drawBounds.width - 78, height: 19),
         withAttributes: [.font: NSFont.systemFont(ofSize: primary ? 12 : 11, weight: .medium),
                          .foregroundColor: foreground.withAlphaComponent(primary ? 0.76 : 0.85),
                          .paragraphStyle: paragraph])
     }
     if primary || active {
-      let x = bounds.width - 29, y = bounds.midY
+      let x = drawBounds.width - 29, y = drawBounds.midY
       let arrow = NSBezierPath()
       arrow.move(to: NSPoint(x: x - 11, y: y)); arrow.line(to: NSPoint(x: x + 1, y: y))
       arrow.move(to: NSPoint(x: x - 4, y: y - 5)); arrow.line(to: NSPoint(x: x + 1, y: y))
@@ -119,7 +127,10 @@ private final class MainMenuDrumArtwork: NSView {
   override func draw(_ dirtyRect: NSRect) {
     guard bounds.width > 0 && bounds.height > 0 else { return }
     NSGraphicsContext.saveGraphicsState()
-    let transform = AffineTransform(scaleByX: bounds.width / 460, byY: bounds.height / 560)
+    let scale = min(bounds.width / 460, bounds.height / 560)
+    var transform = AffineTransform(translationByX: (bounds.width - 460 * scale) / 2,
+                                    byY: (bounds.height - 560 * scale) / 2)
+    transform.scale(scale)
     (transform as NSAffineTransform).concat()
 
     let halo = NSBezierPath(ovalIn: NSRect(x: 12, y: 67, width: 440, height: 440))
@@ -216,6 +227,10 @@ final class DrumxMainMenuView: NSView {
   var onSettings: (() -> Void)?
 
   private let content = NSView()
+  private let headline = NSTextField(wrappingLabelWithString: "Find your\nrhythm.")
+  private let invitation = MainMenuInk.label("Build a rhythm that stays with you.", size: 16,
+                                              color: MainMenuInk.muted)
+  private let artwork = MainMenuDrumArtwork()
   private let playerLabel = MainMenuInk.label("YOUR PRACTICE", size: 11, weight: .medium, color: MainMenuInk.muted)
   private let chapterLabel = MainMenuInk.label("FOUNDATIONS", size: 10, weight: .medium, color: MainMenuInk.lime)
   private let progressLabel = MainMenuInk.label("", size: 11, color: MainMenuInk.muted)
@@ -227,38 +242,14 @@ final class DrumxMainMenuView: NSView {
 
   override init(frame: NSRect) {
     super.init(frame: frame)
-    content.translatesAutoresizingMaskIntoConstraints = false
     addSubview(content)
-    NSLayoutConstraint.activate([
-      content.widthAnchor.constraint(equalToConstant: 920),
-      content.heightAnchor.constraint(equalToConstant: 580),
-      content.centerXAnchor.constraint(equalTo: centerXAnchor),
-      content.centerYAnchor.constraint(equalTo: centerYAnchor),
-    ])
-    let headline = NSTextField(wrappingLabelWithString: "Find your\nrhythm.")
     headline.maximumNumberOfLines = 2
     headline.lineBreakMode = .byWordWrapping
-    let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = -4
-    headline.attributedStringValue = NSAttributedString(string: "Find your\nrhythm.", attributes: [
-      .font: NSFont.systemFont(ofSize: 69, weight: .semibold), .foregroundColor: MainMenuInk.paper,
-      .kern: -2.8, .paragraphStyle: paragraph,
-    ])
-    let invitation = MainMenuInk.label("Build a rhythm that stays with you.", size: 16,
-                                        color: MainMenuInk.muted)
-    let artwork = MainMenuDrumArtwork()
     artwork.setAccessibilityElement(false)
-    let positions: [(NSView, NSRect)] = [
-      (playerLabel, NSRect(x: 4, y: 543, width: 416, height: 20)),
-      (headline, NSRect(x: 0, y: 366, width: 432, height: 164)),
-      (invitation, NSRect(x: 4, y: 333, width: 422, height: 26)),
-      (chapterLabel, NSRect(x: 4, y: 276, width: 416, height: 20)),
-      (continueButton, NSRect(x: 0, y: 182, width: 424, height: 86)),
-      (exploreButton, NSRect(x: 0, y: 119, width: 424, height: 54)),
-      (settingsButton, NSRect(x: 0, y: 61, width: 424, height: 54)),
-      (progressLabel, NSRect(x: 4, y: 16, width: 424, height: 20)),
-      (artwork, NSRect(x: 457, y: 6, width: 460, height: 560)),
-    ]
-    for (view, frame) in positions { view.frame = frame; content.addSubview(view) }
+    for view in [playerLabel, headline, invitation, chapterLabel, continueButton,
+                 exploreButton, settingsButton, progressLabel, artwork] {
+      content.addSubview(view)
+    }
     continueButton.primary = true
     exploreButton.subtitle = "Explore foundations · \(DrumxCourse.lessons.count) lessons"
     continueButton.target = self; continueButton.action = #selector(continuePractice)
@@ -279,6 +270,54 @@ final class DrumxMainMenuView: NSView {
   }
 
   required init?(coder: NSCoder) { nil }
+
+  override func setFrameSize(_ newSize: NSSize) {
+    super.setFrameSize(newSize)
+    needsLayout = true
+  }
+
+  override func layout() {
+    super.layout()
+    guard bounds.width > 0, bounds.height > 0 else { return }
+    let margin = max(24, min(120, bounds.width * 0.045))
+    let usableWidth = max(1, bounds.width - margin * 2)
+    let usableHeight = max(1, bounds.height - 32)
+    let scale = min(1.55, max(0.85, min(usableWidth / 920, usableHeight / 580)))
+    let width = min(1920, usableWidth, max(920 * scale, bounds.width * 0.86))
+    let leftWidth = 424 * scale
+    let artWidth = min(860, width - leftWidth - 32 * scale, usableHeight * 0.91 * 460 / 560)
+    let artHeight = artWidth * 560 / 460
+    let height = max(580 * scale, artHeight)
+    content.frame = NSRect(x: (bounds.width - width) / 2, y: (bounds.height - height) / 2,
+                           width: width, height: height)
+    let textBottom = (height - 580 * scale) / 2
+    func place(_ view: NSView, _ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ h: CGFloat) {
+      view.frame = NSRect(x: x * scale, y: textBottom + y * scale,
+                          width: w * scale, height: h * scale)
+      view.needsDisplay = true
+    }
+    place(playerLabel, 4, 543, 416, 20)
+    place(headline, 0, 366, 432, 164)
+    place(invitation, 4, 333, 422, 26)
+    place(chapterLabel, 4, 276, 416, 20)
+    place(continueButton, 0, 182, 424, 86)
+    place(exploreButton, 0, 119, 424, 54)
+    place(settingsButton, 0, 61, 424, 54)
+    place(progressLabel, 4, 16, 424, 20)
+    artwork.frame = NSRect(x: width - artWidth, y: (height - artHeight) / 2,
+                           width: artWidth, height: artHeight)
+    artwork.needsDisplay = true
+    playerLabel.font = .systemFont(ofSize: 11 * scale, weight: .medium)
+    chapterLabel.font = .systemFont(ofSize: 10 * scale, weight: .medium)
+    progressLabel.font = .systemFont(ofSize: 11 * scale)
+    invitation.font = .systemFont(ofSize: 16 * scale)
+    let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = -4 * scale
+    headline.attributedStringValue = NSAttributedString(string: "Find your\nrhythm.", attributes: [
+      .font: NSFont.systemFont(ofSize: 69 * scale, weight: .semibold),
+      .foregroundColor: MainMenuInk.paper, .kern: -2.8 * scale, .paragraphStyle: paragraph,
+    ])
+    for button in actions { button.drawingScale = scale }
+  }
 
   func update(lesson: DrumxLessonDefinition, player: String, unlocked: Int, cleared: Int) {
     playerLabel.stringValue = "\(player.uppercased())  /  YOUR PRACTICE"

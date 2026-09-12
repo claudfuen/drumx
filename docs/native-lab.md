@@ -16,19 +16,19 @@ The script uses C++17 and Swift 5 language mode, builds for the current Mac's ar
 ## Your first five minutes
 
 1. **Choose your player.** Enter a local player name on the welcome page. **Let's play** opens the main menu. Use the keyboard or choose **Connect my kit** to open settings first.
-2. **Start with Find the pulse.** Main-menu **Continue** opens your saved lesson. **Learn** opens the chapter journey. Read the lesson's objective, original one-bar staff study, and counts, then choose **Hear the pattern**.
-3. **Play a short take.** Choose a comfortable tempo between 48 and 144 BPM and a phrase of **1, 4, or 8 bars**. Each lesson repeats its authored bar after a four-beat count-in. The first completed pulse attempt supplies a baseline comparison; it does not automatically assign a skill level.
+2. **Start with Find the pulse.** Main-menu **Continue** opens your saved lesson. **Learn** opens the lesson path. Read the lesson's objective, original one-bar staff study, and counts, then choose **Hear the pattern**.
+3. **Play for about a minute.** Choose **Start playing**. A new lesson starts at its suggested tempo with **16 bars**, repeating its authored bar after a four-beat count-in. **Practice options** reveals tempo from 48 to 144 BPM, **1/4/8/16 bars**, guidance, and live timing. The first completed pulse attempt supplies a baseline comparison; it does not automatically assign a skill level.
 4. **Review and check understanding.** See points, stars, hits/misses/extras, and a next practice action. Answer the lesson's three-choice reading question and use the explicit technique self-check after considering its tip.
 5. **Try less help, then return.** Choose Hidden bars or a click-only take when the pattern feels familiar. Open the next lesson when unlocked, or revisit an available step. Reopening returns to the main menu; Continue opens the selected player's saved lesson and practice settings.
 
-There is no five-minute session timer. Each attempt is a short, finite phrase. Four bars at 60 BPM last 16 seconds, plus the count-in; at 96 BPM they last ten seconds.
+There is no five-minute session timer. Each attempt is one finite practice block followed by review. Sixteen bars at 60 BPM last 64 seconds; at 72 BPM they last about 53 seconds, plus the count-in. Shorter lengths remain useful for focused repair. The [practice-loop note](first-practice-loop.md) explains the default and its limits.
 
 ## Find your way around
 
 | Destination | Use it for |
 | --- | --- |
 | Main menu → Continue | Open the selected player's saved lesson. It does not start audio immediately. |
-| Main menu → Learn | Explore the three chapter cards and four lesson steps per chapter. Locked lessons show their prerequisite. |
+| Main menu → Learn | Inspect a 12-step path grouped into three chapters. One featured step shows its objective, best saved stars, and play action or lock reason. |
 | Main menu → Settings | Configure Your kit, Sound, Playing, and Players & progress on a dedicated page. |
 | Player name on the main menu | Switch, add, or rename a local player. The same manager is available in Settings. |
 
@@ -48,7 +48,7 @@ Stopping before the phrase ends does not archive a completed take, set a persona
 | Build your backbeat | Hand meets foot; Add the backbeat; Your first backbeat; Give the groove more space. |
 | Read, vary, and remember | Let your hands take turns; Kick on the and; Keep counting through a gap; Groove into a fill. |
 
-These lessons introduce quarter/eighth notes, rests, simultaneous instruments, a backbeat, a variation, and a short fill. Every chapter is inspectable, including future lessons; only available lesson cards can start practice. The named-rudiment course remains a [proposal](curriculum.md).
+These lessons introduce quarter/eighth notes, rests, simultaneous instruments, a backbeat, a variation, and a short fill. Select any numbered node to inspect its lesson, including locked steps. **Play this step** opens preparation only when that lesson is available. The named-rudiment course remains a [proposal](curriculum.md).
 
 The estimates total **96 suggested practice minutes**, spread across repetitions, comfortable tempos, phrase lengths, and attempts with less guidance. They are not 96 minutes of unique recordings, a timed course, or a promise of how quickly a player will learn.
 
@@ -56,7 +56,7 @@ Each lesson's audio demonstration, scoring targets, and original notation use th
 
 ### Open the next step
 
-For a new player, Find the pulse is the first available lesson. Complete a **four- or eight-bar take** matching at least **80% of the expected notes** to open its successor. To enter chapters 2 or 3, also answer the preceding chapter's final lesson reading question correctly. Locked cards and the review explain the remaining prerequisite.
+For a new player, Find the pulse is the first available lesson. Complete **at least four bars** matching **80% of the expected notes** to open its successor. Four-, eight-, and sixteen-bar takes can qualify. To enter chapters 2 or 3, also answer the preceding chapter's final lesson reading question correctly. The featured locked step and the review explain the remaining prerequisite.
 
 Matched notes use the normal instrument/timing matching window. This rule does not require the tighter on-time judgment, a star count, or a specific tempo. Extra hits affect the game score but do not reduce the unlock ratio. One-bar takes can record practice evidence and scores, but cannot clear this progression step. Recall and technique self-checks remain separate evidence.
 
@@ -66,7 +66,7 @@ Matched notes use the normal instrument/timing matching window. This rule does n
 
 Create or rename local players to keep each person's attempts, checks, and resume position separate. Renaming preserves their history. Profiles stay on this Mac; deletion and cloud synchronization are not provided. On upgrade, the first player adopts the original local history instead of copying it into every profile.
 
-Resume records the lesson ID/version, tempo, guidance mode, live timing choice, and phrase length. The kit's input source is remembered when available; mappings, offset, drum sound, volume, and sticking-hint preferences are saved locally. Check the actual input before playing on a changed setup.
+Resume records the lesson ID/version, tempo, guidance mode, live timing choice, and phrase length. An older unversioned four-bar resume changes to 16 bars once; older one/eight-bar choices and subsequent saved four/sixteen-bar choices remain intact. New lessons and changed lesson versions use the recommended tempo, 16 bars, Guided, and Live timing on. The kit's input source is remembered when available; mappings, offset, drum sound, volume, sticking hints, and drum-menu preference are saved locally. Check the actual input before playing on a changed setup.
 
 Practice evidence remains scoped to the current lesson version: **Practised** requires a saved completed attempt with at least one matched hit; **Reading checked** records a correct reading answer; **Recall tried** requires such an attempt in From memory with Live timing off. Dated checkpoints retain that evidence independently of the visible comparison strip. None means mastered, recalled on another day, or technique verified. The technique checkbox is explicitly the player's self-report.
 
@@ -78,7 +78,7 @@ Practice evidence remains scoped to the current lesson version: **Practised** re
 | Slow it down | Reduce tempo by 8 BPM, down to the 48 BPM minimum, and begin a new take. |
 | Work on one bar | Start one guided bar of the selected exercise. This is a single attempt, not an endless loop or an automatically selected error bar. |
 | Back to four bars | Start four guided bars after one-bar practice. |
-| Hide a phrase | Start with alternate bars hidden, keeping the current four or eight bars. One-bar practice expands to four bars. |
+| Hide a phrase | Start with alternate bars hidden, keeping the current four, eight, or sixteen bars. One-bar practice expands to four bars. |
 | Try click-only | Start From memory with live timing off. |
 | Back in the review header | Return to lesson preparation. |
 | Next lesson | Open the next exercise when available. A locked action explains the prerequisite. The final lesson offers Explore foundations. |
@@ -93,22 +93,28 @@ With a MIDI source selected, keyboard keys preview sounds but do not contribute 
 
 Keyboard practice exercises the interaction and scoring path. A physical kit also introduces its own trigger scanning and MIDI transport.
 
+### Optional drum-operated menus
+
+Enable **Settings → Playing → Navigate with my drums** after checking your MIDI mappings. Hi-hat moves to the previous action, snare to the next, and two quick kick hits choose the highlighted action. One kick arms confirmation; a second within 0.6 seconds activates it. A navigation hit cancels that confirmation.
+
+This works on the **main menu, lesson preparation, review, and pause**, with a MIDI source selected. Preparation offers Start playing, Hear the pattern, and Main menu; review and pause expose their enabled primary actions. Commands are inactive during count-in, playing, listening, mapping, and open sheets. Learn, Settings, player management, and detailed practice options still need keyboard or mouse. Keyboard drum previews do not trigger these menu commands. The [first-kit session](first-kit-session.md) covers testing the controls on a real module.
+
 ## Settings and your kit
 
 Settings is a full page, available from the main menu and from the course, lesson, and review. Changes save automatically; an edited offset is committed when leaving Settings or quitting. Use Back to return to where you opened it, or Esc to return to the main menu after welcome.
 
 | Section | Controls and scope |
 | --- | --- |
-| Your kit | MIDI source, hi-hat/snare/kick mappings, and received/waiting input checks. |
+| Your kit | Visual hi-hat/snare/kick selection, MIDI source, note aliases, selected-source receipts, and raw note/velocity feedback. |
 | Sound | App drum monitoring and drum/demo volume. Audio follows the Mac's selected output. |
-| Playing | R/L suggestions and a fixed input scoring offset. Tempo, phrase length, guidance, and live timing stay inside lessons; reduced motion follows macOS. |
+| Playing | Optional drum-menu navigation, R/L suggestions, and a fixed input scoring offset. Tempo, phrase length, guidance, and live timing stay inside lessons; reduced motion follows macOS. |
 | Players & progress | Current player, Manage players, and an explanation of local saves. Kit, sound, and offset preferences are shared by players. |
 
-In **Your kit**, choose the kit's CoreMIDI source, then play each pad to confirm its identity and sound. The source menu identifies the input route; each pad shows **waiting** or **received** for that selected input. Keyboard sound previews do not mark a pad received while a MIDI source is selected.
+In **Your kit**, choose the kit's CoreMIDI source, then play each pad to confirm its identity and sound. Select a pad in the visual kit to inspect its mapping. The source menu identifies the input route; each pad shows **waiting** or **received** for that selected input. The latest raw MIDI note and velocity remain visible even when the note is unmapped. Keyboard sound previews are labeled separately and do not mark a pad received while a MIDI source is selected.
 
 The starter groups are hi-hat notes **42/44/46**, snare **38/40**, and kick **35/36**. These are general starting mappings, not a certified profile for any particular drum module. They collapse those articulations into three surfaces and three sounds.
 
-To learn a mapping, click the instrument's mapping button and strike that pad once. This replaces its current group with the learned note and removes that note from other groups. Mapping changes stay inside Drumx; they do not reconfigure the module.
+To add a mapping, select the instrument, choose **Add MIDI note**, and strike that pad once. Its existing aliases stay assigned. If the new note belongs to another instrument, ownership moves to the selected instrument; check both afterward. **Cancel** leaves mappings unchanged. Mapping changes stay inside Drumx; they do not reconfigure the module. Source changes cancel pending mapping and reset receipt checks.
 
 The rail reserves stable positions for hi-hat, crash, snare, tom 1, tom 2, floor tom, and ride. Kick uses a full-width bar on the same timing plane. Only **hi-hat, snare, and kick** currently generate scored targets and app sounds. The other positions are reserved, and an editable kit layout remains future work.
 
@@ -120,7 +126,7 @@ An offset does not measure physical latency or remove jitter. Mapping, input off
 
 ## Listen through the app or your module
 
-In **Settings → Sound**, **Play Drumx sounds when I strike a pad** enables the app's acoustic monitoring. The **Drums & demo** volume controls monitoring and the lesson demonstration. Turn monitoring off if you listen to the drum module's own sounds; **Hear the pattern** remains audible.
+In **Settings → Sound**, **Drumx drum sounds** enables the app's acoustic monitoring. **Drums & demonstrations** controls monitoring and lesson-demonstration volume; **Test drums** previews the three sounds when monitoring is enabled. Turn monitoring off if you listen to the drum module's own sounds; **Hear the pattern** remains audible.
 
 To use the module's sounds, arrange a listening route that lets you hear both the module and Drumx's click. USB MIDI alone does not carry the module's audio.
 
@@ -137,7 +143,7 @@ The sampler preloads the recordings. Live MIDI monitoring bypasses the main thre
 | From memory | No target notes or moving beat scaffold. |
 | From memory + Live timing off | Click-only attempt with evaluation shown after the phrase. |
 
-Hidden bars uses four or eight bars. Selecting it during one-bar practice expands the phrase to four bars; choosing one bar while Hidden bars is selected switches to Guided.
+Hidden bars uses four, eight, or sixteen bars. Selecting it during one-bar practice expands the phrase to four bars; choosing one bar while Hidden bars is selected switches to Guided. From memory can still use one bar.
 
 ### The bottom capture rail
 
@@ -171,7 +177,9 @@ Combo counts consecutive on-time hits across instruments; an off-time hit, miss,
 
 The maximum matching window is ±125 ms. Targets on the first scored beat also accept the 125 ms early window before it; the earlier count-in remains unscored. The core's tighter centered judgment is ±25 ms, separate from the on-time percentage.
 
-Natural completions are archived locally per player, without the prototype's 200-take retention limit. The review displays only the last six comparable takes; personal bests use the whole archive. Takes stopped before the phrase ends and canceled count-ins do not set personal bests. One-, four-, and eight-bar attempts are separate comparisons. Other matching conditions include tempo, guidance mode, live feedback, hand hints, fixed calibration, input identity, pad mapping, and lesson version. Ranking uses on-time percentage, then hit rate, then mean absolute timing error.
+Natural completions are archived locally per player, without the prototype's 200-take retention limit. The review displays only the last six comparable takes; personal bests use the whole archive. Takes stopped before the phrase ends and canceled count-ins do not set personal bests. One-, four-, eight-, and sixteen-bar attempts are separate comparisons. Other matching conditions include tempo, guidance mode, live feedback, hand hints, fixed calibration, input identity, pad mapping, and lesson version. Ranking uses on-time percentage, then hit rate, then mean absolute timing error.
+
+The **Learn** path instead shows the highest saved star result for each current lesson version across any conditions. Those stars celebrate a recorded result, including short or fully guided practice; they are not a like-for-like comparison or proof of readiness. An empty star target does not mean a take was recorded.
 
 The app stores its practice archives under `~/Library/Application Support/Drumx/org.drumx.timing-lab/History/`. First use adopts the retained legacy history while leaving the original preferences intact. Archive writes are atomic; an unreadable or invalid existing archive is preserved and saving is paused with an error, rather than replacing it. Profiles, resume settings, and dated course checks remain in local app preferences. None of this practice data is sent to GitHub or a cloud service.
 
@@ -185,9 +193,10 @@ Captured MIDI can arrive after a display update or the end of a take. The core c
 | Samples are missing | Run `python3 scripts/fetch-samples.py`, then rebuild. The fetcher restores missing originals and verifies pinned hashes. It refuses altered files rather than silently replacing them. |
 | The app looks unchanged after building | Quit the running app and reopen `.build/DrumxLab.app`. |
 | MIDI input is absent | Confirm that macOS sees the module, check its cable and power, then select the source in Settings → Your kit. |
-| The wrong instrument responds | Learn that pad's MIDI note in Settings → Your kit. The starter groups are broad aliases. |
+| The wrong instrument responds | Select its pad in Settings → Your kit, choose Add MIDI note, and strike again. A conflicting note moves from its former owner; check both pads. |
+| The kit reports a note but no instrument responds | An unmapped note still appears with its velocity. Add it to the intended pad, then strike again to verify the mapping. |
 | MIDI lights respond but you hear no drums | Enable app monitoring in Settings → Sound and check volume and the Mac output. If using module audio, check its separate listening route. |
-| The next lesson is locked | Finish at least four bars with 80% of notes matched. At a chapter boundary, pass the preceding lesson's reading check too. Follow the reason shown on the card or review. |
+| The next lesson is locked | Finish at least four bars with 80% of notes matched. At a chapter boundary, pass the preceding lesson's reading check too. Follow the reason shown on the featured step or review. |
 | You hear two drum sounds per strike | Choose app monitoring or module monitoring rather than hearing both paths. |
 | A take stops when a device changes | Check the selected input and audio output, then start a fresh count-in. |
 | Timing looks consistently shifted | Check the listening route and fixed input offset. Compare a repeatable setup before changing calibration. |
@@ -200,8 +209,8 @@ For timing or audio reports, include macOS version, module and connection, outpu
 bash scripts/test-native.sh
 ```
 
-The checks cover the portable scoring core, MIDI parsing and virtual input, sample integrity, native audio/demo behavior, lesson review/history, course-content contracts, local progress, unlock sequencing, course integration, signed count-in travel, shared projection, and capture-time boundaries. Audio startup is not a measurement of audible output timing. Test output establishes what passed in a particular environment; it does not substitute for an observed beginner using the whole app.
+The checks cover the portable scoring core, MIDI parsing and virtual input, mapping/receipt behavior, drum-menu gestures, practice-plan migration, sample integrity, native audio/demo behavior, lesson review/history, course-content contracts, local progress, unlock sequencing, course integration, signed count-in travel, shared projection, and capture-time boundaries. Audio startup is not a measurement of audible output timing. Test output establishes what passed in a particular environment; it does not substitute for an observed beginner using the whole app.
 
-The custom Mac interface uses AppKit. It is not a shared Windows interface; the C++ scoring core is portable, while the Swift lesson/progression models and native input/audio layers still need a porting strategy. Choose the production engine before large content expansion. The [rendering plan](rendering-plan.md) describes the next experiment; [menu architecture](menu-architecture.md) records the navigation boundary. Scoring currently runs on the main thread with preserved input timestamps. That protects timestamp-based grading after a stall, while visible feedback can still arrive late.
+The custom Mac interface uses AppKit. The C++ core and C consumer have passed hosted macOS/Windows Debug and Release contracts, plus Mac sanitizers; the [portable build guide](cross-platform.md) records the run and commands. The Swift lesson/progression models and interface/input/audio layers still need a Windows strategy. Choose the production engine before large content expansion. The [rendering plan](rendering-plan.md) describes the next experiment; [menu architecture](menu-architecture.md) records the navigation boundary. Scoring currently runs on the main thread with preserved input timestamps. That protects timestamp-based grading after a stall, while visible feedback can still arrive late.
 
 Still ahead: validating the complete beginner journey and real-kit reliability, named rudiments, scheduled retention and transfer checks, full-kit scoring and articulation, musical backing tracks, production rendering, Windows platform layers, and public release packaging. Building the first foundation unit advances M1; it does not close the [remaining acceptance checks](learning-milestones.md#m1-one-complete-beginner-learning-loop).

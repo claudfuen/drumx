@@ -25,24 +25,20 @@ extension LabController {
   func restorePlayer() {
     let resume = progress.selectedProfile.resume
     lesson = DrumxCourse.lesson(id: resume.lessonID) ?? DrumxCourse.lessons[0]
-    tempo = min(144, max(48, resume.tempo)); mode = resume.mode; showLive = resume.liveFeedback
-    lessonBars = [1, 4, 8].contains(resume.bars) ? resume.bars : 4
-    if let version = resume.lessonVersion, version != lesson.version {
-      tempo = lesson.suggestedBPM; mode = 0; showLive = true; lessonBars = 4
-    }
-    if mode == 1 && lessonBars == 1 { lessonBars = 4 }
+    let plan = DrumxPracticePlan.restore(resume: resume, lesson: lesson)
+    tempo = plan.tempo; mode = plan.mode; showLive = plan.liveFeedback; lessonBars = plan.bars
     playerButton.title = progress.selectedProfile.name
     tempoSlider.doubleValue = tempo; tempoLabel.stringValue = "\(Int(tempo)) BPM"
     if modeMenu.numberOfItems > mode { modeMenu.selectItem(at: mode) }
     liveToggle.state = showLive ? .on : .off
-    if lengthMenu.numberOfItems == 3 { lengthMenu.selectItem(at: [1, 4, 8].firstIndex(of: lessonBars) ?? 1) }
+    if lengthMenu.numberOfItems == 4 { lengthMenu.selectItem(at: DrumxPracticePlan.barChoices.firstIndex(of: lessonBars) ?? 3) }
   }
 
   func saveResume() {
     // Merely navigating setup must not replace unreadable saved progress with its fallback.
     guard progress.selectedProfile.hasCompletedWelcome else { return }
     _ = progress.updateResume(PracticeResume(lessonID: lesson.id, tempo: tempo, mode: mode,
-                                           liveFeedback: showLive, bars: lessonBars, lessonVersion: lesson.version))
+                                           liveFeedback: showLive, bars: lessonBars, lessonVersion: lesson.version, sessionFormatVersion: DrumxPracticePlan.currentSessionFormatVersion))
     if let error = progress.lastError { setStatus(error) }
   }
 
@@ -104,7 +100,11 @@ extension LabController {
     }
     let state = unlockState
     courseView.update(lesson: lesson, player: progress.selectedProfile.name, statuses: statuses, practised: practised,
-      availability: state.availableIDs, cleared: state.clearedIDs, lockReasons: state.reasonByID)
+      availability: state.availableIDs, cleared: state.clearedIDs, lockReasons: state.reasonByID,
+      recommendedID: state.recommendedID, bestStarsByID: Dictionary(uniqueKeysWithValues: DrumxCourse.lessons.compactMap { item in
+        let stars = history.attempts.filter { $0.settings.lessonVersion == item.version }.map { DrumxRunScore(attempt: $0).stars }.max()
+        return stars.map { (item.id, $0) }
+      }))
   }
 
   func selectLesson(_ id: String) {
@@ -113,7 +113,7 @@ extension LabController {
       setStatus(unlockState.reasonByID[id] ?? "Complete the previous lesson to open this one."); return
     }
     if selected.id != lesson.id {
-      lesson = selected; tempo = selected.suggestedBPM; mode = 0; showLive = true; lessonBars = 4
+      lesson = selected; tempo = selected.suggestedBPM; mode = 0; showLive = true; lessonBars = DrumxPracticePlan.standardBars
     }
     saveResume(); openCurrentLesson()
   }
@@ -131,9 +131,10 @@ extension LabController {
     lessonExplanation.stringValue = lesson.explanation
     lessonPractice.stringValue = "\(lesson.practiceMinutes) · Count \(lesson.counts)"
     notation.lesson = lesson
+    refreshPracticeSummary()
     tempoSlider.doubleValue = tempo; tempoLabel.stringValue = "\(Int(tempo)) BPM"
     modeMenu.selectItem(at: mode); liveToggle.state = showLive ? .on : .off
-    lengthMenu.selectItem(at: [1, 4, 8].firstIndex(of: lessonBars) ?? 1)
+    lengthMenu.selectItem(at: DrumxPracticePlan.barChoices.firstIndex(of: lessonBars) ?? 3)
     let takes = history.attempts.filter { $0.settings.lessonVersion == lesson.version && $0.matched > 0 }
     let reading = progress.readingEvidence(lessonID: lesson.id, version: lesson.version) != nil
     let recall = takes.contains { $0.settings.mode == 2 && !$0.settings.liveFeedback }
@@ -150,7 +151,7 @@ extension LabController {
     guard !transportActive else { return }
     saveResume(); resetCore(); showPage(.course)
     window.title = "Drumx · Foundations"
-    setStatus("Choose a chapter to explore. Open lessons are always available to revisit.")
+    setStatus("Play your next step, or select a point on the path to explore. Revisit open lessons any time.")
   }
 
   @objc func nextLesson() {
@@ -183,9 +184,9 @@ extension LabController {
 
   @objc func lengthChanged() {
     guard !transportActive else { return }
-    lessonBars = [1, 4, 8][max(0, lengthMenu.indexOfSelectedItem)]
+    lessonBars = DrumxPracticePlan.barChoices[max(0, lengthMenu.indexOfSelectedItem)]
     if lessonBars == 1 && mode == 1 { mode = 0; modeMenu.selectItem(at: 0) }
-    saveResume(); resetCore(); focusStage()
+    saveResume(); refreshPracticeSummary(); resetCore(); focusStage()
   }
 
   @objc func showPlayers() {
@@ -231,6 +232,7 @@ extension LabController {
     playerButton.title = progress.selectedProfile.name; closePlayers(); showPage(.mainMenu)
   }
   @objc func closePlayers() {
+    menuInput.reset(at: DrumxIO.hostNowSeconds())
     if let panel = playerWindow { window.endSheet(panel); panel.orderOut(nil) }
     playerWindow = nil; focusStage()
   }
@@ -274,6 +276,7 @@ extension LabController {
     if let error = progress.lastError { checkFeedback.stringValue = error }
   }
   @objc func closeLearningCheck() {
+    menuInput.reset(at: DrumxIO.hostNowSeconds())
     if let panel = checkWindow { window.endSheet(panel); panel.orderOut(nil) }
     checkWindow = nil
     if currentPage == .review { refreshUnlockReview() } else { refreshLesson() }
@@ -281,7 +284,11 @@ extension LabController {
   }
 
   func refreshKitCheck() {
-    let names = ["Hi-hat", "Snare", "Kick"]
-    kitCheckStatus.stringValue = names.enumerated().map { checkedPads.contains($0.offset) ? "\($0.element) received" : "\($0.element) waiting" }.joined(separator: "   ·   ")
+    checkedPads = kitSetup.confirmedPads
+    kitVisual.confirmed = checkedPads
+    kitVisual.learningPad = kitSetup.pendingPad
+    if kitSetup.lastHit == nil { kitVisual.clearSignal() }
+    let input = kitSetup.isMIDISelected ? "MIDI pads" : "Keyboard preview"
+    kitCheckStatus.stringValue = "\(checkedPads.count) / 3 \(input) checked this connection"
   }
 }

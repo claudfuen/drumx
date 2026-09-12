@@ -16,6 +16,8 @@ private func profileChecks(defaults: UserDefaults) {
   check(first.resume == PracticeResume(), "fresh resume has beginner defaults")
   check(first.resume.lessonID == "find-the-pulse", "new default uses the canonical first lesson")
   check(first.resume.lessonVersion == nil, "generic default does not invent a course revision")
+  check(first.resume.tempo == 60 && first.resume.bars == 16, "new player starts with a calm one-minute pulse block")
+  check(first.resume.sessionFormatVersion == nil, "unpersisted session choice has no migration marker")
   let reopened = DrumxProgress(defaults: defaults, storageKey: "profiles")
   check(reopened.selectedProfile.id == first.id, "default UUID persists before any user changes")
   check(reopened.selectedProfile.createdAt == first.createdAt, "creation date survives reopening")
@@ -90,6 +92,8 @@ private func invalidInputChecks(defaults: UserDefaults) {
     PracticeResume(lessonVersion: ""), PracticeResume(lessonVersion: " v1"),
     PracticeResume(lessonVersion: "v1\nother"),
     PracticeResume(lessonVersion: String(repeating: "v", count: 129)),
+    PracticeResume(sessionFormatVersion: -1), PracticeResume(sessionFormatVersion: 0),
+    PracticeResume(sessionFormatVersion: 2), PracticeResume(sessionFormatVersion: Int.max),
   ]
   for resume in invalid {
     check(!store.updateResume(resume), "invalid resume rejected")
@@ -109,7 +113,8 @@ private func invalidInputChecks(defaults: UserDefaults) {
 private func resumeCompatibilityChecks(defaults: UserDefaults) {
   let source = DrumxProgress(defaults: defaults, storageKey: "versionedResume")
   let versioned = PracticeResume(lessonID: "backbeat", tempo: 92, mode: 1,
-                                liveFeedback: false, bars: 8, lessonVersion: "backbeat-v2")
+                                liveFeedback: false, bars: 8, lessonVersion: "backbeat-v2",
+                                sessionFormatVersion: PracticeResume.currentSessionFormatVersion)
   check(source.updateResume(versioned), "versioned resume saves")
   check(DrumxProgress(defaults: defaults, storageKey: "versionedResume").selectedProfile.resume == versioned,
         "versioned resume reopens without losing conditions")
@@ -117,6 +122,7 @@ private func resumeCompatibilityChecks(defaults: UserDefaults) {
   var profiles = object["profiles"] as! [[String: Any]]
   var resume = profiles[0]["resume"] as! [String: Any]
   resume.removeValue(forKey: "lessonVersion")
+  resume.removeValue(forKey: "sessionFormatVersion")
   resume["lessonID"] = "pulse"
   profiles[0]["resume"] = resume
   object["profiles"] = profiles
@@ -126,6 +132,7 @@ private func resumeCompatibilityChecks(defaults: UserDefaults) {
   check(legacy.lastError == nil && legacy.selectedProfileID == source.selectedProfileID,
         "old resume without version loads the same player")
   check(legacy.selectedProfile.resume.lessonVersion == nil, "missing old revision decodes as nil")
+  check(legacy.selectedProfile.resume.sessionFormatVersion == nil, "old session format decodes as nil")
   check(legacy.selectedProfile.resume.lessonID == "pulse" && legacy.selectedProfile.resume.tempo == 92
           && legacy.selectedProfile.resume.mode == 1 && !legacy.selectedProfile.resume.liveFeedback
           && legacy.selectedProfile.resume.bars == 8,
@@ -280,6 +287,15 @@ private func corruptRecordChecks(defaults: UserDefaults) {
     resume["tempo"] = 999
     profiles[0]["resume"] = resume
     object["profiles"] = profiles
+  }
+  for version in [-1, 0, 2, Int.max] {
+    reject("invalidSessionFormat\(version)") { object in
+      var profiles = object["profiles"] as! [[String: Any]]
+      var resume = profiles[0]["resume"] as! [String: Any]
+      resume["sessionFormatVersion"] = version
+      profiles[0]["resume"] = resume
+      object["profiles"] = profiles
+    }
   }
   reject("falseCondition") { object in
     var profiles = object["profiles"] as! [[String: Any]]

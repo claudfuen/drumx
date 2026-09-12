@@ -16,6 +16,7 @@ public struct MIDISourceInfo: Equatable {
 final class DrumxIO {
     var onMIDI: ((Int, Int, Double) -> Void)?
     var onSourcesChanged: (([MIDISourceInfo]) -> Void)?
+    var onConnectionChanged: (() -> Void)?
     var onStatusChanged: ((String) -> Void)?
     /// The click has stopped and the current attempt must not continue scoring.
     var onAudioInterrupted: ((String) -> Void)?
@@ -107,6 +108,7 @@ final class DrumxIO {
     /// Select exactly one MIDI input. nil explicitly disconnects MIDI input.
     /// A fresh parser and port ensure messages from a previous source are discarded.
     func connect(sourceID requestedID: Int32?) {
+        defer { onConnectionChanged?() }
         disconnectPort()
         selectedSourceID = nil
         zeroTimestampCount = 0
