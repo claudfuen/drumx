@@ -42,3 +42,5 @@ Build dependencies are pinned to official repositories:
 - [miniaudio](https://github.com/mackron/miniaudio/tree/f40cf03f80cdb7e741d43e53b7e706e8c1394bcf), 0.11.23, dual public-domain/MIT-0. Full upstream notice: `licenses/miniaudio-LICENSE`.
 
 The unchanged Big Rusty FLAC bank and its CC0 provenance live in `native/assets/BigRusty` and are staged with the game. The third-party licenses do not select a license for Drumx's original application code.
+
+`configure_window(native_handle)` applies the original dark window appearance on macOS only. Call it on the main thread after Godot creates its window. It validates the handle against current app-owned windows before changing appearance; Windows, headless, invalid-handle, and background-thread calls do not mutate a window. This bridge does not alter content size, input coordinates, audio, or scoring.

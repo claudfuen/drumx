@@ -2,9 +2,12 @@ extends Control
 
 const DataModel = preload("res://scripts/game_data.gd")
 const Canvas = preload("res://scripts/game_canvas.gd")
+const LearningPath = preload("res://scripts/learning_path.gd")
 const MainMenu = preload("res://scripts/main_menu.gd")
+const NotationContract = preload("res://scripts/notation_contract.gd")
 const VisualContract = preload("res://scripts/visual_contract.gd")
 const PracticeStage = preload("res://scripts/practice_stage.gd")
+const ScoreReview = preload("res://scripts/score_review.gd")
 const ScoreHUD = preload("res://scripts/score_hud.gd")
 const SettingsPanel = preload("res://scripts/settings_panel.gd")
 const INK = Color("0c1012")
@@ -47,6 +50,15 @@ var recent_offsets: Array = [[], [], []]
 var take_id := ""
 var take_settings: Dictionary = {}
 var result_score: Label
+var result_visual: Control
+var next_lesson_button: Button
+var result_grade_fingerprint := ""
+var save_retry_at := 0.0
+var result_metrics: Array[Label] = []
+var check_return := "prepare"
+var check_overlay: Control
+var modal_focus: Array = []
+var options_open := false
 var result_detail: Label
 var result_best: Label
 var score_before := -1
@@ -71,8 +83,11 @@ func _ready() -> void:
 		call_deferred("smoke_test")
 		return
 	configure_logical_window()
+	if engine != null and OS.get_name() == "macOS":
+		engine.configure_window(DisplayServer.window_get_native_handle(DisplayServer.WINDOW_HANDLE, get_window().get_window_id()))
 	model.load_progress()
 	lesson_index = clampi(int(model.save.selected), 0, 11)
+	tempo = float(model.course.lessons[lesson_index].bpm)
 	var saved: Dictionary = model.save.get("settings", {})
 	volume = clampf(float(saved.get("volume", 0.7)), 0, 1)
 	monitoring = bool(saved.get("monitoring", true))
@@ -144,7 +159,7 @@ func build_shell() -> void:
 	score_hud = ScoreHUD.new()
 	score_hud.visible = false
 	header.add_child(score_hud)
-	back = button("Home", show_main)
+	back = button("Main menu", show_main)
 	header.add_child(back)
 	settings_button = button("Settings", show_settings)
 	header.add_child(settings_button)
@@ -232,16 +247,19 @@ func clear_page(destination: String) -> void:
 	mapping_label = null
 	kit_signal = null
 	result_score = null
+	result_visual = null
+	next_lesson_button = null
+	result_metrics.clear()
 	result_detail = null
 	result_best = null
 	for child in content.get_children():
 		content.remove_child(child)
 		child.queue_free()
 	back.visible = destination not in ["main", "stage"]
-	settings_button.visible = destination != "stage"
+	settings_button.visible = destination not in ["main", "stage", "settings"]
 	score_hud.visible = destination == "stage"
 	stop_button.visible = destination == "stage"
-	page_label.text = "ENGINE PREVIEW  /  " + destination.to_upper()
+	page_label.text = {"main": "MAIN MENU", "learn": "FOUNDATIONS", "prepare": "LESSON", "stage": "PRACTICE", "result": "REVIEW", "pause": "PAUSED", "settings": "SETTINGS"}.get(destination, destination.to_upper())
 	update_footer()
 
 func update_footer() -> void:
@@ -250,6 +268,9 @@ func update_footer() -> void:
 	var message: String = preserve_error if preserve_error != "" else str(model.error)
 	if message == "" and engine != null:
 		message = str(snapshot.get("error", ""))
+	if message == "" and page == "main":
+		footer.text = "↑ ↓  choose    RETURN  select"
+		return
 	footer.text = message if message != "" else "A  hi-hat   ·   S  snare   ·   SPACE  kick   ·   SHIFT  softer   /   ESC  pause" if page == "stage" else "A  hi-hat   ·   S  snare   ·   SPACE  kick   /   ESC  main menu"
 
 func show_main() -> void:
@@ -299,101 +320,99 @@ func star_string(value: int) -> String:
 
 func show_learn(index: int) -> void:
 	clear_page("learn")
-	var lesson: Dictionary = model.course.lessons[index]
-	gap(content, 0, true)
-	content.add_child(label("One step at a time.", 42))
-	content.add_child(label("%d / 12 steps complete. A steady pulse, then your first fill." % cleared_count(), 16, MUTED))
-	gap(content, 12)
-	content.add_child(label("STEP %02d  /  %s" % [index + 1, model.course.chapters[int(lesson.chapter)].to_upper()], 13, LIME))
-	content.add_child(label(lesson.title, 38, PAPER, true))
-	content.add_child(label(lesson.objective, 19, MUTED, true))
-	var best: Dictionary = model.best(index)
-	content.add_child(label(star_string(DataModel.stars(int(best.get("points", 0)), true)) + "   Build toward five stars.", 26, LIME))
-	var available := index <= model.frontier()
-	var play := button("Play this step" if available else "Complete the previous step to open this lesson", func(): show_prepare(index), true)
-	play.disabled = not available
-	content.add_child(play)
-	content.add_child(label("Play a complete take of at least four bars with 80% of notes matched. Reading checks mark chapter transitions.", 13, MUTED))
-	gap(content, 16)
-	var groups := row()
-	content.add_child(groups)
-	for chapter in range(3):
-		var group := VBoxContainer.new()
-		group.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		group.add_theme_constant_override("separation", 12)
-		groups.add_child(group)
-		group.add_child(label("%d  %s" % [chapter + 1, model.course.chapters[chapter]], 12, MUTED))
-		var nodes := row()
-		group.add_child(nodes)
-		for offset in range(4):
-			var step := chapter * 4 + offset
-			var node := button("%02d%s" % [step + 1, " ✓" if model.cleared(step) else ""], func(): show_learn(step), step == index)
-			node.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			node.tooltip_text = model.course.lessons[step].title
-			if step > model.frontier():
-				node.modulate.a = 0.45
-			nodes.add_child(node)
-	gap(content, 0, true)
+	var path := LearningPath.new()
+	path.configure(model, index)
+	path.play_requested.connect(show_prepare)
+	content.add_child(path)
 
 func show_prepare(index: int) -> void:
+	var changed := lesson_index != index
 	lesson_index = index
 	model.save.selected = index
 	if not smoke: model.persist()
-	tempo = float(model.course.lessons[index].bpm)
+	if changed:
+		tempo = float(model.course.lessons[index].bpm)
+		bars = 16
+		guidance = 0
 	build_prepare()
+
+func centered_column(spacing: int = 16) -> VBoxContainer:
+	var center := CenterContainer.new()
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.add_child(center)
+	var stack := VBoxContainer.new()
+	stack.custom_minimum_size.x = 880
+	stack.add_theme_constant_override("separation", spacing)
+	center.add_child(stack)
+	return stack
 
 func build_prepare() -> void:
 	clear_page("prepare")
 	var lesson: Dictionary = model.course.lessons[lesson_index]
-	content.add_child(label("STEP %02d  /  FOUNDATION PRACTICE" % (lesson_index + 1), 12, LIME))
-	content.add_child(label(lesson.title, 42, PAPER, true))
-	content.add_child(label(lesson.objective, 19, MUTED, true))
-	content.add_child(label(lesson.explanation, 16, PAPER, true))
-	canvas = Canvas.new()
-	canvas.kind = "notation"
+	var stack := centered_column()
+	stack.add_child(label("HEAR IT. COUNT IT. MAKE IT YOURS.", 11, LIME))
+	stack.add_child(label(lesson.title, 42, PAPER, true))
+	stack.add_child(label(lesson.objective, 18, Color(PAPER, 0.8), true))
+	stack.add_child(label(lesson.explanation, 14, MUTED, true))
+	canvas = load("res://scripts/drum_notation.gd").new()
 	canvas.authored = lesson.events
-	canvas.custom_minimum_size.y = 185
-	canvas.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_child(canvas)
-	content.add_child(label("ONE-BAR PATTERN / COUNTS  /  4/4  /  R and L are suggested sticking.", 12, MUTED))
+	canvas.lesson_title = lesson.title
+	stack.add_child(canvas)
+	stack.add_child(label("Count " + str(lesson.counts) + "  ·  R and L are suggested sticking, not verified hands.", 12, MUTED, true))
+	stage_feedback = label("", 13, MUTED)
+	stack.add_child(stage_feedback)
+	update_prepare_summary()
 	var controls := row()
-	content.add_child(controls)
-	controls.add_child(label("Tempo", 15, MUTED))
-	var speed := SpinBox.new()
+	controls.visible = options_open
+	stack.add_child(controls)
+	controls.add_child(label("TEMPO", 10, MUTED))
+	var speed = SettingsPanel.VolumeSlider.new()
 	speed.min_value = 30
 	speed.max_value = 240
 	speed.step = 1
 	speed.value = tempo
-	speed.suffix = " BPM"
-	speed.custom_minimum_size.x = 155
-	speed.value_changed.connect(func(value): tempo = value; update_prepare_summary())
+	speed.custom_minimum_size.x = 115
+	speed.accessibility_name = "Practice tempo"
+	speed.accessibility_description = "Use Left and Right to adjust beats per minute."
+	speed.tooltip_text = "%d BPM" % tempo
 	controls.add_child(speed)
+	var tempo_label := label("%d BPM" % tempo, 13, PAPER)
+	tempo_label.custom_minimum_size.x = 70
+	controls.add_child(tempo_label)
+	speed.value_changed.connect(func(value): tempo = value; tempo_label.text = "%d BPM" % tempo; speed.tooltip_text = tempo_label.text; update_prepare_summary())
 	var length := OptionButton.new()
-	for amount in [4, 8, 16, 32]:
-		length.add_item("%d bars" % amount)
-	length.select([4, 8, 16, 32].find(bars))
-	length.item_selected.connect(func(choice): bars = [4, 8, 16, 32][choice]; update_prepare_summary())
+	for caption in ["1 bar · repair", "4 bars · short", "8 bars", "16 bars · practice", "32 bars"]:
+		length.add_item(caption)
+	length.select([1, 4, 8, 16, 32].find(bars))
+
 	controls.add_child(length)
 	var mode := OptionButton.new()
-	for name in ["Follow the track", "Hide alternate bars", "Recall with click only"]:
-		mode.add_item(name)
+	for caption in ["Follow the track", "Hide alternate bars", "Click-only recall"]: mode.add_item(caption)
 	mode.select(guidance)
-	mode.item_selected.connect(func(choice): guidance = choice; update_prepare_summary())
+	mode.item_selected.connect(func(choice):
+		guidance = choice
+		if guidance == 1 and bars == 1: bars = 4; length.select(1)
+		update_prepare_summary())
+	length.item_selected.connect(func(choice):
+		bars = [1, 4, 8, 16, 32][choice]
+		if bars == 1 and guidance == 1: guidance = 0; mode.select(0)
+		update_prepare_summary())
 	controls.add_child(mode)
-	stage_feedback = label("", 14, MUTED)
-	content.add_child(stage_feedback)
-	update_prepare_summary()
 	var actions := row()
-	content.add_child(actions)
-	var start := button("Start practice", start_take, true)
+	stack.add_child(actions)
+	var start := button("Start playing", start_take, true)
 	start.disabled = engine == null
 	actions.add_child(start)
-	actions.add_child(button("Learning path", func(): show_learn(lesson_index)))
+	actions.add_child(button("Lesson check", show_learning_check))
+	var options := button("Practice options", func(): options_open = not options_open; controls.visible = options_open)
+	actions.add_child(options)
+	stack.add_child(label("Reading check saved." if model.save.read.get(lesson.version, false) else "Read the bar, then keep counting as you play.", 12, LIME))
 	if not smoke: start.call_deferred("grab_focus")
 
 func update_prepare_summary() -> void:
 	if stage_feedback != null:
-		stage_feedback.text = "%d seconds of playing · %d bars · Four-beat count-in · Same scoring in every view" % [roundi(bars * 4 * 60 / tempo), bars]
+		stage_feedback.text = "%d BPM · %d bars · About %d seconds of playing · Four-beat count-in" % [tempo, bars, roundi(bars * 4 * 60 / tempo)]
 
 func start_take() -> void:
 	if engine == null:
@@ -455,35 +474,100 @@ func stop_take() -> void:
 func show_result() -> void:
 	stage_done = true
 	clear_page("result")
-	gap(content, 0, true)
-	content.add_child(label("YOUR TAKE  /  " + model.course.lessons[lesson_index].title.to_upper(), 12, MUTED))
-	result_score = label("", 66, LIME)
-	content.add_child(result_score)
-	result_detail = label("", 24, PAPER, true)
-	content.add_child(result_detail)
-	result_best = label("", 15, MUTED, true)
-	content.add_child(result_best)
-	content.add_child(label("Points reward notes inside ±50 ms. Missing and extra hits lower your score.", 13, MUTED, true))
-	gap(content, 14)
+	result_fingerprint = ""
+	result_grade_fingerprint = ""
+	var stack := centered_column(12)
+	stack.add_child(label("LISTEN. ADJUST. GO AGAIN.", 11, LIME))
+	stack.add_child(label("%s  ·  %d BPM  ·  %d bars  ·  %s" % [model.course.lessons[lesson_index].title, tempo, bars, ["Guided", "Hide alternate bars", "Click-only"][guidance]], 11, MUTED))
+	stack.add_child(label("Your take." if bool(snapshot.get("naturally_completed", false)) else "Take stopped.", 36))
+	result_detail = label("", 17, Color(PAPER, 0.75), true)
+	stack.add_child(result_detail)
+	result_visual = ScoreReview.new()
+	stack.add_child(result_visual)
+	var metrics := row()
+	metrics.add_theme_constant_override("separation", 38)
+	for caption in ["HITS", "MISSES", "EXTRAS", "BEST COMBO"]:
+		var group := VBoxContainer.new()
+		var value := label("0", 26)
+		result_metrics.append(value)
+		group.add_child(value)
+		group.add_child(label(caption, 11, MUTED))
+		metrics.add_child(group)
+	stack.add_child(metrics)
+	stack.add_child(label("Points reward notes inside ±50 ms. Missing and extra hits lower your score.", 12, MUTED, true))
+	result_best = label("", 13, LIME, true)
+	stack.add_child(result_best)
 	var actions := row()
-	content.add_child(actions)
+	stack.add_child(actions)
 	actions.add_child(button("Play again", start_take, true))
-	actions.add_child(button("Change practice", build_prepare))
-	actions.add_child(button("Learning path", func(): show_learn(model.frontier())))
-	var lesson: Dictionary = model.course.lessons[lesson_index]
-	gap(content, 20)
-	content.add_child(label("TAKE IT OFF THE TRACK", 12, LIME))
-	content.add_child(label(lesson.reading_question, 21, PAPER, true))
-	var answers := row()
-	content.add_child(answers)
-	for index in range(lesson.reading_choices.size()):
-		var answer := button(lesson.reading_choices[index], func(): answer_reading(index))
-		answer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		answers.add_child(answer)
-	stage_feedback = label("", 14, MUTED, true)
-	content.add_child(stage_feedback)
-	gap(content, 0, true)
+	actions.add_child(button("Slow it down", func(): tempo = maxf(30, tempo - 6); start_take()))
+	actions.add_child(button("Work on one bar", func(): bars = 1; guidance = 0 if guidance == 1 else guidance; start_take()))
+	actions.add_child(button("Try less help" if guidance < 2 else "Repeat click-only", func():
+		if guidance == 2: start_take(); return
+		guidance += 1
+		if guidance == 1 and bars == 1: bars = 4
+		build_prepare()))
+	var next_actions := row()
+	stack.add_child(next_actions)
+	next_actions.add_child(button("Lesson check", show_learning_check))
+	next_lesson_button = button("Next lesson", func(): show_prepare(mini(11, lesson_index + 1)))
+	next_lesson_button.disabled = lesson_index >= 11 or lesson_index >= model.frontier()
+	next_actions.add_child(next_lesson_button)
+	next_actions.add_child(button("Practice options", func(): options_open = true; build_prepare()))
+	next_actions.add_child(button("Learning path", func(): show_learn(model.frontier())))
 	update_result()
+
+func show_learning_check() -> void:
+	if check_overlay != null: return
+	var lesson: Dictionary = model.course.lessons[lesson_index]
+	check_return = page
+	modal_focus.clear()
+	for control in find_children("*", "Control", true, false):
+		if control.focus_mode != Control.FOCUS_NONE:
+			modal_focus.append([control, control.focus_mode])
+			control.focus_mode = Control.FOCUS_NONE
+	check_overlay = ColorRect.new()
+	check_overlay.color = Color(0.015, 0.023, 0.026, 0.9)
+	check_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(check_overlay)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	check_overlay.add_child(center)
+	var panel := PanelContainer.new()
+	var background := StyleBoxFlat.new()
+	background.bg_color = Color("11191b")
+	background.border_color = Color(PAPER, 0.1)
+	background.set_border_width_all(1)
+	background.set_corner_radius_all(18)
+	for side in ["left", "right", "top", "bottom"]: background.set("content_margin_" + side, 32)
+	panel.add_theme_stylebox_override("panel", background)
+	center.add_child(panel)
+	var stack := VBoxContainer.new()
+	stack.custom_minimum_size.x = 672
+	stack.add_theme_constant_override("separation", 14)
+	panel.add_child(stack)
+	stack.add_child(label("CONNECT IT TO REAL DRUMMING", 11, LIME))
+	stack.add_child(label(lesson.reading_question, 23, PAPER, true))
+	for index in range(lesson.reading_choices.size()):
+		stack.add_child(button(lesson.reading_choices[index], func(): answer_reading(index)))
+	stage_feedback = label("Choose an answer. You can revisit this check any time.", 13, MUTED, true)
+	stack.add_child(stage_feedback)
+	stack.add_child(label(lesson.technique_tip, 13, PAPER, true))
+	stack.add_child(label("Self-check only. MIDI cannot verify your technique.", 11, MUTED))
+	var done := button("Done", close_learning_check, true)
+	stack.add_child(done)
+	if not smoke: done.call_deferred("grab_focus")
+
+func close_learning_check() -> void:
+	if check_overlay == null: return
+	check_overlay.queue_free()
+	check_overlay = null
+	for item in modal_focus:
+		if is_instance_valid(item[0]): item[0].focus_mode = item[1]
+	modal_focus.clear()
+	stage_feedback = null
+	if check_return == "result": show_result()
+	else: build_prepare()
 
 func answer_reading(answer: int) -> void:
 	var lesson: Dictionary = model.course.lessons[lesson_index]
@@ -499,17 +583,28 @@ func answer_reading(answer: int) -> void:
 		stage_feedback.text = "Try again. " + lesson.explanation
 
 func update_result() -> void:
-	if result_score == null:
+	if result_detail == null:
 		return
 	var complete := bool(snapshot.get("naturally_completed", false))
 	var points_value := DataModel.points(snapshot, complete)
-	var fingerprint := JSON.stringify([points_value, snapshot.get("matched"), snapshot.get("missed"), snapshot.get("extra"), snapshot.get("best_streak")])
-	if fingerprint == result_fingerprint:
-		return
-	result_fingerprint = fingerprint
-	if complete:
+	var grade_fingerprint := JSON.stringify([points_value, snapshot.get("matched"), snapshot.get("missed"), snapshot.get("extra"), snapshot.get("best_streak")])
+	if complete and grade_fingerprint != result_grade_fingerprint:
 		model.record(take_id, take_lesson_index, snapshot, take_settings)
-	result_score.text = "%s   %s" % [star_string(DataModel.stars(points_value, complete)), str(points_value).pad_zeros(5)]
+		result_grade_fingerprint = grade_fingerprint
+	var comparable_attempts: Array = model.save.attempts.filter(func(attempt): return attempt.lesson == model.course.lessons[lesson_index].id and attempt.version == model.course.lessons[lesson_index].version and attempt.settings == take_settings)
+	var saved := comparable_attempts.any(func(attempt):
+		if attempt.id != take_id or int(attempt.points) != points_value: return false
+		for key in ["matched", "on_time", "missed", "extra", "expected", "best_streak"]:
+			if int(attempt[key]) != int(snapshot.get(key, 0)): return false
+		return true)
+	var fingerprint := JSON.stringify([grade_fingerprint, saved, model.error, model.frontier(), comparable_attempts])
+	if fingerprint == result_fingerprint: return
+	result_fingerprint = fingerprint
+	if next_lesson_button != null:
+		next_lesson_button.disabled = lesson_index >= 11 or lesson_index >= model.frontier()
+	result_visual.update_score(snapshot, score_before, comparable_attempts, take_id if saved else "")
+	var metric_keys := ["matched", "missed", "extra", "best_streak"]
+	for index in range(result_metrics.size()): result_metrics[index].text = str(int(snapshot.get(metric_keys[index], 0)))
 	var timing_count := int(snapshot.get("matched", 0))
 	if not complete:
 		result_detail.text = "Take stopped. Restart with a fresh count-in."
@@ -518,9 +613,9 @@ func update_result() -> void:
 	elif timing_count == 0:
 		result_detail.text = "No matched notes yet. Check your input, then follow the count."
 	else:
-		result_detail.text = "%d on time · %d missed · %d extra · Best combo %d" % [int(snapshot.get("on_time", 0)), int(snapshot.get("missed", 0)), int(snapshot.get("extra", 0)), int(snapshot.get("best_streak", 0))]
+		result_detail.text = "Keep the spaces even. Listen to the click and make one adjustment for your next take."
 	var comparable: Dictionary = model.best(lesson_index, take_settings)
-	result_best.text = ("New personal best. " if complete and points_value > score_before and score_before >= 0 else "") + ("Best with these settings: %d points." % int(comparable.points) if not comparable.is_empty() else "Complete a full take to save your first record.")
+	result_best.text = ("New personal best. " if complete and saved and points_value > score_before and score_before >= 0 else "") + ("Best with these settings: %d points." % int(comparable.points) if not comparable.is_empty() else "Complete a full take to save your first record.")
 	if model.error != "":
 		result_best.text = model.error
 	update_footer()
@@ -631,13 +726,14 @@ func _process(_delta: float) -> void:
 	snapshot = engine.snapshot()
 	if bool(snapshot.get("naturally_completed", false)) and take_id != "":
 		var grade_fingerprint := JSON.stringify([snapshot.get("on_time"), snapshot.get("matched"), snapshot.get("missed"), snapshot.get("extra"), snapshot.get("best_streak")])
-		if grade_fingerprint != saved_fingerprint and model.record(take_id, take_lesson_index, snapshot, take_settings):
-			saved_fingerprint = grade_fingerprint
+		if grade_fingerprint != saved_fingerprint and now >= save_retry_at:
+			save_retry_at = now + 1.0
+			if model.record(take_id, take_lesson_index, snapshot, take_settings): saved_fingerprint = grade_fingerprint
 	if str(snapshot.get("source_id", "")) != source_id:
 		source_id = str(snapshot.get("source_id", ""))
 		checked.clear()
 		if page == "settings": refresh_sources()
-	if canvas != null:
+	if canvas != null and page in ["stage", "settings"]:
 		canvas.current_host = now
 		canvas.pulses = pulses
 		if page == "stage":
@@ -694,11 +790,17 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	if event.keycode == KEY_ESCAPE:
-		if page == "stage": show_pause()
+		if check_overlay != null: close_learning_check()
+		elif page == "stage": show_pause()
 		else: show_main()
 		get_viewport().set_input_as_handled()
 		return
+	if check_overlay != null: return
 	if get_viewport().gui_get_focus_owner() is LineEdit or get_viewport().gui_get_focus_owner() is TextEdit:
+		return
+	if event.keycode == KEY_ENTER and page in ["prepare", "result", "pause"]:
+		start_take()
+		get_viewport().set_input_as_handled()
 		return
 	if engine != null and page in ["prepare", "settings"]:
 		var pad: int = int({KEY_A: 0, KEY_S: 1, KEY_SPACE: 2}.get(event.physical_keycode, -1))
@@ -816,6 +918,9 @@ func smoke_test() -> void:
 		for failure in visual_result.failures:
 			verify(false, str(failure))
 	projection.free()
+	var notation_result := NotationContract.new().run_checks(get_tree().root)
+	smoke_checks += int(notation_result.checks)
+	verify(notation_result.failures == 0, "native notation event/voice contracts")
 	var manifest = JSON.parse_string(FileAccess.get_file_as_string("res://assets/BigRusty/manifest.json"))
 	if verify(manifest is Array and manifest.size() == 24, "sample manifest count"):
 		for entry in manifest:
@@ -832,16 +937,65 @@ func smoke_test() -> void:
 	build_shell()
 	show_main()
 	await get_tree().process_frame
+	if engine != null:
+		smoke = false
+		_process(0)
+		smoke = true
 	verify(root_stack.get_combined_minimum_size().y <= size.y - 48 and root_stack.get_combined_minimum_size().x <= size.x - 88, "main content fits default viewport")
 	show_learn(0)
 	await get_tree().process_frame
+	if engine != null:
+		smoke = false
+		_process(0)
+		smoke = true
 	verify(root_stack.get_combined_minimum_size().y <= size.y - 48 and root_stack.get_combined_minimum_size().x <= size.x - 88, "learn content fits default viewport")
 	build_prepare()
 	await get_tree().process_frame
+	if engine != null:
+		smoke = false
+		_process(0)
+		smoke = true
 	verify(root_stack.get_combined_minimum_size().y <= size.y - 48 and root_stack.get_combined_minimum_size().x <= size.x - 88, "prepare content fits default viewport")
 	show_settings()
 	await get_tree().process_frame
+	if engine != null:
+		smoke = false
+		_process(0)
+		smoke = true
 	verify(root_stack.get_combined_minimum_size().y <= size.y - 48 and root_stack.get_combined_minimum_size().x <= size.x - 88, "settings content fits default viewport")
+	# Inspect every menu at the supported minimum; exercise modal focus isolation.
+	get_window().size = Vector2i(1020, 780)
+	for destination in ["main", "learn", "prepare", "result", "settings"]:
+		match destination:
+			"main": show_main()
+			"learn": show_learn(11)
+			"prepare": build_prepare()
+			"result": show_result()
+			"settings": show_settings()
+		await get_tree().process_frame
+		if engine != null:
+			smoke = false
+			_process(0)
+			smoke = true
+		verify(root_stack.get_combined_minimum_size().x <= size.x - 40 and root_stack.get_combined_minimum_size().y <= size.y - 40, destination + " fits minimum logical viewport")
+	build_prepare()
+	show_learning_check()
+	verify(not modal_focus.is_empty() and modal_focus.all(func(item): return item[0].focus_mode == Control.FOCUS_NONE), "quiz prevents keyboard focus reaching underlying actions")
+	close_learning_check()
+	verify(check_overlay == null and modal_focus.is_empty() and back.focus_mode != Control.FOCUS_NONE, "closing quiz restores shell focus")
+	var repair_evidence: Dictionary = evidence.duplicate(true)
+	repair_evidence.settings.bars = 1
+	repair_evidence.lesson = model.course.lessons[0].id
+	repair_evidence.version = model.course.lessons[0].version
+	repair_evidence.expected = 4
+	repair_evidence.matched = 4
+	repair_evidence.missed = 0
+	repair_evidence.on_time = 2
+	repair_evidence.best_streak = 2
+	verify(model.valid_attempt(repair_evidence), "one-bar repair records are valid")
+	model.save.attempts = [repair_evidence]
+	verify(not model.cleared(0), "one-bar repair cannot unlock another lesson")
+	model.save = clean_save
 	if smoke_failed:
 		get_tree().quit(1)
 	else:

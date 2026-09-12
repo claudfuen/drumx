@@ -11,6 +11,7 @@ class DrumxEngine : public RefCounted {
 protected:
   static void _bind_methods();
 public:
+  bool configure_window(int64_t native_handle);
   double get_host_time() const;
   bool load_chart(double bpm, int bars, const Array &events);
   double start(int count_in_beats = 4);

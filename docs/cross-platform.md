@@ -2,7 +2,7 @@
 
 The portable baseline now builds the existing C++ scoring core through CMake and runs its contracts through CTest. A GitHub Actions matrix targets macOS and Windows in Debug and Release, with an additional macOS sanitizer job. This brings compiler and scoring differences into the feedback loop while the Mac experience continues to develop.
 
-The core baseline is now accompanied by an [experimental native bridge](../apps/game/native/README.md): CoreMIDI and WinMM capture, shared sample playback, and a Godot extension. The bridge builds and passes its Mac checks; Windows application execution is still pending. The original AppKit interface, Swift course models, and local progress store remain the working Mac implementation. The first shared interface failed visual review, so visual parity and the production-engine decision remain open.
+The core baseline is now accompanied by an [experimental native bridge](../apps/game/native/README.md): CoreMIDI and WinMM capture, shared sample playback, and a Godot extension. The bridge and both exported applications passed the [first paired desktop CI run](https://github.com/claudfuen/drumx/actions/runs/34713214121). Physical Windows graphics, MIDI, and audio are still untested. The original AppKit interface, Swift course models, and local progress store remain the working Mac implementation. The first shared interface failed visual review, so visual parity and the production-engine decision remain open.
 
 ## Build and test
 

@@ -2,9 +2,13 @@
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/core/class_db.hpp>
 #include <cmath>
+#if defined(__APPLE__)
+#include "window_appearance.h"
+#endif
 
 namespace godot {
 void DrumxEngine::_bind_methods() {
+  ClassDB::bind_method(D_METHOD("configure_window", "native_handle"), &DrumxEngine::configure_window);
   ClassDB::bind_method(D_METHOD("get_host_time"), &DrumxEngine::get_host_time);
   ClassDB::bind_method(D_METHOD("load_chart", "bpm", "bars", "events"), &DrumxEngine::load_chart);
   ClassDB::bind_method(D_METHOD("start", "count_in_beats"), &DrumxEngine::start, DEFVAL(4));
@@ -22,6 +26,14 @@ void DrumxEngine::_bind_methods() {
   ClassDB::bind_method(D_METHOD("set_monitoring", "enabled"), &DrumxEngine::set_monitoring);
   ClassDB::bind_method(D_METHOD("set_volume", "value"), &DrumxEngine::set_volume);
   ClassDB::bind_method(D_METHOD("keyboard_hit", "pad", "velocity"), &DrumxEngine::keyboard_hit);
+}
+bool DrumxEngine::configure_window(int64_t native_handle) {
+#if defined(__APPLE__)
+  return native_handle > 0 && drumx::configure_window_appearance(uint64_t(native_handle));
+#else
+  (void)native_handle;
+  return false;
+#endif
 }
 double DrumxEngine::get_host_time() const { return drumx::host_time(); }
 bool DrumxEngine::load_chart(double bpm, int bars, const Array &events) {

@@ -4,6 +4,14 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Restore the lesson-screen hierarchy
+
+- Carry the original featured lesson and connected path into the shared interface, with distinct recorded-star and future-goal states plus specific practice/reading lock requirements.
+- Replace the hit grid with the original five-line drum staff, upper/lower voices, rests, beams, counts, and instrument key. Verify 206 event/voice semantics checks across all 12 lessons and unsupported inputs.
+- Collapse practice controls, restore one-bar repair, show compact result stars and recent comparable takes, and move reading questions into a separate focus-contained overlay. Keep new lessons guided at 16 bars and prevent hidden-bar labels on a fully visible one-bar repair.
+- Match the original Mac window's dark appearance without changing its content geometry. Keep platform-specific appearance outside the shared game layout.
+- Run 7,717 source and exported Mac smoke checks, including live per-page polling, minimum-size layout, quiz focus isolation, and partial-take progression boundaries. Learn and dark chrome were inspected in the exported Mac app; final inspection of restored preparation/review remains pending.
+
 ### Recover the shared presentation before release
 
 - Correct physical-pixel versus logical-point sizing on Retina displays; preserve the original Mac menu composition, typography, and detailed percussion artwork in the shared renderer.

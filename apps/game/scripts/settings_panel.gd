@@ -121,7 +121,7 @@ class VolumeSlider:
 		var y := size.y / 2
 		var left := 11.0
 		var right := maxf(left, size.x - 11)
-		var x := lerpf(left, right, float(value))
+		var x := lerpf(left, right, clampf((float(value) - min_value) / maxf(0.000001, max_value - min_value), 0, 1))
 		draw_line(Vector2(left, y), Vector2(right, y), Color(PAPER, 0.13), 4, true)
 		draw_line(Vector2(left, y), Vector2(x, y), LIME, 4, true)
 		if has_focus():

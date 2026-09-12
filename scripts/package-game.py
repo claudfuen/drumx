@@ -140,7 +140,7 @@ def main() -> None:
                 "sample_manifest_sha256": sample_hash, "native_extension_sha256": fetch.sha256(exported_library[0]),
                 "font_provenance_sha256": font_hash,
                 "verified": ["24 original samples and provenance", "pinned Inter font and OFL license", "source headless smoke", "packaged headless smoke"],
-                "not_verified": ["physical MIDI kit", "audible output latency", "Windows graphics on a physical PC"],
+                "not_verified": ["full visual parity", "physical MIDI kit", "audible output latency", "Windows graphics on a physical PC"],
                 "signing": "ad-hoc, not notarized" if mac else "unsigned"}
     (package / "build-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     write_third_party_notices(package)

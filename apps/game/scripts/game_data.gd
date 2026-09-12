@@ -162,7 +162,7 @@ func valid_settings(value: Variant, take: bool) -> bool:
 	if not value is Dictionary:
 		return false
 	if take:
-		return whole(value.get("bpm"), 30, 240) and whole(value.get("bars"), 4, 32) and whole(value.get("guidance"), 0, 2) and value.get("source") is String and valid_mapping(value.get("mapping"))
+		return whole(value.get("bpm"), 30, 240) and whole(value.get("bars"), 1, 32) and whole(value.get("guidance"), 0, 2) and value.get("source") is String and valid_mapping(value.get("mapping"))
 	if value.has("mapping") and not valid_mapping(value.mapping):
 		return false
 	if value.has("monitoring") and not value.monitoring is bool:
