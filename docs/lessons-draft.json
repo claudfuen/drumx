@@ -1,7 +1,7 @@
 {
   "status": "curriculum and literacy draft; not an implemented course",
   "schemaDraftVersion": 2,
-  "implementationScope": "Framework-independent lesson proposals. The native timing lab currently uses a fixed groove and does not load this course, render staff notation, or verify progression.",
+  "implementationScope": "Framework-independent lesson proposals. The native lab has one playable backbeat lesson with an original one-bar staff study, listening, assistance modes, and review. It does not load this draft course or implement its full lesson sequence and learning gates.",
   "sourceReferences": [
     {
       "id": "pas-rudiments",
@@ -21,6 +21,7 @@
   ],
   "progressionPolicy": {
     "status": "proposed and unevaluated",
+    "canonicalGateReference": "docs/learning-milestones.md#readiness-is-separate-from-the-game-score",
     "targetBpmMeaning": "Suggested practice tempo, never a mastery requirement. Lower tempo when necessary.",
     "separateEvidence": [
       "timing and instrument coverage",
@@ -34,7 +35,7 @@
     "dynamicsVerification": "Velocity depends on trigger settings. Timing accuracy does not verify accents, grip, rebound, posture, or foot technique."
   },
   "learningViews": {
-    "status": "planned",
+    "status": "planned for this draft course; the current native lab has one original backbeat staff study",
     "sharedMusicalSource": "Generate staff notation, counts, sticking, accents, and game targets from the same lesson steps.",
     "sequence": [
       "hear and name",

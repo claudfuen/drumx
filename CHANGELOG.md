@@ -4,6 +4,13 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Learning milestones and the next product gate
+
+- Mark M0, the mechanics and UI concept, achieved; make M1, a complete beginner learning journey, the active focus in the README.
+- Define player, kit, skill, exercise, lesson, practice condition, evidence, and learning gate; separate game scores from readiness.
+- Give M1 observable acceptance criteria for setup, individual progress, a small foundation unit, reduced guidance, review, and return/resume. Track later rudiments, retention, and musical application as planned milestones.
+- Keep hardware reliability and public distribution as parallel quality gates; concept acceptance does not imply measured physical latency or a release-ready app.
+
 ### Bottom capture rail
 
 - Add fixed drum/cymbal receptors and a full-width kick catcher on the shared NOW line.

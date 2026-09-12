@@ -1,0 +1,116 @@
+# Learning definitions and product milestones
+
+Drumx should help a player hear, count, read, play, recall, and use a rhythm. These definitions connect that promise to the product we build and the evidence we collect. They are a planning contract, not an implemented course or a certification standard.
+
+**Current milestone: M0 done, mechanics/UI prototype accepted as a concept. M1 active, complete beginner learning loop. M2 through M4 planned.** Hardware latency and sustained frame pacing remain unmeasured; accepting the concept does not close those quality questions.
+
+The current macOS lab has one playable backbeat lesson, an original staff study, demonstrations, assistance modes, review, and local comparable attempt history. Separate player profiles and a complete beginner unit are still ahead. See [current behavior](native-lab.md), [curriculum proposals](curriculum.md), and [draft lesson data](lessons-draft.json). This document owns definitions and milestone acceptance; the lesson guide owns implementation details.
+
+## Shared learning language
+
+| Term | Meaning and relationship |
+| --- | --- |
+| Player / player profile | A person and their local goals, preferences, learning evidence, and resume position. Different players can use the same kit without sharing progress. A profile's chosen experience level is a starting preference, not a demonstrated skill level. |
+| Kit / input profile | The musical setup and a saved description of how a device reports it: source, mappings, available articulations, monitoring route, and fixed timing offset. A player may use several setups; several players may share one. |
+| Skill | A specific ability, such as maintaining eighth notes, reading a rest, controlling doubles, or returning to beat one after a fill. A skill can appear in many lessons and require several kinds of evidence. |
+| Exercise | A versioned musical task: events, meter, counts, notation, suggested sticking, articulations, and intended skills. Its identity is separate from today's tempo and assistance. A rudiment is not a tempo preset. |
+| Lesson | A teaching sequence around a clear outcome: explanation, listening, one or more exercises, practice, review, and a suggested next step. Opening a lesson does not complete it. |
+| Practice condition | The exact circumstances of an attempt: exercise version, tempo, phrase length, input profile, monitoring, offset, click/backing track, and enabled aids. It defines which performances are comparable. |
+| Guidance / scaffold | An aid supplied before or during playing: upcoming targets, counts, staff, sticking hints, beat animation, or a demonstration. Live correctness feedback is a separate aid. Removing targets does not necessarily remove every cue. |
+| Attempt | One bounded performance by one player of one exercise under one condition. Record completion or interruption; demonstrations are not attempts. Preserve captured results without treating an interrupted take as a completed achievement. |
+| Evidence | A dated observation tied to its source and conditions: MIDI timing, omissions/extras, a reading response, a recall attempt, or a self/teacher technique check. Missing evidence remains unknown. |
+| Learning gate | A stated readiness decision for a next task, based on specified evidence. It recommends suitable practice and explains gaps; it does not certify the whole skill from one score. |
+| Course checkpoint | A small bundle of related learning gates that makes an outcome visible, such as counting, reading, and recalling a basic backbeat. A product milestone delivers the ability to teach and assess such checkpoints. |
+
+A player takes a lesson, performs its exercises under recorded conditions, and accumulates evidence. Learning gates use that evidence to recommend a next step. Course checkpoints combine those gates; product milestones deliver usable parts of this experience.
+
+### Musical identity and physical input are different
+
+- **Instrument:** the musical destination, such as bass drum, snare, or hi-hat. It determines the staff/kit identity, not the limb that played it.
+- **Physical control and zone:** the actual pad, head/rim zone, cymbal bow/edge, or pedal. An input profile maps their reported events to musical meaning when the hardware distinguishes them.
+- **Articulation:** the intended way an instrument sounds, such as a closed hi-hat strike, open strike, or pedal chick. Preserve distinctions an exercise needs instead of flattening every event into a generic hi-hat hit.
+- **Continuous state:** a module may report hi-hat openness through MIDI control changes. That state is distinct from a note event and needs a supported, module-specific interpretation.
+- **Input alias:** different incoming notes accepted as one current target. The lab's broad hi-hat group is an alias convenience, not proof that it distinguishes pedal technique or open/closed playing.
+- **Limb:** a suggested hand or foot belongs to instruction. A double bass-drum pedal can produce the same MIDI note from either foot; that stream cannot identify the foot. Two distinct reported inputs can retain their identity without proving physical technique.
+
+These are future capability boundaries, not claims that the lab implements pedal articulation, continuous hi-hat control, separate feet, or an editable full kit. An exercise must declare the distinctions it needs; unsupported distinctions require an explicit adaptation or an unassessed outcome. They must not silently receive a passing grade.
+
+## Readiness is separate from the game score
+
+Stars, streaks, percentages, and personal bests reward a performance under stated conditions. They are not a learner's overall level. Preserve separate evidence for:
+
+| Evidence | Readiness question |
+| --- | --- |
+| Timing and coverage | Can the player repeat the complete pattern at a comfortable tempo without relying on omitted or extra strokes? |
+| Counts and reading | Can they name the pattern, explain its counts, and read the relevant note values or rests without the highway? |
+| Recall | Can they play the phrase without upcoming-note guidance? Record whether live evaluation, staff, counts, and a click remain. |
+| Revisit | Can they recall it in a later session before hearing or seeing it again? |
+| Transfer | Can they use it in a changed phrase, at another comfortable tempo, or in a groove? Record which change was tested. |
+| Technique and dynamics | What was self-checked, heard, or observed by a teacher? Ordinary MIDI does not verify sticking, grip, rebound, posture, or foot technique. Module velocity is contextual evidence, not an automatic technique grade. |
+
+Suggested gate labels are **needs practice**, **ready to try the next task**, **recalled later**, and **applied in a variation**. Each names the evidence and any unresolved dimension. A next-task recommendation can coexist with an unobserved technique check; it must not label that check passed.
+
+Use repeated comparable attempts rather than only a best take. Retain supported and less-supported performances separately. A reading attempt with a staff is not a memory attempt. A click-only attempt tests recall against an external pulse; maintaining tempo through missing-click bars is a separate, later test.
+
+Timing windows and numerical star boundaries are **prototype score policy**, not learner gates. Any future numerical learning cutoff, repetition count, tempo target, or revisit interval is an **untested starting hypothesis** until evaluated with learners. Keep it configurable and versioned. No research-backed mastery percentage or automatic certification is specified here.
+
+## M0: Mechanics and UI concept
+
+**Status: done.**
+
+- **Player promise:** experience a short backbeat lesson and understand how the highway, shared timing line, capture rail, sound, assistance, and review fit together.
+- **Acceptance evidence:** an accepted playable concept with listen, count-in, play, review, and retry; a readable original staff study; guided, hidden-bar, and click-only conditions; software checks supporting the documented behavior.
+- **What does not count:** proof of learning, a complete beginner course, a production renderer decision, a release-ready installer, or measured physical latency. Keyboard/virtual MIDI checks do not establish real-kit performance.
+- **Boundary carried forward:** characterize hardware timing and rendering under stated conditions rather than treating concept acceptance as a performance benchmark.
+
+## M1: One complete beginner learning loop
+
+**Status: active.**
+
+- **Player promise:** a new drummer can set up, find a comfortable starting point, learn a small coherent foundation unit, understand their result, and know where to resume.
+- **Scope:** setup and baseline; pulse and counts; the current backbeat built in manageable steps; one checkpoint connecting listening, reading, guided playing, and an attempt with less help. This is one unit, not the entire curriculum.
+- **Acceptance evidence:** demonstrate the full setup → baseline → lesson → practice → review → next step → reopen/resume path without developer intervention. Two local players keep independent baselines and progress while sharing a kit. Saved evidence records the exercise and aids; a representative real-kit session confirms mappings, simultaneous hits, and recovery from a disconnected input under documented conditions.
+- **Learning gate:** the player can count the unit's pattern, recognize its basic notation, repeat it comfortably, and attempt it with less guidance. The review distinguishes measured performance from the learner's technique self-check and recommends a concrete next action.
+- **What does not count:** a longer lesson menu, automatic advancement from stars, a single polished screen, or treating keyboard success as physical-kit evidence.
+
+## M2: Rudiments, reading, and coordination
+
+**Status: planned.**
+
+- **Player promise:** connect named rudiments to real counts and notation, then use their timing in beginner-to-intermediate kit coordination.
+- **Scope:** Single Stroke Roll (`R L`), Double Stroke Open Roll (`R R L L`), and Single Paradiddle (`R L R R L R L L`); quarter/eighth/sixteenth values, rests, accents, suggested sticking, and basic coordination variations. Use [PAS's canonical reference](https://pas.org/rudiments/) and [official chart](https://pas.org/wp-content/uploads/2024/04/pas-rudiments.pdf), with original exercise notation.
+- **Acceptance evidence:** lessons teach and assess naming/counting, staff reading, playable patterns, and a small application. The notation, audible demonstration, and game targets agree. Prerequisites and a return-to-practice route work across the unit.
+- **Learning gate:** a player distinguishes singles, doubles, and paradiddles, counts their chosen subdivision, and demonstrates the task under recorded conditions. Sticking and controlled double-stroke technique remain self/teacher observations, separately labeled.
+- **What does not count:** three identical snare timelines with different titles, higher BPM alone, the full PAS list presented as completed teaching, or unsupported grace notes approximated as ordinary grid hits.
+
+## M3: Retention, transfer, and independence
+
+**Status: planned.**
+
+- **Player promise:** discover what remains when visual help disappears, and revisit it until it is useful beyond the last guided run.
+- **Scope:** deepen M1's short check with less guidance through scheduled revisits, adaptive practice recommendations, and explicit transfer tasks. Memory practice starts in the first unit; it is not withheld until this milestone.
+- **Acceptance evidence:** reversible assistance reduction; reading-only and strict click-only checks; evaluation after a strict recall phrase; a scheduled later-session first attempt before preview; and a controlled variation at another tempo or in another phrase. History distinguishes each condition and recommends a targeted repair when recall breaks down.
+- **Learning gate:** document recall, later recall, and the specific transfer demonstrated, rather than combining them into one mastery number. Optional missing-click work separately assesses maintaining pulse without continuous pacing.
+- **What does not count:** hidden targets with unreported live error cues, repeating immediately from short-term memory as evidence of later retention, or treating a high guided score as independence.
+- **Evaluation boundary:** cue fading is a product hypothesis to test against actual retention and learner experience. More difficulty is not automatically better teaching.
+
+## M4: Musical application and intermediate growth
+
+**Status: planned.**
+
+- **Player promise:** turn the learned vocabulary into musical playing and choose productive next work at their own level.
+- **Scope:** short groove-and-fill phrases, returning to one, dynamic contrast, orchestration, and progressively richer coordination; original or appropriately licensed accompaniment. Advanced topics enter as bounded units with explicit prerequisites and hardware requirements.
+- **Acceptance evidence:** a player can select an appropriate unit, hear and read its musical role, practice a difficult part, rejoin the phrase, apply a variation, and receive a recommendation grounded in their own history. A more experienced player can start beyond the beginner unit without changing another player's path.
+- **Learning gate:** demonstrate the named musical application across complete phrases and a variation. Keep timing/coverage evidence distinct from expressive choices and observed technique; an exact-match score is not a general measure of musicality.
+- **What does not count:** speed challenges alone, a song catalog without teaching, an “advanced” label on a denser pattern, or promising comprehensive advanced instruction from a small exercise set.
+
+## Quality gates run alongside the learning milestones
+
+Free macOS distribution is the product goal; Windows follows. Platform delivery is not a musical level or a reason to restart a player's progress. A public preview can open after M1 when the parallel usability, reliability, and distribution gates below are satisfied; it need not wait for the intermediate course.
+
+- **Input and timing:** document tested modules, input/monitoring paths, calibration, latency measurement methods, and frame behavior. Test device interruption and unsupported input distinctions. Publish measured boundaries without inventing a universal latency target.
+- **Progress and accessibility:** verify independent local profiles, reliable resume, evidence versioning, readable notation, stable kit positions, reduced motion, and comprehensible feedback without depending on color alone.
+- **Distribution:** prove a repeatable build/install/launch/update path on the supported platform, with truthful setup instructions and retained asset provenance. Windows gets its own input, audio, installer, and performance validation.
+- **Teaching quality:** review musical examples and their explanations, observe learners using the intended loop, and revise gates when outcomes contradict the proposal. Keep checkpoint scope explicit instead of promising certification.
+
+Close a product milestone with a reproducible player journey, the relevant checks, observed limitations, and an updated status. Update the README and changelog with that outcome; adding content or passing unrelated tests does not close its learning acceptance criteria.

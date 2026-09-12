@@ -8,7 +8,37 @@ The first playable lesson is **Your first backbeat**. Read its drum notation, he
 
 **Current build:** one playable native macOS lesson. Free public distribution is the goal; the larger course, production renderer, and Windows version are still ahead.
 
-[Run it](#quick-start) · [Lesson guide](docs/native-lab.md) · [Product direction](docs/pitch.md) · [Changelog](CHANGELOG.md)
+[Run it](#quick-start) · [Current milestone](#current-milestone) · [Lesson guide](docs/native-lab.md) · [Changelog](CHANGELOG.md)
+
+## Current milestone
+
+**M0 achieved: the game mechanics and UI concept. M1 active: one complete beginner learning journey.**
+
+The prototype established the shared timing line, stable kit layout, capture feedback, sound, guidance modes, and practice/review loop. We have an accepted concept to build on. Physical-kit latency, sustained frame pacing, and release readiness still need evidence.
+
+Our next milestone is a player outcome: **a new drummer can connect their kit, learn a small foundation unit, try it with less help, and return knowing what to practise next.** The menu, settings, curriculum, and saved progress should make that journey feel like one focused experience.
+
+| Milestone | Status | What the player gains |
+| --- | --- | --- |
+| **M0 · Mechanics and UI concept** | Achieved | Hear, play, capture, review, and retry a short backbeat on a consistent highway. |
+| **M1 · Complete beginner journey** | **Working towards** | Set up, find a starting point, learn pulse/counts/backbeat in small steps, review, and resume. |
+| **M2 · Rudiments and reading** | Planned | Learn named singles, doubles, and paradiddles through counts, notation, and coordination. |
+| **M3 · Retention and independence** | Planned | Build on early memory checks with later revisits, targeted practice, and variations. |
+| **M4 · Musical application** | Planned | Use the vocabulary in grooves, fills, dynamics, and intermediate coordination. |
+
+### What closes M1
+
+- [ ] **A confident first setup:** verify the kit's pads, sound route, and basic timing; recover clearly from a disconnected input.
+- [ ] **A starting point for each player:** two local players can share a kit while keeping separate baselines and progress.
+- [ ] **One coherent foundation unit:** teach pulse and counts, build the backbeat in manageable steps, and connect the sounds to real drum notation.
+- [ ] **A useful learning checkpoint:** check counting/reading, repeat the pattern, and attempt it with less guidance. Keep technique self-checks separate from MIDI evidence.
+- [ ] **An intentional next step:** review explains one useful adjustment and recommends practice or progression from the player's evidence.
+- [ ] **A complete return journey:** close and reopen, resume the right player's work, and retain comparable attempts with their exercise version and aids.
+- [ ] **An observed end-to-end run:** a beginner completes setup → lesson → practice → review → next step → return without developer intervention, including a documented real-kit session.
+
+These checkboxes are acceptance criteria, not completed features. A bigger lesson list or five-star run alone does not close the milestone. Stars reward a take; learning gates describe readiness using timing, reading, recall, and the evidence MIDI cannot provide.
+
+[Learning definitions and gates](docs/learning-milestones.md) specify the shared terms, evidence, and boundaries behind this roadmap. Reliability, accessibility, and distribution run alongside the learning milestones; a free public preview need not wait for the intermediate course. We close each milestone with a demonstrated journey, relevant checks, known limitations, and an updated README and changelog.
 
 ## A small lesson worth repeating
 
@@ -91,8 +121,9 @@ See [troubleshooting](docs/native-lab.md#troubleshooting) for setup help. Builds
 
 ## Where this goes next
 
-Next: validate real-kit timing, improve rendering, and expand into named rudiments, accents, reading, and musical application. The curriculum remains a draft; timing scores alone do not establish mastery.
+The active focus is **M1, the complete beginner journey**, using the accepted mechanics as its foundation. Real-kit validation and rendering work support that journey. The broader course remains a draft.
 
+- [Learning definitions and gates](docs/learning-milestones.md): the milestone contract and evidence for progression.
 - [Product pitch](docs/pitch.md): the learning experience and its scope.
 - [Curriculum](docs/curriculum.md) and [lesson data draft](docs/lessons-draft.json): real drum language and planned progression.
 - [Product research](docs/product-research.md): learning tools, rhythm games, and their tradeoffs.

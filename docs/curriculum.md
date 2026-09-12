@@ -1,6 +1,6 @@
 # Drumx starting curriculum
 
-This is a **proposed curriculum**, recorded in [lessons-draft.json](lessons-draft.json). The native lab currently tests a fixed groove; these lessons, notation views, and progression checks are not an implemented course.
+This is a **proposed curriculum**, recorded in [lessons-draft.json](lessons-draft.json). The native lab has one playable backbeat lesson with an original one-bar staff study, listening, assistance modes, and review. It does not load this draft course or implement its full lesson sequence and learning gates.
 
 The proposed course starts with a steady pulse, introduces three useful rudimental stickings, then applies timing to a basic drum-set groove. The learner should leave able to name, count, read, and explain what they played to a drum teacher. This is an original introductory practice sequence, not the full PAS curriculum or a substitute for a teacher observing technique.
 
@@ -51,6 +51,8 @@ The exact note values are exercise choices, not part of a rudiment's name. A Sin
 
 ## Evidence of progress
 
+The [learning definitions and milestones](learning-milestones.md) are the canonical reference for readiness gates, evidence, and product acceptance. The examples below apply that policy to this proposed curriculum.
+
 Keep separate records for timing, instrument coverage, count/term recognition, reading, recall, and the learner's or teacher's technique check. A proposed checkpoint combines a repeatable comfortable performance, a reading attempt without the lane, an explanation of the counts, and a later recall or variation attempt. These are product hypotheses to evaluate, not validated mastery thresholds.
 
 Never unlock a “mastered” badge solely because a target BPM or timing percentage was reached. A score should identify the phrase, tempo, selected aids, misses, extras, and timing error. Sticking and physical technique remain unverified by ordinary MIDI, even after a perfect timing score. Relative velocity feedback is useful only with its module-dependent limits made clear.
@@ -87,4 +89,4 @@ Sources checked September 12, 2026.
 - Open hi-hat control, pedal articulation, cymbal choking and multi-zone technique need controller and module-specific mapping.
 - Hand verification needs an independently validated sensing method. Ordinary single-zone snare MIDI cannot supply it.
 - Adaptive progression and technique assessment need evidence beyond a timing percentage, including consistency across sessions and learner or teacher checks.
-- Additional lead-hand variations, fills, musical backing tracks and an expanded rudiment library can follow this proposed introductory course. Paired notation and basic reading belong in its initial learning design, even though the current lab does not implement them.
+- Additional lead-hand variations, fills, musical backing tracks and an expanded rudiment library can follow this proposed introductory course. The current backbeat staff study is an initial reading example; extending paired notation and reading across this draft course remains planned.
