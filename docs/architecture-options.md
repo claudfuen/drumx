@@ -1,18 +1,18 @@
 # Architecture options and the native lab
 
-Status: first playable direction accepted. A native Mac engineering lab is being developed; the production front end is not selected and hardware latency has not been measured. Read [the lab guide](native-lab.md) for its concrete scope and [the product research](product-research.md) for the product hypothesis and shipped-product evidence.
+Status: the first native Mac lesson is playable, with an audible demonstration, notation, practice, review and comparable local bests. The production front end is not selected and hardware latency has not been measured. The next bounded renderer experiment is described in [the rendering plan](rendering-plan.md). Read [the lab guide](native-lab.md) for its concrete scope and [the product research](product-research.md) for the product hypothesis and shipped-product evidence.
 
 ## Current engineering lab
 
 The first implementation uses **Swift and AppKit on macOS 15**, **CoreMIDI** for input and **AVAudioEngine** for audio. A separate **C++17 scoring core with a C interface** owns the exercise, matching rules, misses, extra hits and timing summaries. The build uses Swift 5 language mode, not a language version called Swift 15.
 
-The exercise is a four-bar hi-hat/snare/kick backbeat with a one-bar count-in. MIDI mapping and A/S/Space input feed the same scoring behavior. Guided, Hidden bars and From memory differ in visual assistance, not target events. The native rail reserves seven fixed hand-instrument slots and a full-width kick bar, but only hi-hat, snare and kick are currently generated and scored.
+The exercise is a four-bar hi-hat/snare/kick backbeat with a one-bar count-in, with a one-bar practice option. A native audio-clock demonstration models the same groove; local review history compares complete takes under matching settings. MIDI mapping and A/S/Space input feed the same scoring behavior. Guided, Hidden bars and From memory differ in visual assistance, not target events. The native rail reserves seven fixed hand-instrument slots and a full-width kick bar, but only hi-hat, snare and kick are currently generated and scored.
 
 CoreMIDI event timestamps are preserved through delivery. The lab currently serializes scoring on the AppKit main thread; a slow UI can therefore delay calculation and visible feedback even though the score uses the original event time. The C++ core handles valid delayed input against its timestamp, including correction of a target already marked missed. This is a correctness mechanism, not a claim that the current UI/input delivery path meets a latency target.
 
 The click runs on the native audio render path. Reported output latency helps align its schedule with host time, but that estimate does not measure the physical kit or listening route. Optional native drum-sample monitoring is implemented independently from the click. MIDI sample triggers bypass the main/UI thread and enter a dedicated serial audio-control queue feeding a preloaded 32-voice AVAudioPlayerNode pool. Keyboard events first pass through AppKit before reaching the same sampler. Neither this separation nor the click's reported latency establishes measured monitor-output latency. See [the lab guide](native-lab.md) for controls and limits.
 
-This lab is a concrete way to evaluate the device, timing and feedback behavior before investing in a production scene. Its AppKit rail is not the final 3D game presentation. The scoring core can be reused by a later front end; the Mac audio, MIDI and application shell still require platform replacements for Windows.
+This lab is a concrete way to evaluate the device, timing and feedback behavior before investing in a production scene. Its AppKit rail now uses one explicit planar projection for the road and every timed note vertex, signed count-in travel and a soft horizon. It remains a provisional drawing layer, not the final game renderer. The scoring core can be reused by a later front end; the Mac audio, MIDI and application shell still require platform replacements for Windows.
 
 ## Product constraints
 
@@ -37,7 +37,7 @@ SwiftUI/AppKit with CoreMIDI/CoreAudio and Metal is also viable for a dedicated 
 
 ## Production front-end shortlist
 
-The accepted first playable direction is a focused rhythm-game practice loop with a full-width kick bar, stable instrument positions and progressively removable guidance. Unity and Flutter remain production front-end candidates; C++/JUCE remains the integrated music-software alternative. Compare the same exercise and timing workload before selecting a production stack. The supporting shipped-product evidence and tradeoffs are in [the product research](product-research.md).
+The accepted first playable direction is a focused rhythm-game practice loop with a full-width kick bar, stable instrument positions and progressively removable guidance. A bounded Godot practice-scene spike is the next recommendation in [the rendering plan](rendering-plan.md). Unity and Flutter remain alternatives from the earlier comparison; C++/JUCE remains the integrated music-software option. Compare the same exercise and timing workload before selecting a production stack. The supporting shipped-product evidence and tradeoffs are in [the product research](product-research.md).
 
 Electron/Pixi remains a technically possible architecture, described below to preserve the comparison. It is not a selected implementation or the default recommendation.
 
