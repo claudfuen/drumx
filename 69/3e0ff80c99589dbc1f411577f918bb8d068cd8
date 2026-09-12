@@ -1,0 +1,26 @@
+docs/architecture-options.md
+  s_f983bef49b9fee::t_2e4a49d522e7b2 9
+docs/native-lab.md
+  s_f983bef49b9fee::t_2e4a49d522e7b2 46,48,50,52,54,56,58,60,62,64,66,68,70,72,74,76-87,89,91,93-115,117,119,121
+docs/rendering-plan.md
+  s_f983bef49b9fee::t_6eb1689d9b71e0 7,11,19,25-29,37
+  s_f983bef49b9fee::t_c451dcabf76e6e 1-6,8-10,12-18,20-24,30-36,38-45
+README.md
+  s_f983bef49b9fee::t_d02be7527b3913 3,5,7,9,11,13-32,37-60,62,64-81,85-98,102,104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "693e0ff80c99589dbc1f411577f918bb8d068cd8",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
