@@ -1,4 +1,5 @@
 #include "drumx_core.h"
+#include "drumx_tempo.h"
 #include <stdio.h>
 
 int main(void) {
@@ -16,6 +17,20 @@ int main(void) {
         && snapshot.total.missed == 1 && snapshot.total.extra == 0;
     dx_core_destroy(core);
     if (!valid) { fputs("C API contract failed\n", stderr); return 1; }
+    const DXTempoContext tempo_context = {1, DX_TEMPO_POLICY_VERSION, 72, 16, DX_FOLLOW, 1};
+    const DXTempoAttempt takes[] = {
+        {1, 1, DX_TEMPO_POLICY_VERSION, 72, 16, DX_FOLLOW, 1, 64, 64, 64, 0, 0, 1, 1},
+        {2, 1, DX_TEMPO_POLICY_VERSION, 72, 16, DX_FOLLOW, 1, 64, 64, 64, 0, 0, 1, 1}
+    };
+    DXTempoDecision decision = {0};
+    if (!dx_tempo_evaluate(takes, 2, &tempo_context, &decision)
+        || !decision.checkpoint_earned || decision.action != DX_TEMPO_HIDE_NOTES
+        || decision.next_bpm != 72 || decision.next_guidance != DX_FADE
+        || decision.next_live_feedback != 1) {
+        fputs("C guided-tempo contract failed\n", stderr);
+        return 1;
+    }
     puts("C consumer linked and verified chord/miss snapshot through the public API.");
+    puts("C consumer verified the versioned guided-tempo checkpoint decision.");
     return 0;
 }

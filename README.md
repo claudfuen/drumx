@@ -22,7 +22,7 @@ The prototype established the shared timing line, stable kit layout, capture fee
 
 The active milestone is a player outcome: **a new drummer can connect their kit, learn a small foundation unit, try it with less help, and return knowing what to practise next.** Welcome, course selection, teaching, practice, review, and local progress are now connected. The next evidence comes from using the whole course with a beginner and a physical kit.
 
-**Next coaching slice within M1: guided tempo.** The app should recommend a lesson-authored starting pace, coach toward an explicit checkpoint, and keep faster challenges optional. Free practice retains manual control. This is a [documented proposal](docs/guided-tempo.md), not implemented behavior; current unlocks still use the rule described below. Visual recovery and hardware checks remain open.
+**Next coaching slice within M1: guided tempo.** The app should recommend a lesson-authored starting pace, coach toward an explicit checkpoint, and keep faster challenges optional. Free practice retains manual control. The [shared policy](docs/guided-tempo.md) is implemented and tested; connecting the native and shared lesson screens is the next slice. Current application unlocks still use the rule described below. Visual recovery and hardware checks remain open.
 
 **Quality bar: a small, finished game that could belong on Steam.** The first unit should feel deliberately designed from launch through the return visit: clear onboarding, cohesive visuals and sound, responsive play, satisfying feedback, and dependable recovery. Steam distribution and possible paid release are aspirations to evaluate; availability, pricing, and a source-code license are not decided.
 

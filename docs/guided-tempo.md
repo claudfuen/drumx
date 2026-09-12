@@ -1,6 +1,6 @@
 # Guided tempo and meaningful progression
 
-**Status: product proposal, not implemented.** This defines the next coaching slice within M1. It does not change current tempos, scores, unlocks, saves, or the visual acceptance gate for the shared port.
+**Status: shared evaluator implemented; application integration in progress.** The C policy and Godot binding are tested for Find the pulse only. The sections below define the complete M1 coaching slice; app behavior remains unchanged until its screens and persistence are connected. Visual and physical-kit acceptance remain separate gates.
 
 ## Who decides the tempo?
 

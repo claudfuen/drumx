@@ -22,7 +22,7 @@ FetchContent_Declare(godot_cpp GIT_REPOSITORY https://github.com/godotengine/god
 FetchContent_Declare(miniaudio URL https://github.com/mackron/miniaudio/archive/f40cf03f80cdb7e741d43e53b7e706e8c1394bcf.tar.gz SOURCE_SUBDIR drumx-header-only)
 FetchContent_MakeAvailable(godot_cpp miniaudio)
 set(DRUMX_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../../..")
-add_library(drumx_backend STATIC backend.cpp native_audio.cpp native_midi.cpp "${DRUMX_ROOT}/native/core/drumx_core.cpp")
+add_library(drumx_backend STATIC backend.cpp native_audio.cpp native_midi.cpp "${DRUMX_ROOT}/native/core/drumx_core.cpp" "${DRUMX_ROOT}/native/core/drumx_tempo.cpp")
 target_include_directories(drumx_backend PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}" "${DRUMX_ROOT}/native/core" PRIVATE "${miniaudio_SOURCE_DIR}")
 if(APPLE)
   target_link_libraries(drumx_backend PUBLIC "-framework CoreMIDI" "-framework CoreFoundation" "-framework CoreAudio" "-framework AudioToolbox")

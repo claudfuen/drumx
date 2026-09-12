@@ -32,6 +32,22 @@ The extension is emitted to `apps/game/bin/drumx_engine.dylib` on Mac or `drumx_
 
 `keyboard_hit(pad,velocity)` is a preview and keyboard-input path. When a MIDI source is selected it cannot add keyboard scores. `set_monitoring(bool)` and `set_volume(0...1)` control optional Drumx sample playback independently from the click. `load_sample_bank(directory, open_device=true)` reads the 24 FLAC files through Godot FileAccess, including from an exported PCK, then decodes native PCM before playback.
 
+`pulse_tempo_plan()` returns policy 1 for `find-the-pulse-v1`: start at 60 BPM, steps of 6, checkpoint at 72, 16-bar phrases, and optional 84/96 stretch goals. One qualifying phrase can suggest a step below 72; repeated checkpoint evidence requires two qualifying takes among three comparable full phrases. Qualification uses at least 95% matched, 90% on time and at most 2% extras. These are practice recommendations, not technique or mastery claims.
+
+`evaluate_pulse_tempo(attempts, current)` calls the shared C evaluator on both platforms without changing scores, files, audio, or progress. The caller filters the selected player and exact lesson, passes attempts oldest first, and constructs this normalized current intent:
+
+```text
+{lesson:"find-the-pulse", version:"find-the-pulse-v1", policy_version:1,
+ conditions_key:String, bpm:number, bars:int, guidance:0|1|2,
+ live_feedback:bool, monitoring:bool, calibration_ms:number}
+```
+
+Each attempt includes that same captured intent plus `{id:String, expected:int, matched:int, on_time:int, missed:int, extra:int, naturally_completed:bool, uninterrupted:bool}`. Capture policy, source/mapping conditions, monitoring, calibration, tempo, phrase length, guidance and live feedback when the take starts; never stamp new policy metadata onto old history. `conditions_key` must represent the complete source and mapping identity plus monitoring/calibration. The binding compares full strings with per-call ordinal tokens, never truncated IDs or hashes, and independently includes monitoring/calibration to prevent pooling if a caller reuses a key. Calibration is finite within ±1000 ms. IDs allow 1–1024 characters; condition keys allow 1–16384; evaluation accepts at most 100,000 rows. JSON whole-number floats are accepted for integer fields.
+
+Legacy history without complete provenance may be represented only as `{id,lesson,version,legacy:true}`. It grants no evidence and removes earlier evidence for the same ID if it is a late correction. Valid old/future policy attempts remain ineligible. The last duplicate correction wins while its first chronological position is retained by the core. Malformed rows or wrong lesson versions fail the entire call with `{ok:false,error,error_index,policy_version}` instead of exposing an older duplicate's score. Success returns `ok:true`, `policy_version`, input/legacy counts and every `DXTempoDecision` field: recent counts, latest/current/checkpoint/hidden/recall evidence, action/reason enums, and complete `next_bpm`, `next_bars`, `next_guidance`, `next_live_feedback` intent. Boolean evidence fields are actual booleans.
+
+The release-safe binding checks are `apps/game/tools/pulse_tempo_binding_checks.gd`, including a reusable `run_checks(engine)` for packaged smoke tests. Run the standalone script with Godot's headless runtime and `--path apps/game --script res://tools/pulse_tempo_binding_checks.gd`; editor import is not required once the project and extension are prepared.
+
 The visual guidance mode is controlled by the frontend. This backend does not infer hand technique or mastery. It does not implement native demonstration playback, calibration, ASIO, audio device selection, or Windows hardware reconnection certification in this first preview.
 
 ## Third-party code

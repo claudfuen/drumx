@@ -4,6 +4,13 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Share the first tempo-coaching policy
+
+- Add one deterministic C evaluator for Find the pulse: 60/66/72 BPM preparation, an exact 72 BPM checkpoint, guided-to-hidden-to-click-only recommendations, and separate optional faster paces.
+- Distinguish a suggested next pace from repeatable evidence. Qualifying takes require at least 16 bars, 95% coverage, 90% on-time targets, and at most 2% extras; two qualifying among three comparable takes earn a checkpoint. These are initial product rules for learner testing.
+- Keep source, mapping, monitoring, calibration, phrase length, and assistance groups separate. Recompute corrected attempts without discarding earned evidence after an ordinary difficult take.
+- Verify 244 tempo checks under sanitizers, 852 existing scoring checks, the C consumer, and 34 Godot binding checks. UI integration and visual acceptance follow separately.
+
 ### Define guided tempo as part of learning
 
 - Document a proposed M1 coaching slice: lesson-authored starting paces and checkpoints, bounded recommendations, optional tempo challenges, and manual free practice.
