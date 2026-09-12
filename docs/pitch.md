@@ -1,6 +1,6 @@
 # Drumx: keep the groove when the notes disappear
 
-Design proposal, September 12, 2026. Prepared for discussion with interactive mockups. The product concept and implementation stack are not committed.
+The first playable direction is accepted: focused rhythm-game practice, stable instrument positions, a full-width kick and removable guidance. The product design continues to evolve through interactive studies and a [native Mac engineering lab](native-lab.md). The production front end and full course are not selected or complete.
 
 ## The pitch
 
@@ -24,7 +24,9 @@ Game rewards should celebrate musical achievements: a steady backbeat, a clean f
 
 Educational quality and the desire to keep playing are joint product goals. The intended feeling is a musical challenge that invites another run, with enough teaching to help the player overcome the part that is holding them back. A focused interface alone cannot create that feeling.
 
-Build the first playable slice around a musical backing groove, clear anticipation, immediate hit response and a restart that takes the player straight into a count-in. Make progress perceptible: an awkward fill becomes fluent, a groove stays steady for longer, or a previous personal best improves under comparable conditions. Vary musical context and offer reachable next challenges rather than relying on faster tempos alone.
+Build the musical slice around a backing groove, clear anticipation, immediate hit response and a restart that takes the player straight into a count-in. Make progress perceptible: an awkward fill becomes fluent, a groove stays steady for longer, or a previous personal best improves under comparable conditions. Vary musical context and offer reachable next challenges rather than relying on faster tempos alone.
+
+The first native lab establishes the input, click, scored backbeat and retry path before that musical slice. It does not yet contain a backing track, an automatic drum demonstration or a course. Optional native sample monitoring plays the player's incoming hi-hat, snare and kick strikes with recorded velocity layers and alternate takes. It is implemented separately from those content features; the sound and response still need listening and actual-kit evaluation.
 
 Instruction should support that musical loop. Let the player hear a phrase, isolate a difficult part, slow it down and return to the full groove without a detour through menus. A short memory challenge is one possible next step; replaying an enjoyable full-track performance is another. The app should not turn every run into a sequence of mandatory instructional screens.
 
@@ -41,13 +43,13 @@ This does not yet select browser delivery over the original macOS desktop target
 | Phase | What the player gets | What the app evaluates |
 | --- | --- | --- |
 | Follow | Full track, a brief demonstration and optional counts/sticking | Correct instruments, timing, omissions and extra hits; guidance is available |
-| Fade | A visible phrase followed by a marked whole-bar “Your turn” zone on the same highway; target notes disappear while the beat scaffold remains | The same targets and scoring as Follow, with assistance recorded separately |
-| Recall | For memory practice, the same highway with hidden targets; for a strict click-only check, a count-in followed by static rails, the click and the player's drum sound | The same musical phrase, scored internally and reviewed afterward; record which visual support remained |
+| Fade | A visible phrase followed by a marked whole-bar “From memory” zone on the same highway; target notes disappear while the beat scaffold remains | The same targets and scoring as Follow, with assistance recorded separately |
+| Recall | For memory practice, hidden targets with optional live timing feedback; for a strict click-only check, a count-in followed by static rails, the click and the player's drum sound, with live feedback off | The same musical phrase; record whether live feedback remained, and withhold correctness comparisons until afterward for the strict check |
 | Review and repair | The completed phrase with actual hits overlaid, one clear observation and a focused retry | Where the error occurred, whether it concerns timing, missing/extra notes or instrument choice |
 | Apply | A groove, backing track or modest variation that uses the skill | Performance in a different musical context, labeled separately from recall |
 | Return | A brief attempt in the next session before the chart is revealed | Later recall at a comparable tempo, distinct from a guided personal best |
 
-The first prototype only needs one short kick/snare/hi-hat groove and the Follow, Fade, Recall and Review states within one lesson. Its job is to establish whether losing guidance feels like gaining an ability. A full library, notation editor and song platform can wait until that experience works.
+The native lab currently implements one four-bar kick/snare/hi-hat groove, Guided, Hidden bars and From memory conditions, and a summary after the take. Its job is to make assistance, scoring and the hardware path concrete while the focused musical experience develops. A full library, notation editor and song platform can wait until that experience works.
 
 ## What makes this different from a permanently visible highway
 
@@ -59,11 +61,11 @@ Each player has their own progress, starting level, comfortable tempos and assis
 
 ## Memory practice and an independent check
 
-A memory phrase should stay in the same playing environment. Mark an upcoming whole-bar zone “Your turn,” then withhold its target notes while the highway and beat scaffold continue. The player should experience a gap in the instructions, not a sudden switch to a text screen. This supports a guided practice condition, not a claim of complete visual independence.
+A memory phrase should stay in the same playing environment. Mark an upcoming whole-bar zone “From memory,” then withhold its target notes while the highway and beat scaffold continue. The player should experience a gap in the instructions, not a sudden switch to a text screen. This supports a guided practice condition, not a claim of complete visual independence.
 
-An optional immediate response at the strike line can show the player's actual incoming hit, with the same response whether it matches a target or not. It must not reveal ghost notes, missed targets, early/late judgments, a combo or other live correctness cues. Show those comparisons after the phrase. Ordinary MIDI confirms an instrument event, not which hand played it.
+An optional immediate response at the strike line can show the player's actual incoming hit, with the same response whether it matches a target or not. Optional live early/late feedback can also help during memory practice, but that is an assisted condition. For an independent check, turn live feedback off and withhold ghost notes, missed targets, early/late judgments, a combo and other correctness cues until the phrase ends. Ordinary MIDI confirms an instrument event, not which hand played it.
 
-Offer a distinct strict click-only check when the learner wants to assess independence from visual timing support. Keep the same static rail shell, with no moving playhead, scrolling beat grid, visual pulse, target notes or live correctness feedback. Do not add an animated kit demonstration or a guide drum track. Record this condition separately from memory practice that retains a visual beat scaffold.
+Offer a distinct strict click-only check when the learner wants to assess independence from visual timing support. Keep the same static rail shell, with no moving playhead, scrolling beat grid, visual pulse, target notes or live correctness feedback. Do not add an animated kit demonstration or a guide drum track. In the lab, select From memory with Live timing off before the take. Record this condition separately from memory practice that retains a visual beat scaffold or live feedback.
 
 The player's own drum sound remains immediate in every condition. Delaying the results never means delaying the instrument. The click supplies a pulse, so a click-only check tests pattern memory while synchronizing to an external reference. Maintaining time through silent metronome bars is a separate later challenge, not something a click-only result proves.
 
@@ -90,7 +92,7 @@ The full Follow/Fade/Recall cycle is our product hypothesis. Its learning benefi
 
 ## Visual and technical direction
 
-The first mockup exposed too much application structure during a lesson: a persistent sidebar, multiple header rows, phase tabs and a metrics-oriented review. The follow-up direction is a focused lesson room. This is a design proposal under review, not an accepted implementation decision.
+The first mockup exposed too much application structure during a lesson: a persistent sidebar, multiple header rows, phase tabs and a metrics-oriented review. The accepted direction is a focused lesson room. The exact rail treatment and production rendering technology are still being evaluated.
 
 Navigation belongs to choosing what to practice. Once a lesson opens, a quiet Back to path action preserves that exit while the musical task occupies the window. Follow, Fade and Recall remain meaningful practice conditions, but a lesson recommends them in context instead of making a beginner operate a permanent mode dashboard.
 
@@ -101,27 +103,29 @@ The focused session follows these rules:
 - **After an attempt:** one specific observation tied to the musical phrase and one recommended next action. Retry and Adjust practice remain available. Timing detail can explain the recommendation without turning every result into a grid of metrics.
 - **Across attempts:** preserve the lesson, tempo and aid choice. Retrying starts the count-in directly. Demonstrations are optional; no score gate is required to explore a different practice condition. Return to course browsing only when the player chooses it.
 
-The proposed highway separates hand-played instrument lanes from a full-width kick bar. Events at the same musical time occupy the same vertical timing position, including simultaneous kick and hand notes. Distinct shapes and layering must keep both readable when they coincide. A consistent perspective, rail spacing and strike line should make the approaching rhythm easy to read at the kit.
+The baseline highway separates hand-played instrument lanes from a full-width kick bar. Events at the same musical time occupy the same vertical timing position, including simultaneous kick and hand notes. Distinct shapes and layering must keep both readable when they coincide. A consistent perspective, rail spacing and strike line should make the approaching rhythm easy to read at the kit. A two-floor alternative with upper cymbals and lower drums shares one clock but requires looking at two strike planes; it is being compared, not selected.
 
 Full-kit readability is a design constraint, not something the introductory two-instrument mockup establishes. Give toms, hi-hat, crashes and ride explicit instrument identities. Do not reuse a tom's color and column to stand for an unrelated cymbal merely to fit a limited set of game-controller lanes. Use stable position, distinct shapes and readable labels together; color must not be the only way to tell them apart. Keep multiple crashes distinguishable when the kit has them.
 
-Kit setup must separate incoming MIDI mapping from physical placement. Let the player identify each pad and arrange its visual position to match their kit, including crash and ride placement and alternate handedness. Keep the chosen arrangement stable across songs and during play; dim unused lanes in the established full-kit layout. Any change between an introductory layout and full-kit play must be shown before the count-in.
+Kit setup must separate incoming MIDI mapping from physical placement. The current native lab uses one fixed starter layout: hi-hat, crash, snare, tom 1, tom 2, floor tom and ride, plus the kick bar. All slots are reserved from the first exercise, and unused slots stay in place. Adding a skill should introduce activity in an existing slot rather than reorder or widen the rail. The full-kit motion study uses the same single-plane ordering.
+
+A future kit-layout editor can let the player arrange visual positions for their own crash, ride and handedness. That is not implemented in the current lab. Once selected, a kit arrangement must stay stable across lessons and during play; dim unused surfaces without changing their geometry. Changing the arrangement is an explicit setup action between takes.
 
 A lane should represent a playing surface, not every possible MIDI note number. Preserve reported articulations such as a ride bell or snare rim within that surface using explicit note markings, and retain hi-hat pedal/control information when available. Device mappings and capabilities can differ, so score only supported targets or a clearly selected adaptation. Proposed L/R sticking must remain independently configurable instead of being inferred from lane position.
 
-Before committing to the rail, show and try a realistic full-kit phrase with toms, crash, ride, kick and simultaneous hits. Include a phrase that moves from a tom fill to a crash and another that changes from hi-hat to ride. Those transitions need to remain readable from the player's actual drum-seat position.
+The full-kit motion study shows a four-bar backbeat, tom fill, crash landing and ride groove using one original event sequence in both rail alternatives. Its purpose is to compare transitions and clutter before adding those instruments to the real scoring exercise. It is a silent design study, not a full-kit engine or a measured performance. Those transitions still need to be tested from the player's actual drum-seat position.
 
-Optional L/R labels suggest a sticking pattern on hand-played notes. They are instructional hints that can be hidden, not a claim that ordinary MIDI identifies the striking hand or verifies the suggested sticking. Keep instrument identity legible without those labels.
+Optional L/R labels suggest a sticking pattern on hand-played notes. They are instructional hints that can be hidden, not a claim that ordinary MIDI identifies the striking hand or verifies the suggested sticking. Keep instrument identity legible without those labels. The full-kit study removes repeated letter symbols from moving notes and keeps instrument labels at the fixed strike line; this avoids confusing a ride abbreviation with a right-hand hint. The native lab keeps L/R hints independently optional.
 
-Follow provides the complete chart. Fade and memory practice preserve the highway geometry through marked “Your turn” zones while withholding target notes. A strict click-only check retains the quiet static rail shell, and Review reveals the completed performance. The design alternatives explore a restrained studio treatment and a more spatial stage treatment, sharing the same learning model. More available space should improve the scale and readability of the music, rather than expand menus or decoration. This rail and cue design is a proposal to test, not a proven pedagogical improvement.
+Follow provides the complete chart. Fade and memory practice preserve the highway geometry through marked “From memory” zones while withholding target notes. A strict click-only check retains the quiet static rail shell with live timing off, and Review reveals the completed performance. The design alternatives explore a restrained studio treatment and a more spatial stage treatment, sharing the same learning model. More available space should improve the scale and readability of the music, rather than expand menus or decoration. The learning effect of this rail and cue design is still a hypothesis to test.
 
 The desired quality comes from typography, readable note spacing, consistent motion, excellent sound response and a small set of deliberate effects. A large collection of particles, neon colors or generic dashboard cards would not establish that quality.
 
 The interface must work from the player's actual position at the drum kit. Test readability, transport target size and recovery from an interrupted attempt there. A later mapped transport control should let a player restart while holding sticks, with configuration and activation kept distinct from scored drum input. The concept previews do not implement real MIDI transport or hardware measurement.
 
-Unity and Flutter remain the two most relevant front-end candidates. Unity has the stronger integrated game-authoring workflow; Flutter fits a restrained native application. Either would need a separately designed native MIDI/audio/scoring path. The mockups do not commit the app to HTML or any production stack. They demonstrate the interaction and art direction only.
+The engineering lab now uses Swift/AppKit, CoreMIDI and AVAudioEngine with a portable C++17 scoring core. This is a deliberate native Mac implementation for testing the first playable behavior, not a commitment to the final game front end. Unity and Flutter remain candidates for the production scene, and other native options remain in the architecture comparison. The mockups do not commit the app to HTML; the AppKit rail does not establish the final 3D presentation. No end-to-end latency result has been measured.
 
-## What to validate before committing
+## What to validate next
 
 1. Does a player understand the shift from Follow to Fade to Recall without explanation?
 2. Does completing a hidden phrase feel rewarding enough to repeat?
