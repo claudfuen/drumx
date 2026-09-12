@@ -1,0 +1,749 @@
+{
+  "status": "introductory draft",
+  "lessons": [
+    {
+      "id": "find-the-pulse",
+      "title": "Find the pulse",
+      "subtitle": "One beat. One stroke.",
+      "category": "Foundations",
+      "level": "01",
+      "description": "Play one snare stroke on every click. Count 1, 2, 3, 4 aloud and alternate your hands. Aim for equal spaces between notes.",
+      "coachTip": "Keep your grip light and let the stick rebound. Listen for your stroke and the click to sound together.",
+      "bpm": 60,
+      "targetBpm": 90,
+      "subdivision": 1,
+      "steps": [
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        }
+      ],
+      "focus": "Steady quarter notes",
+      "durationSeconds": 60
+    },
+    {
+      "id": "single-strokes",
+      "title": "Single strokes",
+      "subtitle": "Build an even conversation.",
+      "category": "Rudiments",
+      "level": "02",
+      "description": "Alternate R L on the snare, with two strokes per click. Count 1 & 2 & 3 & 4 &. This is the single-stroke roll sticking at an even practice tempo.",
+      "coachTip": "Match the sound of both hands. The R and L labels guide your sticking; a normal snare MIDI note cannot verify the hand.",
+      "bpm": 65,
+      "targetBpm": 100,
+      "subdivision": 2,
+      "steps": [
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        }
+      ],
+      "focus": "Even alternating strokes",
+      "durationSeconds": 90
+    },
+    {
+      "id": "double-strokes",
+      "title": "Double strokes",
+      "subtitle": "Two strokes, one hand.",
+      "category": "Rudiments",
+      "level": "03",
+      "description": "Play R R L L as sixteenth notes, four strokes per click. Count 1 e & a. These are evenly spaced open doubles, with each stroke separately heard.",
+      "coachTip": "At this slow tempo, control both strokes of each pair. Keep the second stroke as clear as the first before increasing speed.",
+      "bpm": 45,
+      "targetBpm": 80,
+      "subdivision": 4,
+      "steps": [
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        }
+      ],
+      "focus": "Balanced pairs",
+      "durationSeconds": 90
+    },
+    {
+      "id": "single-paradiddle",
+      "title": "Single paradiddle",
+      "subtitle": "Single, single, double.",
+      "category": "Rudiments",
+      "level": "04",
+      "description": "Combine singles and doubles: R L R R, then L R L L. Play four strokes per click and lightly accent the first note of each four-note group.",
+      "coachTip": "Say pa-ra-did-dle while you play. The leading hand changes each beat. Keep the two diddle strokes evenly spaced.",
+      "bpm": 45,
+      "targetBpm": 80,
+      "subdivision": 4,
+      "steps": [
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": true
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": true
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": true
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": true
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        }
+      ],
+      "focus": "Changing the lead hand",
+      "durationSeconds": 120
+    },
+    {
+      "id": "accent-control",
+      "title": "Accent control",
+      "subtitle": "Give the pulse a voice.",
+      "category": "Foundations",
+      "level": "05",
+      "description": "Alternate sixteenth notes on the snare. Emphasize the first note of each beat and play the other three softly. Keep the rhythm unchanged.",
+      "coachTip": "Use a little more stick height for accents. Listen for a clear loud-soft contrast; the timing score alone cannot assess your dynamics or technique.",
+      "bpm": 50,
+      "targetBpm": 85,
+      "subdivision": 4,
+      "steps": [
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": true
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": true
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": true
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": true
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        }
+      ],
+      "focus": "Strong beats, quiet taps",
+      "durationSeconds": 90
+    },
+    {
+      "id": "first-groove",
+      "title": "Your first groove",
+      "subtitle": "Bring your feet into the music.",
+      "category": "Coordination",
+      "level": "06",
+      "description": "Play eighth notes on the closed hi-hat, kick on beats 1 and 3, and snare on 2 and 4. Notes in the same column happen together.",
+      "coachTip": "Use your right hand on hi-hat, left on snare and bass-drum foot on kick, or mirror this setup. Keep the hi-hat steady as the other limbs join.",
+      "bpm": 60,
+      "targetBpm": 100,
+      "subdivision": 2,
+      "steps": [
+        {
+          "voices": [
+            "hihat",
+            "kick"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        },
+        {
+          "voices": [
+            "hihat",
+            "snare"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        },
+        {
+          "voices": [
+            "hihat",
+            "kick"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        },
+        {
+          "voices": [
+            "hihat",
+            "snare"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        }
+      ],
+      "focus": "Kick and snare coordination",
+      "durationSeconds": 120
+    },
+    {
+      "id": "kick-on-the-and",
+      "title": "Kick on the &",
+      "subtitle": "A small change. A new feel.",
+      "category": "Coordination",
+      "level": "07",
+      "description": "Keep the eighth-note hi-hat and snare on 2 and 4. Play kick on 1, 3, and the & of 3. The extra kick lands halfway between beats 3 and 4.",
+      "coachTip": "Count every & aloud. Keep your hands on their original pattern when the extra bass-drum note arrives.",
+      "bpm": 60,
+      "targetBpm": 95,
+      "subdivision": 2,
+      "steps": [
+        {
+          "voices": [
+            "hihat",
+            "kick"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        },
+        {
+          "voices": [
+            "hihat",
+            "snare"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        },
+        {
+          "voices": [
+            "hihat",
+            "kick"
+          ]
+        },
+        {
+          "voices": [
+            "hihat",
+            "kick"
+          ]
+        },
+        {
+          "voices": [
+            "hihat",
+            "snare"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        }
+      ],
+      "focus": "An independent bass drum",
+      "durationSeconds": 120
+    },
+    {
+      "id": "groove-to-fill",
+      "title": "Groove into a fill",
+      "subtitle": "Make it back to one.",
+      "category": "Coordination",
+      "level": "08",
+      "description": "Loop two bars. Play the basic groove for bar 1 and the first two beats of bar 2. Replace the last two beats with four alternating snare eighth notes.",
+      "coachTip": "The fill has the same spacing as your hi-hat notes. Keep counting through it and land the next kick and hi-hat together on beat 1.",
+      "bpm": 65,
+      "targetBpm": 100,
+      "subdivision": 2,
+      "steps": [
+        {
+          "voices": [
+            "hihat",
+            "kick"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        },
+        {
+          "voices": [
+            "hihat",
+            "snare"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        },
+        {
+          "voices": [
+            "hihat",
+            "kick"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        },
+        {
+          "voices": [
+            "hihat",
+            "snare"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        },
+        {
+          "voices": [
+            "hihat",
+            "kick"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        },
+        {
+          "voices": [
+            "hihat",
+            "snare"
+          ]
+        },
+        {
+          "voices": [
+            "hihat"
+          ],
+          "hand": "R"
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "R",
+          "accent": false
+        },
+        {
+          "voices": [
+            "snare"
+          ],
+          "hand": "L",
+          "accent": false
+        }
+      ],
+      "focus": "A smooth return to the groove",
+      "durationSeconds": 120
+    }
+  ]
+}
