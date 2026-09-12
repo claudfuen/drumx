@@ -1,0 +1,43 @@
+CMakeLists.txt
+  s_f983bef49b9fee::t_7ab4ab36d9ddc5 7,35-39,45
+native/core/drumx_tempo.h
+  s_f983bef49b9fee::t_aa176335b368de 1-112
+spikes/portable-core/c_api_check.c
+  s_f983bef49b9fee::t_7ab4ab36d9ddc5 2,20-32,34
+apps/game/tools/pulse_tempo_binding_checks.gd
+  s_f983bef49b9fee::t_e61b7cb0acd817 1-24,27-135
+  s_f983bef49b9fee::t_2611373fcc8e4a 25-26
+apps/game/native/CMakeLists.txt
+  s_f983bef49b9fee::t_bcfc25f1d96e8d 25
+apps/game/native/drumx_engine.h
+  s_f983bef49b9fee::t_bcfc25f1d96e8d 15-16
+apps/game/native/README.md
+  s_f983bef49b9fee::t_1e1d255b084f9a 35-50
+native/core/tempo_tests.cpp
+  s_f983bef49b9fee::t_12a6a3ebdc59dd 10
+  s_f983bef49b9fee::t_f4b5ce2f780109 1-9,11-173,179-253
+  s_f983bef49b9fee::t_62dae2eb5eceaf 174-178
+native/core/drumx_tempo.cpp
+  s_f983bef49b9fee::t_7ab4ab36d9ddc5 1-77,87-152,154-215
+  s_f983bef49b9fee::t_62dae2eb5eceaf 78-86,153
+apps/game/native/drumx_engine.cpp
+  s_f983bef49b9fee::t_e61b7cb0acd817 127,135-136
+  s_f983bef49b9fee::t_2611373fcc8e4a 143
+  s_f983bef49b9fee::t_bcfc25f1d96e8d 2,6-7,15-16,43-126,128-134,137-142,144-220
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d4d8f936ec10695cc6c58b16aea583593cf5c609",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
