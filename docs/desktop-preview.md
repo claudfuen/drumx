@@ -22,7 +22,7 @@ These are implementation differences to resolve or explicitly accept, not a revi
 
 ## Verification so far
 
-The coached-pulse pair at `20f30fc` passed both operating systems in [run 34715554977](https://github.com/claudfuen/drumx/actions/runs/34715554977): 7,900 checks in each source run and exported executable, 57 pure Swift adapter checks, native Mac app compilation, and clean same-commit package verification. The README links these artifacts. The native pace component was inspected through an offscreen render; the complete new preparation/review flow still needs its rendered-window review.
+The coached-pulse pair at `21e709f` passed both operating systems in [run 34715829432](https://github.com/claudfuen/drumx/actions/runs/34715829432): 7,900 checks in each source run and exported executable, 57 pure Swift adapter checks, native Mac app compilation, and clean same-commit package verification. The README links these artifacts. The native pace component was inspected through an offscreen render; the complete new preparation/review flow still needs its rendered-window review.
 
 Local Apple Silicon checks have passed for the native backend and the actual exported Mac app. The current locally exported release executable reported `DRUMX_SMOKE_OK 7900 ... native=true`, read all 24 original FLAC files from its packed resources, and exercised shared content, scoring, and isolated save/reload checks. Its main executable and native extension were verified as arm64, and its ad-hoc bundle signature passed strict verification. This includes the coached pulse, isolated persistence/migration checks, restored best-score comparisons, changed-source recommendation handling, and minimum-size preparation/review states.
 

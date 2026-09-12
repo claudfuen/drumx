@@ -6,7 +6,7 @@ A record of playable milestones and product decisions. These entries describe re
 
 ### Verify the coached desktop pair and refine its cues
 
-- Both exported apps passed 7,900 checks at `20f30fc` in hosted CI; the same run passed the 57 Swift adapter checks, compiled the native Mac app, and verified matching clean-commit packages. Link the verified test downloads from the README.
+- Both exported apps passed 7,900 checks at `20f30fc` and the follow-up `21e709f` in hosted CI; the same run passed the 57 Swift adapter checks, compiled the native Mac app, and verified matching clean-commit packages. Link the verified test downloads from the README.
 - Inspect an offscreen render of the native pace component, soften its accent to the shared palette, and avoid marking untested opening paces as earned after a direct checkpoint attempt. A no-input review now points to kit and sound settings.
 - Keep the complete rendered-window review and physical MIDI session open; component inspection and packaged execution establish different things.
 
