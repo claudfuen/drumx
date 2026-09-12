@@ -134,10 +134,21 @@ struct LessonReview {
       suggestedPad = nil
       return
     }
+    let everyTargetOnTime = total.missed == 0 && total.extra == 0 && total.on_time == total.expected
     if total.matched < 8 {
-      headline = "Build the pattern one part at a time"
-      detail = "\(total.matched) hits matched. Try the hi-hat first, then add kick and snare."
-      suggestedPad = 0
+      // A sparse exercise may contain only two or four targets. Few hits are
+      // not missing work when the learner played every authored note on time.
+      if everyTargetOnTime {
+        headline = "The phrase stayed together"
+        detail = "Every note landed inside the timing band. Repeat until it feels easy, then try less visual help."
+        suggestedPad = nil
+      } else {
+        headline = "Build the pattern one part at a time"
+        let parts = [snapshot.pads.0, snapshot.pads.1, snapshot.pads.2]
+        let first = (0..<3).max { parts[$0].expected < parts[$1].expected } ?? 0
+        detail = "\(total.matched) hits matched. Focus on the \(reviewPadNames[first]) and count each beat aloud at a comfortable tempo."
+        suggestedPad = first
+      }
       return
     }
     let pads = [snapshot.pads.0, snapshot.pads.1, snapshot.pads.2]
@@ -189,7 +200,7 @@ struct LessonReview {
         return
       }
     }
-    if total.missed == 0 && total.extra == 0 && total.on_time == total.expected {
+    if everyTargetOnTime {
       headline = "The phrase stayed together"
       detail = "Every note landed inside the timing band. Repeat until it feels easy, then try less visual help."
       suggestedPad = nil

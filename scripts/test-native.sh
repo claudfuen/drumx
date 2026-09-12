@@ -43,3 +43,20 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse
   "$DRUMX_ROOT/native/macos/tests/DrumxHitFeedbackChecks.swift" \
   -o "$DRUMX_BUILD/hit-feedback-checks"
 "$DRUMX_BUILD/hit-feedback-checks"
+for DRUMX_MODEL in Course Progress; do
+  xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse-as-library \
+    "$DRUMX_ROOT/native/macos/Drumx${DRUMX_MODEL}.swift" \
+    "$DRUMX_ROOT/native/macos/tests/Drumx${DRUMX_MODEL}Checks.swift" \
+    -o "$DRUMX_BUILD/${DRUMX_MODEL}-checks"
+  "$DRUMX_BUILD/${DRUMX_MODEL}-checks"
+done
+xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse-as-library \
+  -import-objc-header "$DRUMX_ROOT/native/core/drumx_core.h" \
+  "$DRUMX_ROOT/native/macos/DrumxCourse.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxIO.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxSampler.swift" \
+  "$DRUMX_ROOT/native/macos/tests/DrumxCourseIntegrationChecks.swift" \
+  "$DRUMX_BUILD/lesson-core.o" -Xlinker -lc++ \
+  -framework AVFoundation -framework CoreMIDI -framework AudioToolbox \
+  -o "$DRUMX_BUILD/course-integration-checks"
+"$DRUMX_BUILD/course-integration-checks" "$DRUMX_ROOT/native/assets/BigRusty/manifest.json"

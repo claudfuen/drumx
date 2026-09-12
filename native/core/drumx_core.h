@@ -39,6 +39,12 @@ typedef struct DXEvent {
     int hit;
 } DXEvent;
 
+/* Authoring times use quarter-note beats, independent of tempo. */
+typedef struct DXChartEvent {
+    int pad;
+    double beat;
+} DXChartEvent;
+
 typedef struct DXHitResult {
     uint64_t id;
     int pad;
@@ -93,6 +99,15 @@ void dx_core_destroy(DXCore* core);
    Valid: 30..240 BPM, 1..64 bars. Returns 1 on success, 0 without changing
    the existing take on invalid input. reset does not select guidance. */
 int dx_core_reset(DXCore* core, double bpm, int bars);
+/* Loads and starts a fresh take, preserving guidance. Valid: 30..240 BPM,
+   finite duration in (0, 256] quarter-note beats, 1..4096 events, pads 0..2,
+   and finite event beats in [0, duration). Same-pad beats within 1e-9 beats
+   are duplicates and rejected. Input may be unsorted; stored event IDs follow
+   beat then pad order. Events are copied, so the caller retains ownership.
+   Returns 1 on success, 0 with the entire existing take unchanged on invalid
+   input or allocation failure. No audio or rendering work is performed. */
+int dx_core_load_chart(DXCore* core, double bpm, double duration_beats,
+                       const DXChartEvent* events, int event_count);
 void dx_core_set_guidance(DXCore* core, int guidance);
 double dx_core_duration(const DXCore* core);
 

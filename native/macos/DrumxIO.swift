@@ -371,6 +371,15 @@ final class DrumxIO {
     }
 
     func stopDemo() { sampler.stopDemo() }
+
+    @discardableResult
+    func startDemo(bpm: Double, firstBeatHostTime: Double, durationBeats: Double,
+                   hits: [DrumxDemoHit]) -> Bool {
+        let started = sampler.startDemo(bpm: bpm, firstBeatHostTime: firstBeatHostTime,
+                                        durationBeats: durationBeats, hits: hits)
+        if !started { updateStatus(sampler.demoStatusDescription) }
+        return started
+    }
 }
 
 /// One instance belongs exclusively to one CoreMIDI receive port. Streaming

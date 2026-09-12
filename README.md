@@ -115,6 +115,8 @@ The stack is **Swift/AppKit + CoreMIDI + AVAudioEngine**, with a **portable C++1
 
 ## Development
 
+Versioned foundation exercises live in [DrumxCourse.swift](native/macos/DrumxCourse.swift). Custom charts feed the portable core and the native demonstration renderer from the same quarter-note beat data. [Local progress](native/macos/DrumxProgress.swift) separates player identities, resume settings, and reading/technique evidence; existing practice history belongs to the first player on upgrade.
+
 ```sh
 bash scripts/test-native.sh
 ```

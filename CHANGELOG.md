@@ -4,6 +4,13 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### A reusable foundation course and local player model
+
+- Author 12 original lessons in three chapters, with shared event data, explanations, counts, reading questions, and technique tips.
+- Extend the portable core with validated custom charts and the native demo renderer with authored patterns. Verify event and sample timing agreement across the full unit.
+- Add separate local players, versioned practice resume, welcome state, and explicit reading/technique evidence while preserving legacy history ownership.
+- Give perfect sparse one-bar takes positive coaching. Add core, course, player, and audio/scoring integration checks.
+
 ### Stars, combos, and comparable runs
 
 - Add a compact live five-star score and combo, a 10,000-point complete-phrase target, and progress toward the next star.

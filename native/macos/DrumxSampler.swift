@@ -171,14 +171,27 @@ struct DrumxDemoAudio {
     }
 
     static func render(bank: DrumxSampleBank, bpm: Double, bars: Int) throws -> DrumxDemoAudio {
+        let hits = try pattern(bars: bars)
+        return try render(bank: bank, bpm: bpm, durationBeats: Double(bars) * 4, hits: hits)
+    }
+
+    static func render(bank: DrumxSampleBank, bpm: Double, durationBeats: Double,
+                       hits authoredHits: [DrumxDemoHit]) throws -> DrumxDemoAudio {
         guard bpm.isFinite, bpm >= 20, bpm <= 400 else {
             throw DrumxSamplerError.invalid("The groove demo needs a tempo between 20 and 400 BPM.")
         }
-        let hits = try pattern(bars: bars)
+        // Bound pre-rendered audio allocation to the supported practice phrase.
+        guard durationBeats.isFinite, durationBeats > 0, durationBeats <= 64,
+              !authoredHits.isEmpty, authoredHits.count <= 1024,
+              authoredHits.allSatisfy({ (0..<3).contains($0.pad) && (1...127).contains($0.velocity)
+                  && $0.beat.isFinite && $0.beat >= 0 && $0.beat < durationBeats }) else {
+            throw DrumxSamplerError.invalid("The lesson demo contains unsupported notes or duration.")
+        }
+        let hits = authoredHits.sorted { $0.beat == $1.beat ? $0.pad < $1.pad : $0.beat < $1.beat }
         let framesPerBeat = bank.format.sampleRate * 60 / bpm
         var selection = bank.selector
         var clips: [(Int, Int)] = []
-        var totalFrames = Int(ceil(Double(bars * 4) * framesPerBeat))
+        var totalFrames = Int(ceil(durationBeats * framesPerBeat))
         for hit in hits {
             guard let index = selection.select(pad: hit.pad, velocity: hit.velocity) else {
                 throw DrumxSamplerError.invalid("The demo requires hi-hat, snare and kick samples.")
@@ -374,6 +387,14 @@ final class DrumxSampler {
     /// Monitoring/learn state controls live inputs only, not this explicit demo.
     @discardableResult
     func startDemo(bpm: Double, firstBeatHostTime: Double, bars: Int) -> Bool {
+        guard let hits = try? DrumxDemoAudio.pattern(bars: bars) else { return false }
+        return startDemo(bpm: bpm, firstBeatHostTime: firstBeatHostTime,
+                         durationBeats: Double(bars * 4), hits: hits)
+    }
+
+    @discardableResult
+    func startDemo(bpm: Double, firstBeatHostTime: Double, durationBeats: Double,
+                   hits: [DrumxDemoHit]) -> Bool {
         queue.sync {
             stopDemoOnQueue()
             guard firstBeatHostTime.isFinite, firstBeatHostTime > DrumxIO.hostNowSeconds(),
@@ -382,7 +403,8 @@ final class DrumxSampler {
                 return false
             }
             do {
-                let audio = try DrumxDemoAudio.render(bank: bank, bpm: bpm, bars: bars)
+                let audio = try DrumxDemoAudio.render(bank: bank, bpm: bpm,
+                                                      durationBeats: durationBeats, hits: hits)
                 if !engine.isRunning { try engine.start() }
                 let latency = max(0, player.outputPresentationLatency)
                 let renderStart = firstBeatHostTime - latency

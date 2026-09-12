@@ -98,6 +98,55 @@ private func reviewChecks() {
     "natural flag alone cannot turn a partial core result into a full take")
 }
 
+private func sparseOneBarReviewChecks() {
+  let exercises: [(String, Int32, [Double])] = [
+    ("find-the-pulse", 1, [0, 1, 2, 3]),
+    ("backbeat-rests", 1, [1, 3]),
+    ("kick-pulse", 2, [0, 2]),
+  ]
+  for (lesson, pad, beats) in exercises {
+    for offset in [0.01, -0.04] {
+      let take = TestTake(tempo: 60, bars: 1)
+      let chart = beats.map { DXChartEvent(pad: pad, beat: $0) }
+      let loaded = chart.withUnsafeBufferPointer {
+        dx_core_load_chart(take.core, 60, 4, $0.baseAddress, Int32($0.count))
+      }
+      check(loaded == 1, "\(lesson): sparse one-bar chart loads")
+      take.play(offset: offset)
+      let live = DrumxRunScore(snapshot: take.snapshot, completedNaturally: false)
+      check(live.stars < 5 && !live.isComplete,
+        "\(lesson): hitting every sparse target still requires completing the phrase")
+      take.finish()
+      let snapshot = take.snapshot
+      let score = DrumxRunScore(snapshot: snapshot, completedNaturally: true)
+      let review = LessonReview(snapshot: snapshot, completedNaturally: true)
+      check(Int(snapshot.total.expected) == beats.count && snapshot.total.on_time == snapshot.total.expected,
+        "\(lesson): every authored sparse target landed within the band")
+      check(score.isPerfect && score.isComplete && score.stars == 5 && score.points == 10_000,
+        "\(lesson): complete sparse timing success earns all five stars")
+      check(review.headline == "The phrase stayed together" && review.detail.contains("Every note landed"),
+        "\(lesson): complete sparse success receives positive measured-outcome coaching")
+      check(review.suggestedPad == nil && !review.detail.contains("tended"),
+        "\(lesson): sparse success does not invent a missing part or short-sample timing diagnosis")
+      check(LessonReview(snapshot: snapshot, completedNaturally: false).headline == "Take stopped",
+        "\(lesson): successful notes alone cannot promote a stopped take")
+    }
+  }
+
+  let imperfect = TestTake(tempo: 60, bars: 1)
+  let chart = [DXChartEvent(pad: 2, beat: 0), DXChartEvent(pad: 2, beat: 2)]
+  check(chart.withUnsafeBufferPointer {
+    dx_core_load_chart(imperfect.core, 60, 4, $0.baseAddress, Int32($0.count))
+  } == 1, "sparse extra-hit comparison chart loads")
+  imperfect.play(offset: 0.01)
+  _ = dx_core_input(imperfect.core, 2, 0.02, 0.8)
+  imperfect.finish()
+  check(!DrumxRunScore(snapshot: imperfect.snapshot, completedNaturally: true).isPerfect,
+    "an extra hit prevents sparse perfection")
+  check(LessonReview(snapshot: imperfect.snapshot, completedNaturally: true).headline
+    == "Build the pattern one part at a time", "sparse extras still receive practice guidance")
+}
+
 private func historyChecks(defaults: UserDefaults) {
   let history = LessonHistory(defaults: defaults, key: "history")
   let base = settings()
@@ -360,6 +409,7 @@ enum DrumxLessonChecks {
     let defaults = UserDefaults(suiteName: suite)!
     defer { defaults.removePersistentDomain(forName: suite) }
     reviewChecks()
+    sparseOneBarReviewChecks()
     historyChecks(defaults: defaults)
     runScoreChecks()
     print("Drumx lesson review/history: \(checks) checks passed.")

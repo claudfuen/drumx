@@ -12,6 +12,7 @@ constexpr double kMatchWindow = 0.125;
 constexpr double kCenteredMs = 25.0;
 constexpr double kOnTimeMs = 50.0;
 constexpr double kEpsilon = 1e-9;
+constexpr double kDuplicateBeatEpsilon = 1e-9;
 constexpr int kBiasSamples = 8;
 constexpr int kBiasWarmup = 4;
 constexpr double kBiasHorizon = 12.0;
@@ -147,35 +148,70 @@ int dx_core_reset(DXCore* core, double bpm, int bars) {
         return 0;
     }
     try {
-        std::vector<Event> events;
-        events.reserve(static_cast<size_t>(bars) * 12);
-        const double eighth = 30.0 / bpm;
+        std::vector<DXChartEvent> chart;
+        chart.reserve(static_cast<size_t>(bars) * 12);
         for (int step = 0; step < bars * 8; ++step) {
-            auto append = [&](int pad) {
-                Event event;
-                event.view.id = static_cast<int>(events.size());
-                event.view.pad = pad;
-                event.view.time_seconds = step * eighth;
-                event.deadline = event.view.time_seconds + kMatchWindow;
-                events.push_back(event);
-            };
-            append(DX_HIHAT);
-            if (step % 8 == 0 || step % 8 == 4) append(DX_KICK);
-            if (step % 8 == 2 || step % 8 == 6) append(DX_SNARE);
+            chart.push_back({DX_HIHAT, step * 0.5});
+            if (step % 8 == 0 || step % 8 == 4) chart.push_back({DX_KICK, step * 0.5});
+            if (step % 8 == 2 || step % 8 == 6) chart.push_back({DX_SNARE, step * 0.5});
         }
-        for (size_t index = 0; index < events.size(); ++index) {
-            for (size_t next = index + 1; next < events.size(); ++next) {
-                if (events[next].view.pad == events[index].view.pad) {
-                    events[index].deadline = std::min(events[index].deadline,
-                        (events[index].view.time_seconds + events[next].view.time_seconds) / 2);
-                    break;
-                }
-            }
+        return dx_core_load_chart(core, bpm, bars * 4.0, chart.data(),
+                                  static_cast<int>(chart.size()));
+    } catch (...) {
+        return 0;
+    }
+}
+
+int dx_core_load_chart(DXCore* core, double bpm, double duration_beats,
+                       const DXChartEvent* source, int event_count) {
+    if (!core || !std::isfinite(bpm) || bpm < 30 || bpm > 240
+        || !std::isfinite(duration_beats) || duration_beats <= 0 || duration_beats > 256
+        || !source || event_count < 1 || event_count > 4096) return 0;
+    const double seconds_per_beat = 60.0 / bpm;
+    const double duration = duration_beats * seconds_per_beat;
+    // A positive authoring duration must also be representable in the song clock.
+    if (duration <= 0) return 0;
+    for (int index = 0; index < event_count; ++index) {
+        const auto& event = source[index];
+        if (event.pad < 0 || event.pad >= DX_PAD_COUNT || !std::isfinite(event.beat)
+            || event.beat < 0 || event.beat >= duration_beats) return 0;
+    }
+    try {
+        std::vector<DXChartEvent> chart(source, source + event_count);
+        std::sort(chart.begin(), chart.end(), [](const DXChartEvent& a, const DXChartEvent& b) {
+            return a.beat < b.beat || (a.beat == b.beat && a.pad < b.pad);
+        });
+        std::array<double, DX_PAD_COUNT> last_beats{};
+        std::array<bool, DX_PAD_COUNT> seen{};
+        std::vector<Event> events;
+        events.reserve(chart.size());
+        for (const auto& authored : chart) {
+            if (seen[authored.pad]
+                && authored.beat - last_beats[authored.pad] <= kDuplicateBeatEpsilon) return 0;
+            seen[authored.pad] = true;
+            last_beats[authored.pad] = authored.beat;
+            Event event;
+            event.view.id = static_cast<int>(events.size());
+            event.view.pad = authored.pad;
+            event.view.time_seconds = authored.beat * seconds_per_beat;
+            event.deadline = event.view.time_seconds + kMatchWindow;
+            events.push_back(event);
         }
-        core->events = std::move(events);
+        // Nearest-target matching splits overlapping windows at the midpoint
+        // of consecutive notes on the same pad, including dense authored charts.
+        std::array<double, DX_PAD_COUNT> next_times;
+        next_times.fill(std::numeric_limits<double>::infinity());
+        for (auto event = events.rbegin(); event != events.rend(); ++event) {
+            const int pad = event->view.pad;
+            event->deadline = std::min(event->deadline,
+                (event->view.time_seconds + next_times[pad]) / 2);
+            next_times[pad] = event->view.time_seconds;
+        }
+        // All validation and allocation precede this nonthrowing replacement.
+        core->events.swap(events);
         core->extras.clear();
         core->bpm = bpm;
-        core->duration = bars * 240.0 / bpm;
+        core->duration = duration;
         core->cutoff = core->duration;
         core->now = 0;
         core->finished = false;
