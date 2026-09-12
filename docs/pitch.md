@@ -20,6 +20,22 @@ The proposed product has two connected activities. **Learn** recommends the next
 
 Game rewards should celebrate musical achievements: a steady backbeat, a clean fill that returns on beat one, or a phrase recalled at a comfortable tempo. Responsive hits, satisfying sound and personal-best challenges make repetition appealing. The lesson review adds one specific next step. A beginner can keep substantial guidance; an experienced player can jump to a suitable challenge. No fixed percentage of session time is asserted as the right scientific balance.
 
+## The reason to play another take
+
+Educational quality and the desire to keep playing are joint product goals. The intended feeling is a musical challenge that invites another run, with enough teaching to help the player overcome the part that is holding them back. A focused interface alone cannot create that feeling.
+
+Build the first playable slice around a musical backing groove, clear anticipation, immediate hit response and a restart that takes the player straight into a count-in. Make progress perceptible: an awkward fill becomes fluent, a groove stays steady for longer, or a previous personal best improves under comparable conditions. Vary musical context and offer reachable next challenges rather than relying on faster tempos alone.
+
+Instruction should support that musical loop. Let the player hear a phrase, isolate a difficult part, slow it down and return to the full groove without a detour through menus. A short memory challenge is one possible next step; replaying an enjoyable full-track performance is another. The app should not turn every run into a sequence of mandatory instructional screens.
+
+The test of this direction is a playable experience with music and an actual MIDI kit. A polished mockup can evaluate hierarchy and flow, but it cannot establish timing feel or whether someone wants another take. Observe voluntary replays alongside later recall and musical transfer.
+
+## Free public access
+
+The intended product is free to use and available to a public audience, with willingness to host its distribution and content. Design the first-play experience around choosing a suitable challenge and connecting the kit, without requiring an account before a local practice session. Separate profiles remain useful for players sharing a machine; optional cross-device progress can be considered later.
+
+This does not yet select browser delivery over the original macOS desktop target. Native application distribution and hosted lesson content can be separate concerns. Choose delivery after the focused musical experience and real-device timing path have been validated. Start the shared lesson library with original or permissioned exercises and backing audio suitable for public distribution.
+
 ## One complete practice loop
 
 | Phase | What the player gets | What the app evaluates |
@@ -31,7 +47,7 @@ Game rewards should celebrate musical achievements: a steady backbeat, a clean f
 | Apply | A groove, backing track or modest variation that uses the skill | Performance in a different musical context, labeled separately from recall |
 | Return | A brief attempt in the next session before the chart is revealed | Later recall at a comparable tempo, distinct from a guided personal best |
 
-The first prototype only needs one short kick/snare/hi-hat groove and the Follow, Fade, Recall and Review screens. Its job is to establish whether losing guidance feels like gaining an ability. A full library, notation editor and song platform can wait until that experience works.
+The first prototype only needs one short kick/snare/hi-hat groove and the Follow, Fade, Recall and Review states within one lesson. Its job is to establish whether losing guidance feels like gaining an ability. A full library, notation editor and song platform can wait until that experience works.
 
 ## What makes this different from a permanently visible highway
 
@@ -70,9 +86,22 @@ The full Follow/Fade/Recall cycle is our product hypothesis. Its learning benefi
 
 ## Visual and technical direction
 
-The proposed mockups use one coherent desktop surface. Follow provides a precise, readable play lane; Fade keeps the same geometry as cues recede; Recall becomes visually quiet; Review reveals the completed performance. The design alternatives explore a restrained studio treatment and a more spatial stage treatment, sharing the same layout and learning model.
+The first mockup exposed too much application structure during a lesson: a persistent sidebar, multiple header rows, phase tabs and a metrics-oriented review. The follow-up direction is a focused lesson room. This is a design proposal under review, not an accepted implementation decision.
+
+Navigation belongs to choosing what to practice. Once a lesson opens, a quiet Back to path action preserves that exit while the musical task occupies the window. Follow, Fade and Recall remain meaningful practice conditions, but a lesson recommends them in context instead of making a beginner operate a permanent mode dashboard.
+
+The focused session follows these rules:
+
+- **Before an attempt:** one skill objective, an optional audible demonstration and one primary action to begin. Tempo and guidance are available through Practice options. An experienced learner can go directly to their desired assistance level.
+- **During an attempt:** the playing surface, a small tempo/guidance label and a stable transport area. Editable setup and unrelated navigation disappear. Controls do not shift position as the session starts. A count-in establishes the pulse; the renderer does not establish the timing clock.
+- **After an attempt:** one specific observation tied to the musical phrase and one recommended next action. Retry and Adjust practice remain available. Timing detail can explain the recommendation without turning every result into a grid of metrics.
+- **Across attempts:** preserve the lesson, tempo and aid choice. Retrying starts the count-in directly. Demonstrations are optional; no score gate is required to explore a different practice condition. Return to course browsing only when the player chooses it.
+
+Follow provides a precise, readable play lane; Fade keeps the same geometry when cues are visible; Recall becomes visually quiet; Review reveals the completed performance. The design alternatives explore a restrained studio treatment and a more spatial stage treatment, sharing the same learning model. More available space should improve the scale and readability of the music, rather than expand menus or decoration.
 
 The desired quality comes from typography, readable note spacing, consistent motion, excellent sound response and a small set of deliberate effects. A large collection of particles, neon colors or generic dashboard cards would not establish that quality.
+
+The interface must work from the player's actual position at the drum kit. Test readability, transport target size and recovery from an interrupted attempt there. A later mapped transport control should let a player restart while holding sticks, with configuration and activation kept distinct from scored drum input. The concept previews do not implement real MIDI transport or hardware measurement.
 
 Unity and Flutter remain the two most relevant front-end candidates. Unity has the stronger integrated game-authoring workflow; Flutter fits a restrained native application. Either would need a separately designed native MIDI/audio/scoring path. The mockups do not commit the app to HTML or any production stack. They demonstrate the interaction and art direction only.
 
