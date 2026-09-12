@@ -1,0 +1,22 @@
+docs/pitch.md
+  s_f983bef49b9fee::t_2e4a49d522e7b2 109,111
+  s_f983bef49b9fee::t_5bfed428f0bdc2 108,110
+docs/curriculum.md
+  s_f983bef49b9fee::t_9eb26a072edc08 3-5,14-15,24-57,78,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e850390a2f798b4da1f01fde3dd3bd9e5e2d7aad",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
