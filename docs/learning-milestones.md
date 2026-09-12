@@ -60,6 +60,10 @@ Timing windows and numerical star boundaries are **prototype score policy**, not
 
 The default **16-bar practice block** is a separate cadence hypothesis: about a minute of uninterrupted playing before review at the authored starting tempos. It does not raise the minimum unlock length, establish retention, or promise that one minute is an optimal learning dose. Evaluate whether players settle into the pattern and understand when to stop, repeat, shorten, or reduce assistance.
 
+### Guided tempo within M1
+
+The [guided-tempo proposal](guided-tempo.md) adds lesson-authored starting/checkpoint/challenge paces, explained recommendations from repeated comparable evidence, and condition-labeled control/recall achievements. It preserves manual free practice and existing access. This is proposed work: no adaptive tempo or tempo-specific checkpoint is currently implemented. The sample paces and thresholds are hypotheses to test, and the shared port's visual acceptance remains a prerequisite to expanding its interface.
+
 ## M0: Mechanics and UI concept
 
 **Status: done.**

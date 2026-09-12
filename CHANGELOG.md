@@ -4,6 +4,12 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Define guided tempo as part of learning
+
+- Document a proposed M1 coaching slice: lesson-authored starting paces and checkpoints, bounded recommendations, optional tempo challenges, and manual free practice.
+- Separate a suggested next pace from earned repeatable control, tempo-specific lesson evidence from stars, and guided performance from recall. Preserve existing access and avoid changing tempo during a phrase.
+- Record current any-tempo unlock limitations, cross-platform evaluator requirements, evidence gaps, and learner-testing hypotheses. No runtime tempos, scores, unlocks, or saves change in this milestone.
+
 ### Restore the lesson-screen hierarchy
 
 - Carry the original featured lesson and connected path into the shared interface, with distinct recorded-star and future-goal states plus specific practice/reading lock requirements.
