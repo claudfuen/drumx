@@ -51,6 +51,16 @@ Dictionary DrumxEngine::snapshot() {
   d["on_time"]=m.on_time; d["streak"]=m.streak; d["best_streak"]=m.best_streak;
   d["hit_rate_percent"]=m.hit_rate_percent; d["timing_accuracy_percent"]=m.timing_accuracy_percent;
   d["mean_offset_ms"]=m.mean_offset_ms; d["mean_absolute_offset_ms"]=m.mean_absolute_offset_ms;
+  Array biases;
+  for (int pad=0;pad<DX_PAD_COUNT;++pad) {
+    const auto &bias=s.bias[pad];
+    Dictionary entry;
+    entry["state"]=bias.state; entry["sample_count"]=bias.sample_count;
+    entry["offset_ms"]=bias.offset_ms; entry["spread_ms"]=bias.spread_ms;
+    entry["age_seconds"]=bias.age_seconds;
+    biases.push_back(entry);
+  }
+  d["bias"]=biases;
   d["audio_ready"]=state.audio_ready; d["samples_ready"]=state.samples_ready;
   d["source_id"]=String(state.source_id.c_str()); d["pending_pad"]=state.pending_pad;
   d["error"]=String(state.error.c_str()); d["dropped_hits"]=state.dropped_hits; d["dropped_audio"]=state.dropped_audio;

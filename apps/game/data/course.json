@@ -1,0 +1,844 @@
+{
+  "chapters" : [
+    "Pulse and counts",
+    "Build your backbeat",
+    "Read, vary, and remember"
+  ],
+  "lessons" : [
+    {
+      "bpm" : 60,
+      "chapter" : 0,
+      "counts" : "1 2 3 4",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        }
+      ],
+      "explanation" : "A bar groups four quarter-note beats here. Strike the snare on each click while saying 1, 2, 3, 4. After 4, return to 1 without a pause.",
+      "id" : "find-the-pulse",
+      "objective" : "Play four evenly spaced snare strokes and keep counting through the barline.",
+      "reading_answer" : 1,
+      "reading_choices" : [
+        "Two",
+        "Four",
+        "Eight"
+      ],
+      "reading_question" : "How many quarter-note beats are in this bar of 4/4?",
+      "subtitle" : "One click, one stroke.",
+      "technique_tip" : "Let the stick rebound with a light grip. R and L suggest alternating hands; use the sound and a self-check to compare them, because MIDI cannot verify your hands.",
+      "title" : "Find the pulse",
+      "version" : "find-the-pulse-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 0,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 3,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        }
+      ],
+      "explanation" : "The click still marks quarter notes. Add one hi-hat stroke halfway between each pair of clicks. Count every number and every &, saying & as and. Eight evenly spaced notes fill the bar.",
+      "id" : "eighth-note-hat",
+      "objective" : "Divide each click into two equal parts on the closed hi-hat.",
+      "reading_answer" : 0,
+      "reading_choices" : [
+        "Halfway between beats 1 and 2",
+        "Together with beat 2",
+        "After beat 4"
+      ],
+      "reading_question" : "Where does the & of 1 fall?",
+      "subtitle" : "Two hi-hat notes per beat.",
+      "technique_tip" : "Keep the hi-hat closed and use small, relaxed strokes. The right-hand hint is a suggested setup; mirror it if that suits your kit.",
+      "title" : "Find the and",
+      "version" : "eighth-note-hat-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 0,
+      "counts" : "1 2 3 4",
+      "events" : [
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        }
+      ],
+      "explanation" : "Play the snare on 2 and 4. Beats 1 and 3 are silent in this exercise, but they still take a full beat. Count all four numbers so the spaces have the same length as the played beats.",
+      "id" : "backbeat-rests",
+      "objective" : "Keep counting four beats while playing only the two backbeats.",
+      "reading_answer" : 2,
+      "reading_choices" : [
+        "1 and 3",
+        "Every &",
+        "2 and 4"
+      ],
+      "reading_question" : "Which beats carry the snare backbeat in this exercise?",
+      "subtitle" : "Snare on 2 and 4.",
+      "technique_tip" : "Prepare the next stroke during the rest without squeezing the stick. A rest is a measured part of the rhythm, not permission to lose the count.",
+      "title" : "Give silence its beat",
+      "version" : "backbeat-rests-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 0,
+      "counts" : "1 2 3 4",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 2,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        }
+      ],
+      "explanation" : "Kick is another name for the bass drum. Play it on 1 and 3, leaving 2 and 4 silent. Continue counting through those rests and into the next bar.",
+      "id" : "kick-pulse",
+      "objective" : "Place two bass-drum notes inside a steady four-beat count.",
+      "reading_answer" : 0,
+      "reading_choices" : [
+        "2 and 4",
+        "1 and 3",
+        "None of them"
+      ],
+      "reading_question" : "Which counts are silent in this bass-drum exercise?",
+      "subtitle" : "Kick on 1 and 3.",
+      "technique_tip" : "Use a comfortable pedal motion and stay balanced on the seat. MIDI records the kick event; it does not assess your foot technique.",
+      "title" : "Bring in the bass drum",
+      "version" : "kick-pulse-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 1,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 0,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 2,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 3,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        }
+      ],
+      "explanation" : "Bring the previous two patterns together. The hi-hat plays every number and &, while the kick joins it on 1 and 3. Notes lined up at the same time are played together, not one after another.",
+      "id" : "hat-and-kick",
+      "objective" : "Play steady hi-hat eighth notes with kick on 1 and 3.",
+      "reading_answer" : 1,
+      "reading_choices" : [
+        "Hi-hat first, then kick",
+        "Both at the same time",
+        "Choose either note"
+      ],
+      "reading_question" : "How do you play vertically aligned hi-hat and kick notes?",
+      "subtitle" : "Keep the hat moving over the kick.",
+      "technique_tip" : "Listen for the hi-hat and kick to arrive together on 1 and 3. Keep the hi-hat motion consistent when your foot joins in.",
+      "title" : "Hand meets foot",
+      "version" : "hat-and-kick-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 1,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 3,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        }
+      ],
+      "explanation" : "For this step, leave the bass drum out. Play hi-hat on every number and &, with snare on 2 and 4. The hi-hat continues on the backbeats, so those two counts each contain a pair of simultaneous notes.",
+      "id" : "hat-and-snare",
+      "objective" : "Keep hi-hat eighth notes even while the other hand adds the snare.",
+      "reading_answer" : 2,
+      "reading_choices" : [
+        "Only the snare plays",
+        "Only the kick plays",
+        "Hi-hat and snare play together"
+      ],
+      "reading_question" : "What happens on beat 2 in this pattern?",
+      "subtitle" : "Steady hat, snare on 2 and 4.",
+      "technique_tip" : "Use the hi-hat hand and snare hand comfortably, crossed or open-handed. Do not let the snare stroke interrupt the next hi-hat note.",
+      "title" : "Add the backbeat",
+      "version" : "hat-and-snare-v1"
+    },
+    {
+      "bpm" : 72,
+      "chapter" : 1,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 0,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 2,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 3,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        }
+      ],
+      "explanation" : "Put the two coordination steps together. The hi-hat keeps all eight notes. Kick joins on 1 and 3; snare joins on 2 and 4. Repeat the bar, then try hiding a phrase when you feel ready. This is a groove, not a named rudiment.",
+      "id" : "first-backbeat",
+      "objective" : "Combine eighth-note hi-hat, kick on 1 and 3, and snare on 2 and 4.",
+      "reading_answer" : 0,
+      "reading_choices" : [
+        "Kick on 1 and 3; snare on 2 and 4",
+        "Kick on 2 and 4; snare on 1 and 3",
+        "Snare on every &"
+      ],
+      "reading_question" : "Which description matches this groove?",
+      "subtitle" : "Three instruments, one groove.",
+      "technique_tip" : "Keep counting while your limbs share the beat. If the pattern falls apart, return to hand-and-foot or hat-and-snare practice, then recombine them at a comfortable tempo.",
+      "title" : "Your first backbeat",
+      "version" : "first-backbeat-v1"
+    },
+    {
+      "bpm" : 72,
+      "chapter" : 1,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 0,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 2,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 3,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        }
+      ],
+      "explanation" : "Keep kick on 1 and 3 and snare on 2 and 4. This time, strike the hi-hat only on the four numbered beats. Count the & between them without adding a hit. The pulse stays the same even though the pattern has fewer notes.",
+      "id" : "quarter-note-groove",
+      "objective" : "Change the hi-hat to quarter notes while keeping the kick and snare pattern.",
+      "reading_answer" : 1,
+      "reading_choices" : [
+        "Eight",
+        "Four",
+        "Two"
+      ],
+      "reading_question" : "How many hi-hat strokes are in this version of the bar?",
+      "subtitle" : "Four hi-hat notes instead of eight.",
+      "technique_tip" : "Let the spaces remain open. Mentally comparing this bar with the previous groove can help you hear the difference between quarter and eighth notes.",
+      "title" : "Give the groove more space",
+      "version" : "quarter-note-groove-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 2,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        }
+      ],
+      "explanation" : "Move the eighth-note rhythm to the snare. Play R L R L R L R L while counting 1 & 2 & 3 & 4 &. Each hand supplies every other note. This prepares a short fill; deeper rudiment technique comes in later units.",
+      "id" : "alternating-eighths",
+      "objective" : "Play eight evenly spaced snare strokes with suggested alternating sticking.",
+      "reading_answer" : 2,
+      "reading_choices" : [
+        "Right",
+        "Both",
+        "Left"
+      ],
+      "reading_question" : "Following R L sticking, which hand plays the & of 1?",
+      "subtitle" : "Snare eighth notes, R then L.",
+      "technique_tip" : "Match the sound and spacing of the two hands. R/L is a self-check: the same snare MIDI note cannot tell the app which hand struck it.",
+      "title" : "Let your hands take turns",
+      "version" : "alternating-eighths-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 2,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 0,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 2,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 3,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        }
+      ],
+      "explanation" : "Return to the full eighth-note backbeat. Keep kick on 1 and 3, then add one on the & of 3. Snare stays on 2 and 4. Say 3 and 4 evenly so the extra kick fits between the two numbered beats.",
+      "id" : "kick-on-the-and",
+      "objective" : "Add a kick on the & of 3 without changing the hand pattern.",
+      "reading_answer" : 1,
+      "reading_choices" : [
+        "On beat 2",
+        "On the & of 3",
+        "On the & of 4"
+      ],
+      "reading_question" : "Where is the extra kick compared with Your first backbeat?",
+      "subtitle" : "One extra note changes the feel.",
+      "technique_tip" : "Keep your hands on their original rhythm when the extra kick arrives. Lower the tempo if you need more time between the two pedal strokes.",
+      "title" : "Kick on the and",
+      "version" : "kick-on-the-and-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 2,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 0,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 2,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        }
+      ],
+      "explanation" : "Play the basic groove through the & of 3. On beat 4, play only snare; on the & of 4, play nothing. Keep counting 4 and 1 through the gap. Read the space first, then try the phrase with less guidance.",
+      "id" : "leave-a-gap",
+      "objective" : "Leave space around the final snare, then return to the next bar's first beat.",
+      "reading_answer" : 0,
+      "reading_choices" : [
+        "Nothing; keep counting",
+        "A hi-hat note",
+        "A kick note"
+      ],
+      "reading_question" : "What should you play on the & of 4 in this bar?",
+      "subtitle" : "A quiet ending, a clear return.",
+      "technique_tip" : "Keep the count moving while the hi-hat is silent. A neutral flash from your own hit is not a note to follow; listen to the click and recall what comes next.",
+      "title" : "Keep counting through a gap",
+      "version" : "leave-a-gap-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 2,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 0,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        }
+      ],
+      "explanation" : "For beats 1 and 2, play the basic groove: hi-hat eighths, kick on 1, snare on 2. For 3 & 4 &, play four snare notes, R L R L, leaving hi-hat and kick out. Repeat the bar and land the next hi-hat and kick together on 1.",
+      "id" : "groove-to-fill",
+      "objective" : "Replace the last two beats with alternating snare eighth notes and return to one.",
+      "reading_answer" : 2,
+      "reading_choices" : [
+        "On beat 1",
+        "On the & of 2",
+        "On beat 3"
+      ],
+      "reading_question" : "Where does the snare fill begin in this one-bar exercise?",
+      "subtitle" : "Two beats of groove, two beats of fill.",
+      "technique_tip" : "The fill uses the same spacing as the hi-hat notes it replaces. Count through the change, and try a click-only take to check recall when the phrase feels familiar.",
+      "title" : "Groove into a fill",
+      "version" : "groove-to-fill-v1"
+    }
+  ],
+  "version" : 1
+}

@@ -1,0 +1,1 @@
+Inter is bundled as a portable fallback for the main menu on Windows. The Mac menu uses its system font where available. Original variable font bytes are retained unchanged. See OFL.txt and provenance.json for license, pinned source, and SHA-256 hashes.

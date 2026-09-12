@@ -1,0 +1,77 @@
+# Experimental shared desktop port
+
+**Status: internal engineering experiment. The shared interface has not been accepted.** The native [Mac app](native-lab.md) remains the primary experience and visual baseline. The first Godot port was rejected on visual quality; passing its build and smoke checks does not establish product parity or make it ready for public release.
+
+The work in `apps/game` tests a shared Godot frontend and a native C++ extension on Apple Silicon macOS and x86_64 Windows. Keep its packaging and timing work available while improving the experience. There is no public shared-app release or download recommendation in this guide. **M1 remains active.**
+
+## What the experiment establishes
+
+The port uses the same 12 authored foundation patterns and 24 original Big Rusty recordings as the Mac lab. Shared JSON comes from the Swift course exporter. The extension owns MIDI capture, scoring, sample playback, and the click; Godot displays their results. The [native backend guide](../apps/game/native/README.md) records its clock, queue, and device boundaries.
+
+| Area | Current shared-port behavior | Remaining gap against the Mac baseline |
+| --- | --- | --- |
+| Main menu and learning path | Continue, Learn, Settings, a featured lesson, and 12 selectable steps | Visual hierarchy, spacing, control treatment, and window behavior need acceptance against the native app. |
+| Teaching | Original counts, explanations, a three-row event diagram, sticking suggestions, and a reading question | The event diagram is not the native drum staff. Audible lesson demonstration and explicit technique self-checks are missing. |
+| Practice | Default 16 bars; visible tempo/length controls; 4/8/16/32-bar choices | The native app's collapsed options, 1-bar repair, tempo range, and review actions are not carried over completely. |
+| Guidance | Follow the track, alternate guided/hidden bars, or click-only recall | The highway now uses the native per-target alternate-bar rule. Independent Live timing control is still absent. |
+| Kit and sound | Three pads, raw MIDI/velocity receipts, additive aliases, native monitoring, and volume | Physical Windows input/audio remains untested. Native scoring offset and drum-operated menu navigation are absent. |
+| Progress | One local save with selected lesson, completed attempts, matching-condition bests, reading, and basic sequential unlocks | No separate named players, AppKit save migration, or full practice-condition resume. Select and verify the MIDI route each launch. |
+| Interruption | Escape opens pause with restart/review/home, or returns other pages home | Restart begins a fresh count-in; paused takes do not change records. Menu navigation and presentation need comparison. |
+
+These are implementation differences to resolve or explicitly accept, not a revised product specification. A reader should not use the native guide to infer features in this port.
+
+## Verification so far
+
+Local Apple Silicon checks have passed for the native backend and the actual exported Mac app. The exported release executable reported `DRUMX_SMOKE_OK 7501 ... native=true`, read all 24 original FLAC files from its packed resources, and exercised shared content, scoring, and isolated save/reload checks. Its main executable and native extension were verified as arm64, and its ad-hoc bundle signature passed strict verification.
+
+That local package came from an uncommitted working tree and is marked `dirty: true`. It is an inspection artifact, not a release candidate. The shared app has **not yet passed a hosted Windows build/run or a physical Windows test**. Earlier [portable-core CI](cross-platform.md#what-has-been-verified) tested only the core and C consumer, not this interface or native device adapter.
+
+Headless checks do not inspect graphics, readable layouts, audible latency, real MIDI triggers, or how a beginner uses the app. The first local visual review rejected the port despite passing software checks. Recovery restores the native menu composition and artwork, custom settings controls, a four-beat projective highway, stable instrument slots, original note silhouettes, far fade, capture effects, and compact scoring. A Swift-generated geometry fixture now runs 4,305 comparisons in both source and exported smoke checks. Density checks confirmed logical window sizing at 1×, 1.5×, and 2×. The corrected exported Mac menu, kit/sound settings, count-in, play, and Escape pause have been inspected on screen; preparation and review remain visibly below the native baseline. This is recovery evidence, not visual acceptance.
+
+## Build and package for inspection
+
+Use Python 3, CMake 3.20+, and a C++17 toolchain: Xcode on Apple Silicon Mac, or Visual Studio C++ Build Tools on x86_64 Windows. The fetcher downloads pinned official Godot **4.7.2** editor/templates, verifies SHA-256 hashes, caches downloads under ignored `.build/godot-4.7.2`, and installs the required desktop templates in Godot's export-template directory.
+
+From the repository root, on either target host:
+
+```sh
+python3 scripts/fetch-godot.py
+python3 scripts/verify-game-content.py
+cmake -S apps/game/native -B .build/game-native -DCMAKE_BUILD_TYPE=Release
+cmake --build .build/game-native --config Release --parallel 3
+ctest --test-dir .build/game-native -C Release --output-on-failure
+```
+
+For the first configure on Mac, append `-DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0`. On Windows, append `-A x64` when using the Visual Studio generator. The Windows extension uses the static MSVC runtime.
+
+Package on the matching operating system so the exported executable can be tested there:
+
+```sh
+# Apple Silicon Mac
+python3 scripts/package-game.py --target macos-arm64 --allow-dirty
+
+# x86_64 Windows
+python3 scripts/package-game.py --target windows-x86_64 --allow-dirty
+```
+
+`--allow-dirty` is for local inspection. Omit it for a committed candidate; pair validation rejects dirty builds. Outputs go to `.build/preview`. Each ZIP contains the app, a commit manifest, and third-party notices. Extract the entire Windows package together so its EXE, PCK, and DLL stay alongside one another.
+
+Godot's official Mac template contains a universal executable. Packaging exports it, removes its unsupported Intel slice, and re-signs the arm64 app ad-hoc. The Windows app is unsigned; the Mac app is not notarized. These are packaging boundaries, not installer or distribution acceptance. Official references: [Mac export](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_macos.html), [Windows export](https://docs.godotengine.org/en/stable/tutorials/export/exporting_for_windows.html), and [4.7.2 archive](https://godotengine.org/download/archive/4.7.2-stable/).
+
+## CI artifacts, without automatic publication
+
+The [experimental workflow](../.github/workflows/desktop-preview.yml) builds both targets at the same commit. Each job validates the course and original assets, runs the portable core/C interface contracts and native backend checks, then imports, exports, and runs a headless smoke test of the actual app. Mac also regenerates and compares the Swift course and visual baseline. Both exported executables compare the shared highway against the original Swift geometry.
+
+Successful jobs retain `experimental-app-macos-arm64` and `experimental-app-windows-x86_64` as CI artifacts. A dependent job checks the pair's commit, engine version, sample manifest, and archive hashes, then retains a paired manifest/checksum artifact. Logs and packages expire after 14 days.
+
+**There is no public-release job, release token, or `contents: write` permission in this workflow.** The retained publisher script is invoked only with `--verify-only`. Its publication branch remains unused. Re-enabling public publication requires a separate reviewed workflow change after the acceptance gate below; a green CI run cannot enable it automatically.
+
+## The next acceptance gate
+
+Use one candidate commit, a synthetic player, and equivalent lesson/input conditions. Keep the evidence small and directly comparable:
+
+1. **Visual parity:** capture the native Mac baseline and equivalent shared Mac/Windows views for main menu, Learn, preparation, kit setup, count-in/play, and review at 1440×900. Then check resizing to the native baseline's 1020×780 minimum, 16:9, 16:10, and Windows display scaling. Accept typography, hierarchy, spacing, note alignment, kick width, focus, and disabled states. Fix clipping and inaccessible controls. Record every intentional difference rather than explaining it away as a framework limitation.
+2. **One complete journey on both systems:** connect or choose keyboard, open a lesson, understand the pattern, start the default block, stop/retry, finish/review, inspect a locked step, and reopen saved progress. Exercise resizing and input loss. Confirm the feature gaps above have been resolved or explicitly accepted for this candidate.
+3. **Physical Windows session:** on the user's PC and MIDI kit, confirm source discovery, pad identities, simultaneous hits, velocity, alias learning, sound/click routing, disconnection/reconnection, and a complete take. Record the OS, module, output route, and failures. Observe latency without claiming a measured result unless a measurement method was used.
+
+**Decision:** explicitly accept the shared visual experience and the bounded feature scope before considering public release. Then rerun both packaged builds from that accepted commit and verify their manifests. The native Mac app stays primary until that decision; experimental artifacts and successful compilation do not replace it.

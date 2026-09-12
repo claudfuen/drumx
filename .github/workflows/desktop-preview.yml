@@ -1,0 +1,150 @@
+name: Experimental desktop pair
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/game/**"
+      - "native/core/**"
+      - "CMakeLists.txt"
+      - "spikes/portable-core/**"
+      - "native/macos/DrumxCourse.swift"
+      - "native/macos/DrumxProjection.swift"
+      - "native/macos/PracticeView.swift"
+      - "native/assets/BigRusty/**"
+      - "scripts/*game*.py"
+      - "scripts/fetch-godot.py"
+      - "scripts/distribution/**"
+      - "scripts/tests/**"
+      - ".github/workflows/desktop-preview.yml"
+  pull_request:
+    paths:
+      - "apps/game/**"
+      - "native/core/**"
+      - "CMakeLists.txt"
+      - "spikes/portable-core/**"
+      - "native/macos/DrumxCourse.swift"
+      - "native/macos/DrumxProjection.swift"
+      - "native/macos/PracticeView.swift"
+      - "native/assets/BigRusty/**"
+      - "scripts/*game*.py"
+      - "scripts/fetch-godot.py"
+      - "scripts/distribution/**"
+      - "scripts/tests/**"
+      - ".github/workflows/desktop-preview.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-preview-${{ github.ref }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build and test ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: macos-arm64
+            cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0
+          - os: windows-2025
+            target: windows-x86_64
+            cmake_args: -A x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate shared course and original sample bank
+        run: python3 scripts/verify-game-content.py
+      - name: Check packaging, content, and paired artifact validation
+        run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
+      - name: Compare shared course with authored Swift lessons
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p .build
+          swiftc native/macos/DrumxCourse.swift apps/game/tools/export-course.swift -o .build/export-game-course
+          .build/export-game-course > .build/native-course-verified.json
+          python3 scripts/verify-game-content.py --native-course .build/native-course-verified.json
+      - name: Compare shared visual baseline with the original Swift projection
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p .build
+          swiftc native/macos/DrumxProjection.swift apps/game/tools/export-visual-baseline.swift -o .build/export-visual-baseline
+          .build/export-visual-baseline > .build/native-visual-baseline-verified.json
+          python3 scripts/verify-game-content.py --native-visual-baseline .build/native-visual-baseline-verified.json
+      - name: Fetch pinned editor and export templates
+        run: python3 scripts/fetch-godot.py
+      - name: Build and test portable scoring and C interface contracts
+        run: |
+          cmake -S . -B .build/portable -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build .build/portable --config Release --parallel 3
+          ctest --test-dir .build/portable -C Release --output-on-failure
+      - name: Configure native audio, MIDI, and scoring extension
+        run: cmake -S apps/game/native -B .build/game-native -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_args }}
+      - name: Build native extension and contracts
+        run: cmake --build .build/game-native --config Release --parallel 3
+      - name: Test native backend
+        run: ctest --test-dir .build/game-native -C Release --output-on-failure
+      - name: Export and execute packaged app smoke test
+        run: python3 scripts/package-game.py --target "${{ matrix.target }}"
+      - name: Retain verified package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: experimental-app-${{ matrix.target }}
+          path: |
+            .build/preview/Drumx-${{ matrix.target }}.zip
+            .build/preview/${{ matrix.target }}.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+      - name: Retain build and smoke logs
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: logs-${{ matrix.target }}
+          path: |
+            .build/game-export/${{ matrix.target }}/logs
+            .build/game-native/Testing/Temporary/LastTest.log
+            .build/portable/Testing/Temporary/LastTest.log
+          if-no-files-found: ignore
+          include-hidden-files: true
+          retention-days: 14
+
+  verify_pair:
+    name: Verify experimental pair (no public release)
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: experimental-app-*
+          path: .build/preview
+          merge-multiple: true
+      # Public publication is deliberately absent. Visual and journey parity must
+      # be accepted explicitly before a separate release change is authorized.
+      - name: Verify same-commit packages without publishing
+        run: python3 scripts/publish-game-preview.py --commit "$GITHUB_SHA" --verify-only
+      - name: Retain paired manifest and checksums
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: experimental-pair-manifest
+          path: |
+            .build/preview/build-manifest.json
+            .build/preview/SHA256SUMS.txt
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14

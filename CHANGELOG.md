@@ -4,6 +4,14 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Recover the shared presentation before release
+
+- Correct physical-pixel versus logical-point sizing on Retina displays; preserve the original Mac menu composition, typography, and detailed percussion artwork in the shared renderer.
+- Restore the native four-beat projection, stable seven-slot layout, note silhouettes, horizon fade, capture rail, and compact scoring. Compare 4,305 geometry and shape values against fixtures generated from the original Swift implementation, including inside exported release builds.
+- Replace the experimental settings form with custom kit, sound, playing, and progress sections. Keep missing platform features explicit rather than substituting unimplemented controls.
+- Add paired Mac/Windows build, native checks, package execution, asset/license verification, and artifact integrity checks to CI. Disable automatic public publication while the shared experience remains under review.
+- Inspect the corrected exported Mac menu, settings, count-in, gameplay, and Escape pause. Keep the native Mac app primary; lesson preparation, review, physical Windows MIDI/audio, and complete visual acceptance remain open.
+
 ### Native foundations for a shared desktop app
 
 - Add an experimental Godot native bridge around the existing scorer, with CoreMIDI and WinMM capture, native sample playback, a metronome independent of rendering, bounded observations, and explicit connection generations.

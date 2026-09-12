@@ -1,0 +1,31 @@
+; Shared Drumx engine preview. Native timing and I/O are supplied by GDExtension.
+config_version=5
+
+[application]
+config/name="Drumx"
+run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.5", "GL Compatibility")
+config/icon="res://assets/icon.svg"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="Drumx Engine Preview"
+
+[display]
+window/size/viewport_width=1440
+window/size/viewport_height=900
+window/size/window_width_override=1140
+window/size/window_height_override=830
+window/size/min_width=1020
+window/size/min_height=720
+window/stretch/mode="disabled"
+window/dpi/allow_hidpi=true
+
+[rendering]
+anti_aliasing/quality/msaa_2d=2
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.047,0.063,0.071,1)
+textures/default_filters/use_nearest_mipmap_filter=false
+textures/vram_compression/import_etc2_astc=true
+
+[audio]
+driver/enable_input=false
