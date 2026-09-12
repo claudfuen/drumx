@@ -16,6 +16,10 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -O -parse-as-library \
   -import-objc-header "$DRUMX_ROOT/native/core/drumx_core.h" \
   "$DRUMX_ROOT/native/macos/DrumxIO.swift" \
   "$DRUMX_ROOT/native/macos/DrumxSampler.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxLesson.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxTakeWindow.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxProjection.swift" \
+  "$DRUMX_ROOT/native/macos/PracticeView.swift" \
   "$DRUMX_ROOT/native/macos/DrumxLab.swift" \
   "$DRUMX_BUILD/drumx_core.o" -Xlinker -lc++ \
   -framework AppKit -framework AVFoundation -framework AVFAudio \

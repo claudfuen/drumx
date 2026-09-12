@@ -28,3 +28,13 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse
   "$DRUMX_ROOT/native/macos/tests/DrumxLessonChecks.swift" \
   "$DRUMX_BUILD/lesson-core.o" -Xlinker -lc++ -o "$DRUMX_BUILD/lesson-checks"
 "$DRUMX_BUILD/lesson-checks"
+xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse-as-library \
+  "$DRUMX_ROOT/native/macos/DrumxProjection.swift" \
+  "$DRUMX_ROOT/native/macos/tests/DrumxProjectionChecks.swift" \
+  -o "$DRUMX_BUILD/projection-checks"
+"$DRUMX_BUILD/projection-checks"
+xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse-as-library \
+  "$DRUMX_ROOT/native/macos/DrumxTakeWindow.swift" \
+  "$DRUMX_ROOT/native/macos/tests/DrumxTakeWindowChecks.swift" \
+  -o "$DRUMX_BUILD/take-window-checks"
+"$DRUMX_BUILD/take-window-checks"

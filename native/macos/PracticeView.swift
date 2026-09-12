@@ -1,0 +1,497 @@
+import AppKit
+
+private enum PracticePalette {
+  static let background = NSColor(calibratedRed: 0.055, green: 0.076, blue: 0.082, alpha: 1)
+  static let far = NSColor(calibratedRed: 0.078, green: 0.112, blue: 0.121, alpha: 1)
+  static let near = NSColor(calibratedRed: 0.120, green: 0.178, blue: 0.186, alpha: 1)
+  static let ink = NSColor(calibratedRed: 0.921, green: 0.938, blue: 0.900, alpha: 1)
+  static let muted = NSColor(calibratedRed: 0.574, green: 0.649, blue: 0.645, alpha: 1)
+  static let quiet = NSColor(calibratedRed: 0.280, green: 0.351, blue: 0.351, alpha: 1)
+  static let line = NSColor(calibratedRed: 0.240, green: 0.315, blue: 0.320, alpha: 1)
+  static let hat = NSColor(calibratedRed: 0.540, green: 0.792, blue: 0.808, alpha: 1)
+  static let snare = NSColor(calibratedRed: 0.807, green: 0.917, blue: 0.578, alpha: 1)
+  static let kick = NSColor(calibratedRed: 0.865, green: 0.683, blue: 0.442, alpha: 1)
+  static let memory = NSColor(calibratedRed: 0.694, green: 0.614, blue: 0.798, alpha: 1)
+  static let pads = [hat, snare, kick]
+}
+
+final class PracticeView: NSView {
+  weak var controller: LabController?
+  override var acceptsFirstResponder: Bool { true }
+  override var isFlipped: Bool { true }
+  override var isOpaque: Bool { true }
+
+  override init(frame frameRect: NSRect) {
+    super.init(frame: frameRect)
+    setAccessibilityElement(true)
+    setAccessibilityRole(.image)
+    setAccessibilityLabel("Drum practice. All notes share one NOW line. Fixed instrument positions: hi-hat, crash, snare, two toms, floor tom and ride. Kick spans the rail.")
+  }
+
+  required init?(coder: NSCoder) { super.init(coder: coder) }
+
+  override func keyDown(with event: NSEvent) {
+    guard !event.isARepeat else { return }
+    if event.keyCode == 53 { controller?.stopTake(); return }
+    let key = event.charactersIgnoringModifiers?.lowercased() ?? ""
+    if let pad = ["a": 0, "s": 1, " ": 2][key] {
+      controller?.keyboardHit(
+        pad: pad, velocity: event.modifierFlags.contains(.shift) ? 48 : 108,
+        hostTime: event.timestamp)
+    } else {
+      super.keyDown(with: event)
+    }
+  }
+
+  override func mouseDown(with event: NSEvent) { window?.makeFirstResponder(self) }
+
+  private func text(
+    _ value: String, x: CGFloat, y: CGFloat, size: CGFloat = 11,
+    color: NSColor = PracticePalette.muted, alignment: NSTextAlignment = .left,
+    weight: NSFont.Weight = .medium
+  ) {
+    let attributes: [NSAttributedString.Key: Any] = [
+      .font: NSFont.systemFont(ofSize: size, weight: weight), .foregroundColor: color,
+    ]
+    let string = value as NSString
+    let width = string.size(withAttributes: attributes).width
+    let origin = alignment == .center ? x - width / 2 : alignment == .right ? x - width : x
+    string.draw(at: NSPoint(x: origin, y: y), withAttributes: attributes)
+  }
+
+  private func line(_ from: NSPoint, _ to: NSPoint, color: NSColor, width: CGFloat = 1) {
+    color.setStroke()
+    let path = NSBezierPath()
+    path.move(to: from)
+    path.line(to: to)
+    path.lineWidth = width
+    path.stroke()
+  }
+
+  private func polygon(_ points: [NSPoint]) -> NSBezierPath {
+    let path = NSBezierPath()
+    guard let first = points.first else { return path }
+    path.move(to: first)
+    for point in points.dropFirst() { path.line(to: point) }
+    path.close()
+    return path
+  }
+
+  override func draw(_ dirtyRect: NSRect) {
+    PracticePalette.background.setFill()
+    bounds.fill()
+    guard let c = controller, bounds.width > 200, bounds.height > 260 else { return }
+
+    let now = DrumxIO.hostNowSeconds()
+    let active = c.transportActive
+    let demo = c.demonstrating
+    let bpm = max(1, c.tempo)
+    let duration = dx_core_duration(c.core)
+    let rawTime = active ? now - c.practiceStart : (c.completed ? duration : 0)
+    let songTime = rawTime
+    let beat = songTime * bpm / 60
+    let countIn = active && rawTime < 0
+    let strictMemory = c.mode == 2 && !demo
+    let fade = c.mode == 1 && !demo
+    let inMemoryBar = active && !countIn && !demo
+      && (strictMemory || (fade && Int(beat / 4) % 2 == 1))
+    let top: CGFloat = 55
+    let strike = max(top + 160, bounds.height - 193)
+    let center = bounds.midX
+    let nearWidth = min(870, bounds.width - 132)
+    let look = 4 * 60 / bpm
+    let projection = DrumxProjection(centerX: Double(center), nearWidth: Double(nearWidth),
+                                    topY: Double(top), strikeY: Double(strike))
+    let farWidth = nearWidth * CGFloat(projection.farScale)
+
+    // Every instrument uses this same projection. No instrument-specific time axis.
+    func depth(_ ahead: Double) -> CGFloat {
+      let point = projection.project(lateral: 0, beatDistance: ahead * bpm / 60)
+      return (CGFloat(point.y) - top) / (strike - top)
+    }
+    func yy(_ d: CGFloat) -> CGFloat { top + (strike - top) * d }
+    func span(_ d: CGFloat) -> CGFloat { farWidth + (nearWidth - farWidth) * d }
+    func slotX(_ slot: Int, _ d: CGFloat) -> CGFloat {
+      center - span(d) / 2 + (CGFloat(slot) + 0.5) * span(d) / 7
+    }
+    func handX(_ pad: Int, _ d: CGFloat) -> CGFloat { slotX(pad == 0 ? 0 : 2, d) }
+    func surface(_ far: CGFloat, _ near: CGFloat) -> NSBezierPath {
+      polygon([
+        NSPoint(x: center - span(far) / 2, y: yy(far)),
+        NSPoint(x: center + span(far) / 2, y: yy(far)),
+        NSPoint(x: center + span(near) / 2, y: yy(near)),
+        NSPoint(x: center - span(near) / 2, y: yy(near)),
+      ])
+    }
+
+    let title = demo ? "Listen to the groove" : countIn ? "Settle into the click"
+      : inMemoryBar ? "From memory" : c.completed ? "Take complete" : "Eighth-note rock groove"
+    text(title, x: 28, y: 15, size: 15, color: PracticePalette.ink)
+    let mode = demo ? "Demonstration" : c.modeNames[min(max(0, c.mode), c.modeNames.count - 1)]
+    text("\(Int(bpm)) BPM  ·  \(mode)", x: bounds.width - 28, y: 18, alignment: .right)
+
+    let road = surface(0, 1)
+    NSGraphicsContext.saveGraphicsState()
+    let roadShadow = NSShadow()
+    roadShadow.shadowColor = NSColor.black.withAlphaComponent(0.16)
+    roadShadow.shadowBlurRadius = 18
+    roadShadow.shadowOffset = NSSize(width: 0, height: -7)
+    roadShadow.set()
+    PracticePalette.far.setFill()
+    road.fill()
+    NSGraphicsContext.restoreGraphicsState()
+    NSGraphicsContext.saveGraphicsState()
+    road.addClip()
+    NSGradient(starting: PracticePalette.far, ending: PracticePalette.near)?.draw(
+      from: NSPoint(x: center, y: top), to: NSPoint(x: center, y: strike), options: [])
+    NSGraphicsContext.restoreGraphicsState()
+
+    // All seven slots exist from the first lesson. Quiet slots retain full width.
+    for slot in [1, 3, 4, 5, 6] {
+      PracticePalette.background.withAlphaComponent(0.33).setFill()
+      polygon([
+        NSPoint(x: center - farWidth / 2 + CGFloat(slot) * farWidth / 7, y: top),
+        NSPoint(x: center - farWidth / 2 + CGFloat(slot + 1) * farWidth / 7, y: top),
+        NSPoint(x: center - nearWidth / 2 + CGFloat(slot + 1) * nearWidth / 7, y: strike),
+        NSPoint(x: center - nearWidth / 2 + CGFloat(slot) * nearWidth / 7, y: strike),
+      ]).fill()
+    }
+
+    if strictMemory {
+      PracticePalette.memory.withAlphaComponent(0.075).setFill()
+      road.fill()
+    } else if fade {
+      for bar in stride(from: 1, to: max(1, c.lessonBars), by: 2) {
+        let start = Double(bar * 4) * 60 / bpm
+        let end = start + look
+        let near = max(0, start - songTime)
+        let far = min(look, end - songTime)
+        guard far > near, near < look, far > 0 else { continue }
+        let dFar = depth(far), dNear = depth(near)
+        PracticePalette.memory.withAlphaComponent(0.115).setFill()
+        surface(dFar, dNear).fill()
+        if yy(dNear) - yy(dFar) > 40 {
+          text("FROM MEMORY", x: center, y: (yy(dNear) + yy(dFar)) / 2 - 7,
+               color: PracticePalette.memory, alignment: .center)
+        }
+      }
+    }
+    for slot in 0...7 {
+      line(
+        NSPoint(x: center - farWidth / 2 + CGFloat(slot) * farWidth / 7, y: top),
+        NSPoint(x: center - nearWidth / 2 + CGFloat(slot) * nearWidth / 7, y: strike),
+        color: PracticePalette.line.withAlphaComponent(slot == 0 || slot == 7 ? 0.72 : 0.44),
+        width: slot == 0 || slot == 7 ? 1 : 0.7)
+    }
+    if !strictMemory {
+      for i in 0...(max(1, c.lessonBars) * 4) {
+        let ahead = Double(i) * 60 / bpm - songTime
+        guard ahead >= 0, ahead <= look else { continue }
+        let d = depth(ahead), y = yy(d), width = span(d)
+        line(NSPoint(x: center - width / 2, y: y), NSPoint(x: center + width / 2, y: y),
+             color: PracticePalette.line.withAlphaComponent(i % 4 == 0 ? 0.82 : 0.51),
+             width: i % 4 == 0 ? 1.25 : 0.65)
+        if i < c.lessonBars * 4 {
+          text(String(i % 4 + 1), x: center - width / 2 - 17, y: y - 7,
+               color: PracticePalette.muted.withAlphaComponent(0.76), alignment: .center)
+        }
+      }
+    } else if !countIn {
+      text("FROM MEMORY", x: center, y: top + (strike - top) * 0.44,
+           size: 13, color: PracticePalette.memory, alignment: .center)
+    }
+
+    // The lower edge is depth decoration. The bright top edge is the only NOW line.
+    PracticePalette.line.withAlphaComponent(0.48).setFill()
+    polygon([
+      NSPoint(x: center - nearWidth / 2, y: strike), NSPoint(x: center + nearWidth / 2, y: strike),
+      NSPoint(x: center + nearWidth / 2 - 8, y: strike + 7), NSPoint(x: center - nearWidth / 2 + 8, y: strike + 7),
+    ]).fill()
+    line(NSPoint(x: center - nearWidth / 2, y: strike), NSPoint(x: center + nearWidth / 2, y: strike),
+         color: PracticePalette.ink.withAlphaComponent(0.78), width: 1.5)
+    text("NOW", x: center - nearWidth / 2 - 32, y: strike - 7, alignment: .center)
+
+    for pad in 0..<3 {
+      let flash = max(0, 1 - (now - c.flashes[pad]) / 0.16)
+      guard flash > 0 else { continue }
+      PracticePalette.pads[pad].withAlphaComponent(flash * 0.40).setFill()
+      let rect = pad == 2
+        ? NSRect(x: center - nearWidth / 2, y: strike - 3, width: nearWidth, height: 6)
+        : NSRect(x: handX(pad, 1) - 32, y: strike - 10, width: 64, height: 20)
+      NSBezierPath(roundedRect: rect, xRadius: 5, yRadius: 5).fill()
+    }
+
+    // Foot bars render behind every hand note, including simultaneous combinations.
+    if !strictMemory {
+      for renderPad in [2, 0, 1] {
+        for index in 0..<dx_core_event_count(c.core) {
+          var event = DXEvent()
+          guard dx_core_event(c.core, index, &event) == 1, event.pad == renderPad else { continue }
+          let ahead = event.time_seconds - songTime
+          guard ahead >= -0.015, ahead <= look else { continue }
+          if fade && Int((event.time_seconds * bpm / 60 + 0.000001) / 4) % 2 == 1 { continue }
+          let beatDistance = DrumxProjection.beatDistance(
+            eventTimeSeconds: event.time_seconds, timelineSeconds: songTime, bpm: bpm)
+          let pad = Int(event.pad)
+          let lateral = pad == 2 ? 0 : projection.laneCenter(pad == 0 ? 0 : 2)
+          let noteCenter = projection.project(lateral: lateral, beatDistance: beatDistance)
+          let x = CGFloat(noteCenter.x), y = CGFloat(noteCenter.y)
+          let baseAlpha: CGFloat = !demo && c.showLive && event.hit == 1 ? 0.28 : 1
+          let alpha = baseAlpha * CGFloat(projection.farVisibility(at: beatDistance))
+          let color = PracticePalette.pads[pad].withAlphaComponent(alpha)
+          color.setFill()
+          if pad == 2 {
+            let vertices = projection.rectangle(centerLateral: 0, beatDistance: beatDistance,
+                                                worldWidth: 0.99, worldDepth: 0.04)
+            polygon(vertices.map { NSPoint(x: $0.x, y: $0.y) }).fill()
+          } else {
+            let vertices = pad == 0
+              ? projection.cymbal(centerLateral: lateral, beatDistance: beatDistance,
+                                   worldWidth: 0.66 / 7, worldDepth: 0.12)
+              : projection.drum(centerLateral: lateral, beatDistance: beatDistance,
+                                 worldWidth: 0.66 / 7, worldDepth: 0.12)
+            let note = polygon(vertices.map { NSPoint(x: $0.x, y: $0.y) })
+            let width = note.bounds.width, height = note.bounds.height
+            NSGraphicsContext.saveGraphicsState()
+            let shadow = NSShadow()
+            shadow.shadowColor = NSColor.black.withAlphaComponent(0.18 * alpha)
+            shadow.shadowBlurRadius = 3
+            shadow.shadowOffset = NSSize(width: 0, height: -2)
+            shadow.set()
+            note.fill()
+            NSGraphicsContext.restoreGraphicsState()
+            if pad == 0 && !c.showHands {
+              let a = projection.project(lateral: lateral - 0.022, beatDistance: beatDistance + 0.015)
+              let b = projection.project(lateral: lateral + 0.022, beatDistance: beatDistance + 0.015)
+              line(NSPoint(x: a.x, y: a.y), NSPoint(x: b.x, y: b.y),
+                   color: PracticePalette.background.withAlphaComponent(0.25 * alpha), width: 1)
+            }
+            // Sticking text is a screen-space teaching annotation, not note geometry.
+            if c.showHands && width >= 24 && height >= 13 {
+              text(pad == 0 ? "R" : "L", x: x, y: y - 7, size: 11,
+                   color: PracticePalette.background.withAlphaComponent(alpha), alignment: .center)
+            }
+          }
+        }
+      }
+    }
+
+    // Feather the whole far surface as one scene, so its rail edges, grid and
+    // notes dissolve into the same atmosphere without changing their geometry.
+    let featherHeight = max(38, (strike - top) * 0.18)
+    PracticePalette.background.setFill()
+    NSRect(x: 0, y: top - 14, width: bounds.width, height: 14).fill()
+    NSGraphicsContext.saveGraphicsState()
+    NSRect(x: 0, y: top, width: bounds.width, height: featherHeight).clip()
+    NSGradient(starting: PracticePalette.background,
+               ending: PracticePalette.background.withAlphaComponent(0))?.draw(
+      from: NSPoint(x: center, y: top),
+      to: NSPoint(x: center, y: top + featherHeight), options: [])
+    NSGraphicsContext.restoreGraphicsState()
+
+    // Static silhouettes below NOW explain the kit. They are never timed destinations.
+    let names = ["HI-HAT", "CRASH", "SNARE", "TOM 1", "TOM 2", "FLOOR", "RIDE"]
+    for slot in 0..<7 {
+      let cymbal = [0, 1, 6].contains(slot)
+      let used = slot == 0 || slot == 2
+      let color = used ? (slot == 0 ? PracticePalette.hat : PracticePalette.snare) : PracticePalette.quiet
+      let x = slotX(slot, 1), cy = strike + (cymbal ? 29 : 43)
+      let radius = min(29, nearWidth / 7 * 0.29), ry: CGFloat = cymbal ? 4.5 : 10
+      line(NSPoint(x: x, y: strike + 9), NSPoint(x: x, y: cy - ry - 3),
+           color: PracticePalette.line.withAlphaComponent(used ? 0.75 : 0.36), width: 0.8)
+      let oval = NSBezierPath(ovalIn: NSRect(x: x - radius, y: cy - ry, width: radius * 2, height: ry * 2))
+      PracticePalette.background.setFill()
+      oval.fill()
+      color.withAlphaComponent(used ? 0.78 : 0.62).setStroke()
+      oval.lineWidth = 1.1
+      oval.stroke()
+      if cymbal {
+        color.withAlphaComponent(0.6).setFill()
+        NSBezierPath(ovalIn: NSRect(x: x - 3.5, y: cy - 1.4, width: 7, height: 2.8)).fill()
+      } else {
+        color.withAlphaComponent(0.22).setStroke()
+        NSBezierPath(ovalIn: NSRect(x: x - radius + 4, y: cy - ry + 3,
+                                   width: radius * 2 - 8, height: ry * 2 - 6)).stroke()
+      }
+      text(names[slot], x: x, y: cy + ry + 8,
+           color: used ? PracticePalette.ink : PracticePalette.muted.withAlphaComponent(0.78), alignment: .center)
+    }
+    PracticePalette.kick.withAlphaComponent(0.36).setFill()
+    NSBezierPath(roundedRect: NSRect(x: center - nearWidth * 0.20, y: strike + 76,
+                                   width: nearWidth * 0.40, height: 2), xRadius: 1, yRadius: 1).fill()
+    text("KICK · FOOT", x: center, y: strike + 82, color: PracticePalette.kick, alignment: .center)
+
+    if countIn {
+      let count = min(4, max(1, Int((now - c.clickStart) * bpm / 60) + 1))
+      text(String(count), x: center, y: top + (strike - top) * 0.32 - 20,
+           size: 68, color: PracticePalette.ink, alignment: .center, weight: .regular)
+    }
+    if demo {
+      text("LISTEN · DEMONSTRATION IS NOT SCORED", x: center, y: strike + 139, alignment: .center)
+    } else if c.showLive || !active {
+      drawTiming(controller: c, center: center, top: strike + 112)
+    } else {
+      text("Timing feedback after the phrase", x: center, y: strike + 139, alignment: .center)
+    }
+  }
+
+  private func drawTiming(controller c: LabController, center: CGFloat, top: CGFloat) {
+    let left = center - 132, right = center + 132
+    text("EARLY", x: left, y: top)
+    text("ON TIME", x: center, y: top, alignment: .center)
+    text("LATE", x: right, y: top, alignment: .right)
+    let biases = [c.snapshot.bias.0, c.snapshot.bias.1, c.snapshot.bias.2]
+    let names = ["Hi-hat", "Snare", "Kick"]
+    for pad in 0..<3 {
+      let bias = biases[pad], row = top + 25 + CGFloat(pad) * 20
+      text(names[pad], x: left - 20, y: row - 7, color: PracticePalette.pads[pad], alignment: .right)
+      line(NSPoint(x: left, y: row), NSPoint(x: right, y: row), color: PracticePalette.line.withAlphaComponent(0.65), width: 0.7)
+      line(NSPoint(x: center, y: row - 4), NSPoint(x: center, y: row + 4), color: PracticePalette.muted.withAlphaComponent(0.5), width: 0.8)
+      if bias.sample_count >= 4 && bias.state != 5 {
+        let x = center + CGFloat(min(80, max(-80, bias.offset_ms))) / 80 * 132
+        PracticePalette.pads[pad].setFill()
+        NSBezierPath(ovalIn: NSRect(x: x - 3, y: row - 3, width: 6, height: 6)).fill()
+      }
+      let label: String
+      switch bias.state {
+      case 0: label = "\(bias.sample_count)/4 hits"
+      case 4: label = "Uneven timing"
+      case 5: label = "Waiting for hits"
+      default: label = String(format: "%+.0f ms", bias.offset_ms)
+      }
+      text(label, x: right + 18, y: row - 7)
+    }
+  }
+}
+
+/// One original bar. The upper voice beams eighth-note hi-hat hits and joins the
+/// snare on beats 2 and 4 to the same stem; the lower voice is kick/rest/kick/rest.
+public final class GrooveNotationView: NSView {
+  public override var isFlipped: Bool { true }
+  public override var isOpaque: Bool { true }
+
+  public override init(frame frameRect: NSRect) {
+    super.init(frame: frameRect)
+    setAccessibilityElement(true)
+    setAccessibilityRole(.image)
+    setAccessibilityLabel("One bar in four-four time. Count one and two and three and four and. Upper voice: eight hi-hat eighth notes, with snare joined on beats two and four. Lower voice: kick quarter note, quarter rest, kick quarter note, quarter rest.")
+  }
+
+  public required init?(coder: NSCoder) { super.init(coder: coder) }
+
+  private func text(_ value: String, x: CGFloat, y: CGFloat, size: CGFloat = 11,
+                    color: NSColor = PracticePalette.muted, centered: Bool = false,
+                    font: NSFont? = nil) {
+    let attributes: [NSAttributedString.Key: Any] = [
+      .font: font ?? NSFont.systemFont(ofSize: size, weight: .medium), .foregroundColor: color,
+    ]
+    let string = value as NSString
+    let width = string.size(withAttributes: attributes).width
+    string.draw(at: NSPoint(x: centered ? x - width / 2 : x, y: y), withAttributes: attributes)
+  }
+
+  private func line(x1: CGFloat, y1: CGFloat, x2: CGFloat, y2: CGFloat,
+                    color: NSColor = PracticePalette.ink, width: CGFloat = 1.1) {
+    color.setStroke()
+    let path = NSBezierPath()
+    path.move(to: NSPoint(x: x1, y: y1))
+    path.line(to: NSPoint(x: x2, y: y2))
+    path.lineWidth = width
+    path.stroke()
+  }
+
+  private func notehead(x: CGFloat, y: CGFloat) {
+    NSGraphicsContext.saveGraphicsState()
+    let transform = NSAffineTransform()
+    transform.translateX(by: x, yBy: y)
+    transform.rotate(byDegrees: -17)
+    transform.concat()
+    PracticePalette.ink.setFill()
+    NSBezierPath(ovalIn: NSRect(x: -5.5, y: -3.5, width: 11, height: 7)).fill()
+    NSGraphicsContext.restoreGraphicsState()
+  }
+
+  private func quarterRest(x: CGFloat, y: CGFloat) {
+    // An authored quarter-rest outline, independent of music-font availability.
+    // Its upper zigzag and curled lower stroke identify a quarter rest in voice 2.
+    let rest = NSBezierPath()
+    rest.move(to: NSPoint(x: x + 1, y: y - 17))
+    rest.line(to: NSPoint(x: x + 7, y: y - 9))
+    rest.line(to: NSPoint(x: x + 2, y: y - 3))
+    rest.line(to: NSPoint(x: x + 7, y: y + 4))
+    rest.curve(to: NSPoint(x: x - 4, y: y + 6),
+               controlPoint1: NSPoint(x: x + 1, y: y + 1),
+               controlPoint2: NSPoint(x: x - 4, y: y + 2))
+    rest.curve(to: NSPoint(x: x + 1, y: y + 16),
+               controlPoint1: NSPoint(x: x - 4, y: y + 10),
+               controlPoint2: NSPoint(x: x - 1, y: y + 13))
+    rest.curve(to: NSPoint(x: x - 8, y: y + 5),
+               controlPoint1: NSPoint(x: x - 4, y: y + 13),
+               controlPoint2: NSPoint(x: x - 8, y: y + 9))
+    rest.curve(to: NSPoint(x: x - 1, y: y - 1),
+               controlPoint1: NSPoint(x: x - 8, y: y + 1),
+               controlPoint2: NSPoint(x: x - 4, y: y - 2))
+    rest.line(to: NSPoint(x: x - 5, y: y - 7))
+    rest.line(to: NSPoint(x: x + 1, y: y - 13))
+    rest.line(to: NSPoint(x: x - 2, y: y - 18))
+    rest.close()
+    PracticePalette.ink.setFill()
+    rest.fill()
+  }
+
+  public override func draw(_ dirtyRect: NSRect) {
+    PracticePalette.background.setFill()
+    bounds.fill()
+    guard bounds.width > 260, bounds.height >= 160 else { return }
+    let offset = max(0, (bounds.height - 175) / 2)
+    let left: CGFloat = 29, right = bounds.width - 28
+    let staffTop = offset + 54
+    let noteStart: CGFloat = 119
+    let step = (right - noteStart - 12) / 8
+    let hatY = staffTop - 5, snareY = staffTop + 15, kickY = staffTop + 35
+    let beamY = staffTop - 23
+    text("THE BACKBEAT", x: left, y: offset + 7)
+    for row in 0..<5 {
+      let y = staffTop + CGFloat(row) * 10
+      line(x1: left, y1: y, x2: right, y2: y, color: PracticePalette.muted.withAlphaComponent(0.55), width: 0.65)
+    }
+    line(x1: left, y1: staffTop, x2: left, y2: staffTop + 40,
+         color: PracticePalette.muted.withAlphaComponent(0.65), width: 0.8)
+    line(x1: right - 4, y1: staffTop, x2: right - 4, y2: staffTop + 40, width: 0.8)
+    line(x1: right, y1: staffTop, x2: right, y2: staffTop + 40, width: 2)
+    // Unpitched percussion clef.
+    PracticePalette.ink.setFill()
+    NSRect(x: left + 13, y: staffTop + 8, width: 3, height: 24).fill()
+    NSRect(x: left + 21, y: staffTop + 8, width: 3, height: 24).fill()
+    let signatureFont = NSFont.systemFont(ofSize: 22, weight: .medium)
+    text("4", x: left + 52, y: staffTop - 4, color: PracticePalette.ink, centered: true, font: signatureFont)
+    text("4", x: left + 52, y: staffTop + 17, color: PracticePalette.ink, centered: true, font: signatureFont)
+
+    for eighth in 0..<8 {
+      let x = noteStart + CGFloat(eighth) * step
+      // X notehead in the space immediately above the staff: closed hi-hat.
+      line(x1: x - 4, y1: hatY - 3.5, x2: x + 4, y2: hatY + 3.5, width: 1.5)
+      line(x1: x - 4, y1: hatY + 3.5, x2: x + 4, y2: hatY - 3.5, width: 1.5)
+      let snare = eighth == 2 || eighth == 6
+      if snare { notehead(x: x, y: snareY) }
+      line(x1: x + 5, y1: snare ? snareY : hatY, x2: x + 5, y2: beamY, width: 1.1)
+      if eighth % 2 == 0 {
+        PracticePalette.ink.setFill()
+        NSRect(x: x + 4.5, y: beamY - 1, width: step + 1, height: 3.7).fill()
+      }
+      text(eighth % 2 == 0 ? String(eighth / 2 + 1) : "&", x: x, y: offset + 133,
+           size: 12, color: eighth % 2 == 0 ? PracticePalette.ink : PracticePalette.muted, centered: true)
+    }
+    for beat in 0..<4 {
+      let x = noteStart + CGFloat(beat * 2) * step
+      if beat == 0 || beat == 2 {
+        notehead(x: x, y: kickY)
+        line(x1: x - 5, y1: kickY, x2: x - 5, y2: staffTop + 67, width: 1.1)
+      } else {
+        quarterRest(x: x, y: staffTop + 50)
+      }
+    }
+    text("×  Hi-hat above staff     ●  Snare in upper space     ●  Kick in lower space",
+         x: bounds.midX, y: offset + 156, centered: true)
+  }
+}
