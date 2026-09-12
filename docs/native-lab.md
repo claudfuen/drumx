@@ -92,13 +92,27 @@ R/L prompts are sticking suggestions. A normal snare MIDI note identifies an ins
 
 ## Scores and saved attempts
 
-The **on-time score** counts matched hits within ±50 ms, divided by matched hits plus misses plus extras. An additional strike can lower the score. Targets must match the expected instrument; simultaneous hi-hat and kick are independent targets.
+The live header shows **points, five stars, current combo, and a previous comparable best**. It stays neutral during the count-in and demonstration. Turning Live timing off also hides points, stars, combo, and best until the review, so these cannot become extra correctness cues during click-only practice.
+
+Points are `floor(10,000 × on-time hits / (whole-phrase targets + extra hits))`. On-time means within ±50 ms. Targets must match the expected instrument; simultaneous hi-hat and kick are independent targets. The denominator includes the whole phrase from its start, so one early hit cannot earn five stars. Extras can lower points; misses and off-time hits leave points unearned.
+
+| Stars | Minimum points |
+| --- | ---: |
+| 1 | 4,000 |
+| 2 | 6,000 |
+| 3 | 7,500 |
+| 4 | 9,000 |
+| 5 | 10,000, after a validated complete take |
+
+The fifth star requires every target on time, no misses or extras, and completion of the phrase. Live and interrupted scores stay below 10,000. This is perfection within the current timing band and practice condition, not literal zero timing error or demonstrated technique. These tiers are prototype game policy, separate from [learning gates](learning-milestones.md).
+
+Combo counts consecutive on-time hits across instruments; an off-time hit, miss, or extra breaks it. There is no points multiplier. The review shows best combo, hits/misses/extras, previous best points, and up to six actual comparable takes in chronological order. Incomplete takes cannot claim a new or matched personal best and do not enter this comparison strip.
 
 The maximum matching window is ±125 ms. Opening hi-hat and kick targets also accept the 125 ms early window before the first scored beat; the earlier count-in remains unscored. The core's tighter centered judgment is ±25 ms, separate from the on-time percentage.
 
 Natural completions are saved locally, up to **200 attempts**. Takes stopped before the phrase ends and canceled count-ins do not set personal bests. One-bar and four-bar attempts are separate comparisons. Other matching conditions include tempo, guidance mode, live feedback, hand hints, fixed calibration, input identity, pad mapping, and lesson version. Ranking uses on-time percentage, then hit rate, then mean absolute timing error.
 
-Captured MIDI can arrive after a display update or the end of a take. The core can correct an expired miss using the original timestamp, and history updates the existing attempt instead of creating a duplicate. There are no separate player profiles or cloud synchronization yet.
+Captured MIDI can arrive after a display update or the end of a take. The core can correct an expired miss using the original timestamp, and history updates the existing attempt instead of creating a duplicate, including corrections to points, stars, and best combo. Older saved attempts still load and receive points from their recorded counts; their missing best-combo data remains unknown. There are no separate player profiles or cloud synchronization yet.
 
 ## Troubleshooting
 

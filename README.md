@@ -53,10 +53,12 @@ These checkboxes are acceptance criteria, not completed features. A bigger lesso
 | **Hide a phrase** | Alternate guided and hidden bars, then try a click-only take. |
 | **Catch the note** | Fixed bottom receptors react to every strike, capture matched notes, and distinguish extra hits when live feedback is on. |
 | **Make one adjustment** | Review hits, misses, extras, and recent early/late tendencies; retry slower or work on one bar. |
-| **Beat a comparable result** | Complete takes are saved locally; personal bests compare matching settings and aids. |
+| **Chase a clean phrase** | Earn up to five stars and 10,000 points; build a combo, then compare the last six matching takes and your previous best. |
 | **Use your own kit** | Select a MIDI input, learn pad mappings, and choose app sounds or your module's sounds. |
 
 The lesson plays **hi-hat, snare, and kick**. Seven stable hand-instrument positions and a full-width kick bar establish the visual layout; the other kit positions are reserved for future exercises.
+
+Five stars mean a complete take with every target within the current ±50 ms timing band and no misses or extras. Points use the whole phrase, so an early streak cannot finish the challenge. Click-only practice reveals its score after the phrase. [Scoring and comparisons](docs/native-lab.md#scores-and-saved-attempts) describe the tiers and saved conditions; a perfect game result is evidence about that take, not a technique or mastery certificate.
 
 ## Quick start
 

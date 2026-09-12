@@ -40,6 +40,75 @@ struct TakeSettings: Codable, Equatable {
 
 private let reviewPadNames = ["hi-hat", "snare", "kick"]
 
+/// A fixed-size musical goal: points are earned against the whole phrase, even
+/// while playing. Combos report the core's on-time streak and add no multiplier.
+struct DrumxRunScore {
+  let points: Int
+  let stars: Int
+  let progressToNextStar: Double
+  let nextStarPoints: Int?
+  let combo: Int
+  let bestCombo: Int
+  let isPerfect: Bool
+  let isComplete: Bool
+
+  init(snapshot: DXSnapshot, completedNaturally: Bool) {
+    let total = snapshot.total
+    let validClock = snapshot.bpm.isFinite && snapshot.bpm > 0
+      && snapshot.duration_seconds.isFinite && snapshot.duration_seconds > 0
+      && snapshot.elapsed_seconds.isFinite && snapshot.elapsed_seconds >= 0
+    self.init(
+      expected: Int(total.expected), matched: Int(total.matched), missed: Int(total.missed),
+      extra: Int(total.extra), onTime: Int(total.on_time), combo: Int(total.streak),
+      bestCombo: Int(total.best_streak),
+      complete: completedNaturally && isCompleteSnapshot(snapshot), valid: validClock)
+  }
+
+  init(attempt: LessonAttempt) {
+    self.init(
+      expected: attempt.expected, matched: attempt.matched, missed: attempt.missed,
+      extra: attempt.extra, onTime: attempt.onTime, combo: 0,
+      bestCombo: attempt.bestStreak ?? 0, complete: attempt.isValid, valid: attempt.isValid)
+  }
+
+  private init(
+    expected: Int, matched: Int, missed: Int, extra: Int, onTime: Int,
+    combo: Int, bestCombo: Int, complete: Bool, valid: Bool
+  ) {
+    guard valid, expected > 0, matched >= 0, matched <= expected,
+      missed >= 0, missed <= expected - matched, extra >= 0,
+      onTime >= 0, onTime <= matched, combo >= 0, bestCombo >= combo, bestCombo <= onTime
+    else {
+      points = 0; stars = 0; progressToNextStar = 0; nextStarPoints = 4000
+      self.combo = 0; self.bestCombo = 0; isPerfect = false; isComplete = false
+      return
+    }
+    isComplete = complete
+    isPerfect = complete && matched == expected && onTime == expected && missed == 0 && extra == 0
+    self.combo = combo
+    self.bestCombo = bestCombo
+
+    // Full-width integer division preserves floor semantics at every threshold,
+    // including counts too large for exact Double arithmetic. The quotient is <=10000.
+    let denominator = UInt64(expected) + UInt64(extra)
+    let numerator = UInt64(onTime).multipliedFullWidth(by: 10_000)
+    let earned = Int(denominator.dividingFullWidth(numerator).quotient)
+    let earnedPoints = min(earned, isPerfect ? 10_000 : 9_999)
+    points = earnedPoints
+    let thresholds = [4000, 6000, 7500, 9000, 10_000]
+    stars = thresholds.filter { earnedPoints >= $0 }.count
+    if stars == thresholds.count {
+      nextStarPoints = nil
+      progressToNextStar = 1
+    } else {
+      let previous = stars == 0 ? 0 : thresholds[stars - 1]
+      let next = thresholds[stars]
+      nextStarPoints = next
+      progressToNextStar = Double(points - previous) / Double(next - previous)
+    }
+  }
+}
+
 /// Counts and timing are evidence about this attempt, never verification of hand technique.
 struct LessonReview {
   let headline: String
@@ -145,13 +214,16 @@ struct LessonAttempt: Codable, Equatable, Identifiable {
   let hitRatePercent: Double
   let meanOffsetMS: Double?
   let meanAbsoluteOffsetMS: Double?
+  /// nil identifies older saved attempts that did not record a best streak.
+  let bestStreak: Int?
 
   fileprivate var isValid: Bool {
     guard settings.isValid, endedAt.timeIntervalSinceReferenceDate.isFinite,
       matched >= 0, missed >= 0, extra >= 0, onTime >= 0, expected > 0,
       matched <= expected, missed == expected - matched, onTime <= matched,
       timingAccuracyPercent.isFinite, hitRatePercent.isFinite,
-      (0...100).contains(timingAccuracyPercent), (0...100).contains(hitRatePercent)
+      (0...100).contains(timingAccuracyPercent), (0...100).contains(hitRatePercent),
+      bestStreak.map({ $0 >= 0 && $0 <= onTime }) ?? true
     else { return false }
     let denominator = Double(expected) + Double(extra)
     guard abs(timingAccuracyPercent - Double(onTime) / denominator * 100) < 0.000001,
@@ -206,7 +278,8 @@ final class LessonHistory {
       timingAccuracyPercent: Double(total.on_time) / denominator * 100,
       hitRatePercent: Double(total.matched) / denominator * 100,
       meanOffsetMS: total.matched > 0 ? total.mean_offset_ms : nil,
-      meanAbsoluteOffsetMS: total.matched > 0 ? total.mean_absolute_offset_ms : nil)
+      meanAbsoluteOffsetMS: total.matched > 0 ? total.mean_absolute_offset_ms : nil,
+      bestStreak: Int(total.best_streak))
     guard attempt.isValid else { return nil }
     if let existing = attempts.first(where: { $0.id == id }), existing.settings != settings {
       return nil // A correction cannot silently move an attempt into another comparison group.
@@ -242,6 +315,16 @@ final class LessonHistory {
       if aError != bError { return aError > bError }
       return a.endedAt < b.endedAt
     }
+  }
+
+  /// Newest completed takes under the same conditions; partial takes never enter history.
+  func recent(
+    matching settings: TakeSettings, limit: Int = 6, excluding id: UUID? = nil
+  ) -> [LessonAttempt] {
+    guard settings.isValid, limit > 0 else { return [] }
+    return Array(attempts.reversed().filter {
+      $0.settings == settings && $0.id != id
+    }.prefix(min(200, limit)))
   }
 }
 

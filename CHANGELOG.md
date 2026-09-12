@@ -4,6 +4,13 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Stars, combos, and comparable runs
+
+- Add a compact live five-star score and combo, a 10,000-point complete-phrase target, and progress toward the next star.
+- Review the take alongside the previous comparable best and up to six recent matching attempts; preserve hits, misses, extras, coaching, and best combo.
+- Require a complete, all-on-time take with no misses or extras for five stars. Hide live scoring during count-in, demonstration, and feedback-off practice; stopped takes cannot claim personal bests.
+- Preserve legacy local history and update the same saved take when captured MIDI corrects its result. Add score boundary, completion, history, and correction checks.
+
 ### A finished beginner experience as the quality bar
 
 - Add a commercial-quality experience target to M1: cohesive launch, setup, lesson selection, play, review, and return, with clear feedback and graceful recovery.

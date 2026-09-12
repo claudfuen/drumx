@@ -102,6 +102,9 @@ final class LabController: NSObject {
   let setupStatus = NSTextField(
     labelWithString: "Choose your MIDI input, then play each pad to check its sound.")
   let results = NSTextField(labelWithString: "LISTEN   /   PLAY   /   REMEMBER")
+  private let runScoreHUD = RunScoreHUD()
+  private let runScoreReview = RunScoreReviewView()
+  private var previousBestPoints: Int?
   let play = LessonButton(title: "Stop take", target: nil, action: nil)
   let kitButton = LessonButton(title: "Kit & sound", target: nil, action: nil)
   let homeButton = LessonButton(title: "Lesson", target: nil, action: nil)
@@ -109,7 +112,7 @@ final class LabController: NSObject {
   let reviewDetail = NSTextField(wrappingLabelWithString: "")
   let reviewConditions = NSTextField(labelWithString: "")
   let personalBest = NSTextField(labelWithString: "")
-  let scoreLabel = NSTextField(labelWithString: "0%")
+  let scoreCaption = NSTextField(labelWithString: "")
   let retryButton = LessonButton(title: "Play again", target: nil, action: nil)
   let challengeButton = LessonButton(title: "Hide a phrase", target: nil, action: nil)
   let loopButton = LessonButton(title: "Work on one bar", target: nil, action: nil)
@@ -247,8 +250,10 @@ final class LabController: NSObject {
     root.layer?.backgroundColor = ink.cgColor
     let logo = label("drumx", 28, weight: .bold, color: paper)
     let header = row(
-      [logo, label("FOUNDATIONS  /  01", 10, weight: .semibold), spacer(), results, kitButton],
+      [logo, label("FOUNDATIONS  /  01", 10, weight: .semibold), spacer(), results, runScoreHUD, kitButton],
       spacing: 22)
+    runScoreHUD.widthAnchor.constraint(equalToConstant: 420).isActive = true
+    runScoreHUD.heightAnchor.constraint(equalToConstant: 44).isActive = true
     results.font = .monospacedSystemFont(ofSize: 10, weight: .medium)
     results.textColor = .secondaryLabelColor
     kitButton.target = self
@@ -360,16 +365,16 @@ final class LabController: NSObject {
     reviewDetail.textColor = paper.withAlphaComponent(0.75)
     reviewDetail.maximumNumberOfLines = 3
     reviewConditions.font = .monospacedSystemFont(ofSize: 11, weight: .medium)
-    scoreLabel.font = .systemFont(ofSize: 72, weight: .semibold)
-    scoreLabel.textColor = lime
-    let stats = row(
-      [column([scoreLabel, label("ON-TIME SCORE", 11, weight: .semibold)], spacing: 0), spacer()],
-      spacing: 38)
-    for title in ["HITS", "MISSES", "EXTRAS"] {
-      let value = label("0", 34, weight: .medium, color: paper)
+    scoreCaption.font = .systemFont(ofSize: 12)
+    scoreCaption.textColor = .secondaryLabelColor
+    let stats = row([], spacing: 38)
+    for title in ["HITS", "MISSES", "EXTRAS", "BEST COMBO"] {
+      let value = label("0", 26, weight: .medium, color: paper)
       metricValues.append(value)
-      stats.addArrangedSubview(column([value, label(title, 11, weight: .semibold)], spacing: 8))
+      stats.addArrangedSubview(column([value, label(title, 11, weight: .semibold)], spacing: 4))
     }
+    stats.addArrangedSubview(spacer())
+    runScoreReview.heightAnchor.constraint(equalToConstant: 130).isActive = true
     personalBest.font = .systemFont(ofSize: 13)
     personalBest.textColor = lime
     retryButton.primary = true
@@ -388,11 +393,10 @@ final class LabController: NSObject {
     let stack = column(
       [
         label("LISTEN. ADJUST. GO AGAIN.", 11, weight: .semibold, color: lime), reviewConditions,
-        reviewTitle, reviewDetail, stats,
-        label("On-time score: hits within 50 ms. Misses and extras also count.", 12), personalBest,
+        reviewTitle, reviewDetail, runScoreReview, stats, scoreCaption, personalBest,
         actions,
-      ], spacing: 25)
-    [reviewDetail, stats].forEach {
+      ], spacing: 16)
+    [reviewDetail, runScoreReview, stats].forEach {
       $0.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
     }
     center(stack, in: reviewView)
@@ -407,6 +411,8 @@ final class LabController: NSObject {
     kitButton.isHidden = page == .stage
     homeButton.isHidden = page != .review
     play.isHidden = page != .stage
+    runScoreHUD.isHidden = page != .stage
+    results.isHidden = page == .stage
     if page == .prepare { results.stringValue = "LISTEN   /   PLAY   /   REMEMBER" }
     focusStage()
   }
@@ -422,6 +428,7 @@ final class LabController: NSObject {
     finishedNaturally = false
     takeWindow = nil
     hitFeedback.reset()
+    runScoreHUD.update(score: nil, bestPoints: nil, state: "COUNT-IN")
     lastDemoVisualTime = -Double.infinity
     _ = dx_core_reset(core, tempo, Int32(lessonBars))
     dx_core_set_guidance(core, Int32(mode))
@@ -642,6 +649,7 @@ final class LabController: NSObject {
     }
     demoEnd = practiceStart + max(dx_core_duration(core), io.demoDurationSeconds)
     demonstrating = true
+    runScoreHUD.update(score: nil, bestPoints: nil, state: "LISTEN  /  COUNT OUT LOUD")
     play.title = "Stop listening"
     showPage(.stage)
     results.stringValue = "LISTEN  /  COUNT OUT LOUD"
@@ -661,6 +669,8 @@ final class LabController: NSObject {
       calibrationMS: calibrationMS,
       inputIdentity: io.selectedSourceID.map { "midi:\($0)" } ?? "keyboard", mapping: mappings,
       handHints: showHands)
+    previousBestPoints = takeSettings.flatMap { history.best(matching: $0) }
+      .map { DrumxRunScore(attempt: $0).points }
     clickStart = DrumxIO.hostNowSeconds() + 0.75
     practiceStart = clickStart + 240 / tempo
     takeWindow = DrumxTakeWindow(
@@ -761,33 +771,34 @@ final class LabController: NSObject {
     reviewConditions.stringValue =
       "\(Int(tempo)) BPM  ·  \(modeNames[mode])  ·  \(lessonBars) \(lessonBars == 1 ? "bar" : "bars")  ·  \(usedLiveFeedback ? "live timing" : "feedback after phrase")"
     let s = snapshot.total
-    scoreLabel.stringValue =
-      s.has_accuracy != 0 ? String(format: "%.0f%%", s.timing_accuracy_percent) : "No score"
-    for (field, value) in zip(metricValues, [s.matched, s.missed, s.extra]) {
+    let score = DrumxRunScore(snapshot: snapshot, completedNaturally: finishedNaturally)
+    for (field, value) in zip(metricValues, [s.matched, s.missed, s.extra, s.best_streak]) {
       field.stringValue = String(value)
     }
+    scoreCaption.stringValue =
+      "Five stars: every target within 50 ms, no misses or extras, across the complete phrase."
     personalBest.stringValue =
-      finishedNaturally
-      ? "Finish another take with these settings to compare your progress."
-      : "A fresh count-in is one click away."
-    if let settings = takeSettings,
+      "Partial take · not saved. Complete the phrase to set a personal best."
+    var recent: [LessonAttempt] = []
+    var bestPoints: Int?
+    var savedID: UUID?
+    if let settings = takeSettings {
       let attempt = history.record(
         id: takeID, settings: settings, snapshot: snapshot, completedNaturally: finishedNaturally,
         endedAt: endedAt)
-    {
-      if let best = history.best(matching: settings, excluding: takeID) {
-        if attempt.timingAccuracyPercent > best.timingAccuracyPercent {
-          personalBest.stringValue =
-            "New personal best with these settings. Previous: \(Int(best.timingAccuracyPercent.rounded()))%."
-        } else {
-          personalBest.stringValue =
-            "Your best with these settings: \(Int(best.timingAccuracyPercent.rounded()))% on time."
-        }
-      } else {
+      bestPoints = history.best(matching: settings, excluding: takeID)
+        .map { DrumxRunScore(attempt: $0).points }
+      recent = history.recent(matching: settings)
+      if let attempt {
+        savedID = attempt.id
         personalBest.stringValue =
-          "First complete take saved locally. Your next take has a starting point."
+          "Saved on this Mac · comparisons use the same lesson, tempo, input, and aids."
+      }
+      if let error = history.lastError {
+        personalBest.stringValue = "Couldn't save this take: \(error)"
       }
     }
+    runScoreReview.update(score: score, recent: recent, currentID: savedID, bestPoints: bestPoints)
     loopButton.title = lessonBars == 1 ? "Back to four bars" : "Work on one bar"
     challengeButton.title =
       mode == 0 ? "Hide a phrase" : mode == 1 || showLive ? "Try click-only" : "Repeat click-only"
@@ -827,10 +838,17 @@ final class LabController: NSObject {
     }
     if now - lastStatusUpdate > 0.12 {
       if running {
-        let s = snapshot.total
-        results.stringValue =
-          showLive
-          ? "\(s.matched) HITS   ·   \(s.best_streak) BEST STREAK" : "RESULTS AFTER THE PHRASE"
+        if now < practiceStart {
+          runScoreHUD.update(score: nil, bestPoints: nil, state: "COUNT-IN")
+          results.stringValue = "COUNT-IN"
+        } else if showLive {
+          let score = DrumxRunScore(snapshot: snapshot, completedNaturally: false)
+          runScoreHUD.update(score: score, bestPoints: previousBestPoints, state: "PLAYING")
+          results.stringValue = "\(score.points) points, \(score.stars) stars, \(score.combo) combo"
+        } else {
+          runScoreHUD.update(score: nil, bestPoints: nil, state: "RESULTS AFTER THE PHRASE")
+          results.stringValue = "RESULTS AFTER THE PHRASE"
+        }
       }
       let phase =
         transportActive
