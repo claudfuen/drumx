@@ -78,6 +78,14 @@ The sampler preloads the recordings. Live MIDI monitoring bypasses the main thre
 | From memory | No target notes or moving beat scaffold. |
 | From memory + Live timing off | Click-only attempt with evaluation shown after the phrase. |
 
+### The bottom capture rail
+
+Fixed receptors sit on the shared NOW line. Their shapes match the approaching drum and cymbal notes; the kick catcher spans the rail behind the hand targets. The kit shapes below this line remain spatial references, not additional targets.
+
+Every mapped strike produces a local press/pulse, including unscored practice strikes. With Live timing on, a matched note disappears into its catcher and produces a brief capture effect. An extra hit produces a coral burst at that receptor. A capture means the note matched; it does not mean the hit was perfectly centered. The timing meter still shows early/late tendencies.
+
+Simultaneous hits retain independent feedback. With Live timing off, all strikes use the same neutral response: capture and extra-hit effects cannot disclose the grade. Memory practice does not emit automatic missing-note effects. The audible demonstration animates unscored receptor presses in time with its scheduled notes. macOS Reduce Motion replaces traveling fragments with brief local illumination.
+
 Live timing displays a recent early/late tendency for each instrument after enough matching hits. Old or uneven evidence is labeled instead of claiming a steady tendency. An incoming-hit flash acknowledges your own action; it does not reveal an upcoming target. The listening demonstration shows the groove even when a memory mode is selected.
 
 R/L prompts are sticking suggestions. A normal snare MIDI note identifies an instrument or zone, not which hand played it. Module velocity helps choose a sound layer; it does not verify grip, rebound, posture, accents, or foot technique. See the [curriculum](curriculum.md) for how timing, reading, recall, and technique checks fit together.

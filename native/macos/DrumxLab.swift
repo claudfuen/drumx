@@ -75,7 +75,7 @@ final class LabController: NSObject {
   var tempo = 96.0, mode = 0, showHands = true, showLive = true
   var lessonBars = 4
   var practiceStart = 0.0, clickStart = 0.0, calibrationMS = 0.0
-  var flashes = [Double](repeating: -100, count: 3)
+  var hitFeedback = DrumxHitFeedback()
   var mappings = [[42, 44, 46], [38, 40], [35, 36]]
   var learning: Int?
   var drumSound = true
@@ -87,6 +87,7 @@ final class LabController: NSObject {
   private var timer: Timer?, lastStatusUpdate = 0.0
   private var showingReview = false
   private var demoEnd = 0.0
+  private var lastDemoVisualTime = -Double.infinity
   let window: NSWindow
   private var setupWindow: NSWindow?
   let sourceMenu = NSPopUpButton(), modeMenu = NSPopUpButton()
@@ -420,6 +421,8 @@ final class LabController: NSObject {
     completed = false
     finishedNaturally = false
     takeWindow = nil
+    hitFeedback.reset()
+    lastDemoVisualTime = -Double.infinity
     _ = dx_core_reset(core, tempo, Int32(lessonBars))
     dx_core_set_guidance(core, Int32(mode))
     dx_core_snapshot(core, &snapshot)
@@ -732,16 +735,23 @@ final class LabController: NSObject {
       pad: pad, velocity: Double(velocity) / 127, hostTime: hostTime, inputIdentity: "keyboard")
   }
   private func receive(pad: Int, velocity: Double, hostTime: Double, inputIdentity: String) {
-    flashes[pad] = DrumxIO.hostNowSeconds()
+    let now = DrumxIO.hostNowSeconds()
+    var result: DXHitResult?
     if !demonstrating, running || completed,
       let songTime = takeWindow?.songTime(capturedAt: hostTime, inputIdentity: inputIdentity),
       songTime >= -0.125,
       songTime <= dx_core_duration(core) + 0.125
     {
-      _ = dx_core_input(core, Int32(pad), songTime, velocity)
+      result = dx_core_input(core, Int32(pad), songTime, velocity)
       dx_core_snapshot(core, &snapshot)
       if completed { updateReview() }
     }
+    // Every strike gets acknowledgment. Only the actual returned judgment may
+    // trigger a capture/extra effect; the global last-hit snapshot loses chords.
+    hitFeedback.record(
+      pad: pad, judgment: result.map { Int($0.judgment) }, velocity: velocity,
+      offsetMS: result?.offset_ms ?? 0, at: now,
+      revealJudgment: running && showLive && !demonstrating)
     scene.needsDisplay = true
   }
   private func updateReview() {
@@ -785,6 +795,24 @@ final class LabController: NSObject {
   }
   private func tick() {
     let now = DrumxIO.hostNowSeconds()
+    let hadPulses = !hitFeedback.pulses.isEmpty
+    hitFeedback.prune(at: now)
+    if demonstrating {
+      // Display only: audio was scheduled once on the native audio clock.
+      // Animate demo strikes at their planned host time, without scoring them.
+      let song = now - practiceStart
+      for index in 0..<dx_core_event_count(core) {
+        var event = DXEvent()
+        guard dx_core_event(core, index, &event) == 1,
+          event.time_seconds > lastDemoVisualTime, event.time_seconds <= song,
+          song - event.time_seconds < DrumxHitFeedback.duration
+        else { continue }
+        hitFeedback.record(
+          pad: Int(event.pad), judgment: nil, velocity: 0.8, offsetMS: 0,
+          at: practiceStart + event.time_seconds, revealJudgment: false)
+      }
+      lastDemoVisualTime = song
+    }
     if running {
       let song = now - practiceStart
       dx_core_advance(core, song)
@@ -814,7 +842,7 @@ final class LabController: NSObject {
       )
       lastStatusUpdate = now
     }
-    if transportActive || flashes.contains(where: { now - $0 < 0.2 }) { scene.needsDisplay = true }
+    if transportActive || hadPulses || !hitFeedback.pulses.isEmpty { scene.needsDisplay = true }
   }
 }
 

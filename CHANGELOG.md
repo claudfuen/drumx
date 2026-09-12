@@ -4,6 +4,13 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Bottom capture rail
+
+- Add fixed drum/cymbal receptors and a full-width kick catcher on the shared NOW line.
+- Acknowledge every strike; capture matched notes and distinguish extra hits with local effects when live timing feedback is enabled.
+- Preserve simultaneous hits and neutral click-only feedback, animate unscored demo strikes, and respect Reduce Motion.
+
+
 ### First-lesson experience
 
 [26b2ade](https://github.com/claudfuen/drumx/commit/26b2ade) delivers the focused native lesson and updated practice rail.

@@ -38,3 +38,8 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse
   "$DRUMX_ROOT/native/macos/tests/DrumxTakeWindowChecks.swift" \
   -o "$DRUMX_BUILD/take-window-checks"
 "$DRUMX_BUILD/take-window-checks"
+xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse-as-library \
+  "$DRUMX_ROOT/native/macos/DrumxHitFeedback.swift" \
+  "$DRUMX_ROOT/native/macos/tests/DrumxHitFeedbackChecks.swift" \
+  -o "$DRUMX_BUILD/hit-feedback-checks"
+"$DRUMX_BUILD/hit-feedback-checks"

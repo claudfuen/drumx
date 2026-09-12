@@ -17,6 +17,7 @@ The first playable lesson is **Your first backbeat**. Read its drum notation, he
 | **Hear the groove** | Listen to an acoustic drum demonstration and count `1 & 2 & 3 & 4 &`. |
 | **Read, then play** | Connect a one-bar staff study and sticking suggestions to a shared timing line. |
 | **Hide a phrase** | Alternate guided and hidden bars, then try a click-only take. |
+| **Catch the note** | Fixed bottom receptors react to every strike, capture matched notes, and distinguish extra hits when live feedback is on. |
 | **Make one adjustment** | Review hits, misses, extras, and recent early/late tendencies; retry slower or work on one bar. |
 | **Beat a comparable result** | Complete takes are saved locally; personal bests compare matching settings and aids. |
 | **Use your own kit** | Select a MIDI input, learn pad mappings, and choose app sounds or your module's sounds. |
