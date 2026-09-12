@@ -1,0 +1,40 @@
+name: Portable core
+
+on:
+  push:
+    branches: [main]
+    paths: ["CMakeLists.txt", "native/core/**", "spikes/portable-core/**", ".github/workflows/portable-core.yml"]
+  pull_request:
+    paths: ["CMakeLists.txt", "native/core/**", "spikes/portable-core/**", ".github/workflows/portable-core.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+        config: [Debug, Release]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Configure
+        run: cmake -S . -B .build/portable -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+      - name: Build
+        run: cmake --build .build/portable --config ${{ matrix.config }} --parallel
+      - name: Run contracts
+        run: ctest --test-dir .build/portable -C ${{ matrix.config }} --output-on-failure
+  sanitizers:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: cmake -S . -B .build/sanitized -DBUILD_TESTING=ON -DCMAKE_BUILD_TYPE=Debug -DDRUMX_ENABLE_SANITIZERS=ON
+      - run: cmake --build .build/sanitized --parallel
+      - run: ctest --test-dir .build/sanitized --output-on-failure

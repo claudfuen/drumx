@@ -4,6 +4,12 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### A portable core checked on both platforms
+
+- Add CMake builds, a true C-language API consumer, and CTest contracts for the existing scoring engine.
+- Run Debug/Release builds on macOS and Windows in GitHub Actions, with a separate Mac sanitizer job. Local configurations pass; hosted Windows results are recorded after the first run.
+- Document clock, MIDI, audio, rendering, storage, display scaling, and packaging risks before committing the production interface. The current app remains Mac-only.
+
 ### A game menu and an explorable foundation journey
 
 - Give the app a distinct main menu with Continue, Learn, Settings, keyboard selection, and original percussion artwork. Replace the chapter tabs with illustrated chapter cards and connected lesson steps.

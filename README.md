@@ -77,6 +77,8 @@ The foundation unit plays **hi-hat, snare, and kick**. Seven stable hand-instrum
 
 Five stars mean a complete take with every target within the current ±50 ms timing band and no misses or extras. Points use the whole phrase, so an early streak cannot finish the challenge. Click-only practice reveals its score after the phrase. [Scoring and comparisons](docs/native-lab.md#scores-and-saved-attempts) describe the tiers and saved conditions; a perfect game result is evidence about that take, not a technique or mastery certificate.
 
+**Cross-platform work is now running alongside the Mac app:** CMake builds the scoring core and a real C API consumer, with automated Debug/Release checks on macOS and Windows. Local Mac checks pass; the first hosted Windows run is pending. The interface and device layers still need a production-engine decision. [Platform contracts and early risks](docs/cross-platform.md)
+
 ## Quick start
 
 Requires **macOS 15+**, **full Xcode**, and **Python 3** as `python3`. The script selects `/Applications/Xcode.app` when present and builds for your Mac's architecture. Command Line Tools alone are not supported.
