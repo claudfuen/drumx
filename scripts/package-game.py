@@ -28,7 +28,7 @@ content_spec.loader.exec_module(content)
 
 def run(command: list[str], log: Path, timeout: int = 180) -> str:
     try:
-        result = subprocess.run(command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
+        result = subprocess.run(command, cwd=ROOT, text=True, encoding="utf-8", errors="replace", stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, timeout=timeout)
     except subprocess.TimeoutExpired as error:
         captured = error.stdout or ""

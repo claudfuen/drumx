@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - ".gitattributes"
       - "apps/game/**"
       - "native/core/**"
       - "CMakeLists.txt"
@@ -19,6 +20,7 @@ on:
       - ".github/workflows/desktop-preview.yml"
   pull_request:
     paths:
+      - ".gitattributes"
       - "apps/game/**"
       - "native/core/**"
       - "CMakeLists.txt"

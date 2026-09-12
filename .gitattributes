@@ -1,0 +1,9 @@
+# Deterministic resource bytes on every checkout, including Windows.
+# Licenses, sample manifests and font provenance are verified by SHA-256.
+* text=auto eol=lf
+*.flac binary
+*.ttf binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.icns binary

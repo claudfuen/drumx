@@ -12,6 +12,10 @@ A record of playable milestones and product decisions. These entries describe re
 - Add paired Mac/Windows build, native checks, package execution, asset/license verification, and artifact integrity checks to CI. Disable automatic public publication while the shared experience remains under review.
 - Inspect the corrected exported Mac menu, settings, count-in, gameplay, and Escape pause. Keep the native Mac app primary; lesson preparation, review, physical Windows MIDI/audio, and complete visual acceptance remain open.
 
+### Deterministic Windows resource checkout
+
+- The first hosted Mac export passed. The Windows job caught checkout newline conversion in the pinned font license before packaging. Preserve LF text resources and decode engine logs as UTF-8 on both hosts; keep exact-byte verification enabled.
+
 ### Native foundations for a shared desktop app
 
 - Add an experimental Godot native bridge around the existing scorer, with CoreMIDI and WinMM capture, native sample playback, a metronome independent of rendering, bounded observations, and explicit connection generations.
