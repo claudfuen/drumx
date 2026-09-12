@@ -4,6 +4,11 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Open input recovery directly from review
+
+- Send the coached review's **Check kit & sound** action directly to Settings even when its captured MIDI setup has changed, while preserving the return to review.
+- Pass 8,027 checks in source and exported Mac application, including the disconnected-review route. Verify the same final candidate in paired CI.
+
 ### Refine controls and protect interrupted sessions
 
 - Keep the existing menu and settings composition while improving pad focus/hover, readable volume values, keyboard section navigation, disabled actions, and body-only scrolling for shorter windows. Preserve an explicit return from shared Settings to the page that opened it.

@@ -583,6 +583,11 @@ func coaching_copy(decision: Dictionary) -> Array:
 
 func accept_coaching() -> void:
 	if not bool(coaching.get("ok", false)): return
+	# Recovery is precisely for a changed or missing setup. Its button must
+	# open Settings before the next-pace condition comparison can redirect it.
+	if int(coaching.get("action", 0)) == 7:
+		_show_recovery_settings()
+		return
 	if model.pulse_context(current_take_settings()).conditions_key != model.pulse_context(take_settings).conditions_key:
 		# A review describes the captured setup. Never start its next challenge
 		# after a disconnect or setup change without reevaluating the new context.
@@ -590,7 +595,6 @@ func accept_coaching() -> void:
 		return
 	match int(coaching.get("action", 0)):
 		5: show_prepare(mini(11, lesson_index + 1)); return
-		7: _show_recovery_settings(); return
 	if not _ensure_practice_ready(): return
 	if int(coaching.get("action", 0)) != 8:
 		tempo = float(coaching.get("next_bpm", tempo))
@@ -1631,6 +1635,14 @@ func controller_recovery_checks() -> void:
 	space.physical_keycode = KEY_SPACE
 	_unhandled_key_input(space)
 	verify(page == "prepare" and fixture.starts == 0 and fixture.key_hits == 0, "Rejected button activation does not start a take or play a keyboard drum")
+	var previous_coaching: Dictionary = coaching
+	coaching = {"ok": true, "action": 7}
+	take_settings = current_take_settings().duplicate(true)
+	take_settings.source = "disconnected-fixture-kit"
+	clear_page("result")
+	accept_coaching()
+	verify(page == "settings" and settings_return_page == "result", "Check kit and sound opens recovery directly even when the review input changed")
+	coaching = previous_coaching
 	model.pending_attempts = {"waiting": {}}
 	update_footer()
 	verify(footer.text == model.pending_save_message(), "Unsaved result notice outranks generic footer state")
