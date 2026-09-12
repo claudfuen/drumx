@@ -20,3 +20,11 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -parse-as-library \
   -framework AVFoundation -framework CoreMIDI -framework AudioToolbox \
   -o "$DRUMX_BUILD/io-checks"
 "$DRUMX_BUILD/io-checks" "$DRUMX_ROOT/native/assets/BigRusty/manifest.json"
+xcrun clang++ -target "$DRUMX_TARGET" -std=c++17 -O1 -Wall -Wextra -Werror -pedantic \
+  -c "$DRUMX_ROOT/native/core/drumx_core.cpp" -o "$DRUMX_BUILD/lesson-core.o"
+xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse-as-library \
+  -import-objc-header "$DRUMX_ROOT/native/core/drumx_core.h" \
+  "$DRUMX_ROOT/native/macos/DrumxLesson.swift" \
+  "$DRUMX_ROOT/native/macos/tests/DrumxLessonChecks.swift" \
+  "$DRUMX_BUILD/lesson-core.o" -Xlinker -lc++ -o "$DRUMX_BUILD/lesson-checks"
+"$DRUMX_BUILD/lesson-checks"
