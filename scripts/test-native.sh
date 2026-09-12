@@ -52,6 +52,15 @@ for DRUMX_MODEL in Course Progress; do
 done
 xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse-as-library \
   -import-objc-header "$DRUMX_ROOT/native/core/drumx_core.h" \
+  "$DRUMX_ROOT/native/macos/DrumxLesson.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxCourse.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxProgress.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxUnlocks.swift" \
+  "$DRUMX_ROOT/native/macos/tests/DrumxUnlockChecks.swift" \
+  "$DRUMX_BUILD/lesson-core.o" -Xlinker -lc++ -o "$DRUMX_BUILD/unlock-checks"
+"$DRUMX_BUILD/unlock-checks"
+xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse-as-library \
+  -import-objc-header "$DRUMX_ROOT/native/core/drumx_core.h" \
   "$DRUMX_ROOT/native/macos/DrumxCourse.swift" \
   "$DRUMX_ROOT/native/macos/DrumxIO.swift" \
   "$DRUMX_ROOT/native/macos/DrumxSampler.swift" \

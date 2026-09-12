@@ -4,6 +4,12 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Evidence-based beginner unlock model
+
+- Add a tested progression model: four or more bars with at least 80% of notes matched opens the next lesson; chapter boundaries also require the preceding reading check. Timing stars remain a separate challenge.
+- Preserve previously reached lessons without converting old practice into new clearance. Keep player and content-version evidence separate, reject invalid attempts, and exclude stopped takes and demonstrations through archive admission.
+- Verify all 12 lesson transitions, exact thresholds, reading gates, migration, and profile isolation in 104 dedicated checks.
+
 ### A playable foundation journey
 
 - Connect a first-launch welcome, local player selection, a focused three-chapter course menu, and all 12 foundation lessons to the existing practice stage.
