@@ -41,8 +41,8 @@ This does not yet select browser delivery over the original macOS desktop target
 | Phase | What the player gets | What the app evaluates |
 | --- | --- | --- |
 | Follow | Full track, a brief demonstration and optional counts/sticking | Correct instruments, timing, omissions and extra hits; guidance is available |
-| Fade | A visible phrase followed by a hidden repetition; assistance changes at an announced bar boundary | The same targets and scoring as Follow, with assistance recorded separately |
-| Recall | A count-in, the quarter-note click and the player's drum sound; no upcoming notes or live correctness cues | The same musical phrase, scored internally and reviewed afterward |
+| Fade | A visible phrase followed by a marked whole-bar “Your turn” zone on the same highway; target notes disappear while the beat scaffold remains | The same targets and scoring as Follow, with assistance recorded separately |
+| Recall | For memory practice, the same highway with hidden targets; for a strict click-only check, a count-in followed by static rails, the click and the player's drum sound | The same musical phrase, scored internally and reviewed afterward; record which visual support remained |
 | Review and repair | The completed phrase with actual hits overlaid, one clear observation and a focused retry | Where the error occurred, whether it concerns timing, missing/extra notes or instrument choice |
 | Apply | A groove, backing track or modest variation that uses the skill | Performance in a different musical context, labeled separately from recall |
 | Return | A brief attempt in the next session before the chart is revealed | Later recall at a comparable tempo, distinct from a guided personal best |
@@ -57,11 +57,15 @@ In particular, passing with a visible chart is different from recalling today, a
 
 Each player has their own progress, starting level, comfortable tempos and assistance history. More experienced players can enter at a suitable exercise and aid level. Difficulty can grow through musical complexity, dynamics, orchestration and phrase length as well as tempo.
 
-## Recall must actually remove the help
+## Memory practice and an independent check
 
-A note highway gives advance instructions. A miss flash, timing meter or combo update can provide immediate feedback that also helps reconstruct the pattern. During Recall, remove both the future notes and those live correctness cues. Do not leave ghost targets, an animated kit demonstration, a guide drum track or a scrolling playhead that discloses the phrase.
+A memory phrase should stay in the same playing environment. Mark an upcoming whole-bar zone “Your turn,” then withhold its target notes while the highway and beat scaffold continue. The player should experience a gap in the instructions, not a sudden switch to a text screen. This supports a guided practice condition, not a claim of complete visual independence.
 
-The player's own drum sound remains immediate. Delaying the results never means delaying the instrument. The click supplies a pulse, so this phase tests pattern memory while synchronizing to an external reference. Maintaining time through silent metronome bars is a separate later challenge, not something a click-only result proves.
+An optional immediate response at the strike line can show the player's actual incoming hit, with the same response whether it matches a target or not. It must not reveal ghost notes, missed targets, early/late judgments, a combo or other live correctness cues. Show those comparisons after the phrase. Ordinary MIDI confirms an instrument event, not which hand played it.
+
+Offer a distinct strict click-only check when the learner wants to assess independence from visual timing support. Keep the same static rail shell, with no moving playhead, scrolling beat grid, visual pulse, target notes or live correctness feedback. Do not add an animated kit demonstration or a guide drum track. Record this condition separately from memory practice that retains a visual beat scaffold.
+
+The player's own drum sound remains immediate in every condition. Delaying the results never means delaying the instrument. The click supplies a pulse, so a click-only check tests pattern memory while synchronizing to an external reference. Maintaining time through silent metronome bars is a separate later challenge, not something a click-only result proves.
 
 Hints should be useful and non-punitive. Restore the chart for a short repair phrase, then offer another memory attempt. Mark the attempt as assisted rather than treating it as a failed independent score or erasing previous progress.
 
@@ -97,7 +101,11 @@ The focused session follows these rules:
 - **After an attempt:** one specific observation tied to the musical phrase and one recommended next action. Retry and Adjust practice remain available. Timing detail can explain the recommendation without turning every result into a grid of metrics.
 - **Across attempts:** preserve the lesson, tempo and aid choice. Retrying starts the count-in directly. Demonstrations are optional; no score gate is required to explore a different practice condition. Return to course browsing only when the player chooses it.
 
-Follow provides a precise, readable play lane; Fade keeps the same geometry when cues are visible; Recall becomes visually quiet; Review reveals the completed performance. The design alternatives explore a restrained studio treatment and a more spatial stage treatment, sharing the same learning model. More available space should improve the scale and readability of the music, rather than expand menus or decoration.
+The proposed highway separates hand-played instrument lanes from a full-width kick bar. Events at the same musical time occupy the same vertical timing position, including simultaneous kick and hand notes. Distinct shapes and layering must keep both readable when they coincide. A consistent perspective, rail spacing and strike line should make the approaching rhythm easy to read at the kit.
+
+Optional L/R labels suggest a sticking pattern on hand-played notes. They are instructional hints that can be hidden, not a claim that ordinary MIDI identifies the striking hand or verifies the suggested sticking. Keep instrument identity legible without those labels.
+
+Follow provides the complete chart. Fade and memory practice preserve the highway geometry through marked “Your turn” zones while withholding target notes. A strict click-only check retains the quiet static rail shell, and Review reveals the completed performance. The design alternatives explore a restrained studio treatment and a more spatial stage treatment, sharing the same learning model. More available space should improve the scale and readability of the music, rather than expand menus or decoration. This rail and cue design is a proposal to test, not a proven pedagogical improvement.
 
 The desired quality comes from typography, readable note spacing, consistent motion, excellent sound response and a small set of deliberate effects. A large collection of particles, neon colors or generic dashboard cards would not establish that quality.
 
@@ -110,7 +118,7 @@ Unity and Flutter remain the two most relevant front-end candidates. Unity has t
 1. Does a player understand the shift from Follow to Fade to Recall without explanation?
 2. Does completing a hidden phrase feel rewarding enough to repeat?
 3. Can a beginner recover gracefully with a hint, and can an experienced player remove help quickly?
-4. Does Recall provide no unintended pattern cues, while preserving identical scoring targets?
+4. Do hidden-target phrases avoid unintended pattern or correctness cues, and does the strict click-only check also remove visual timing support while preserving identical scoring targets?
 5. Can the next-session check distinguish immediate repetition from retained ability?
 6. Can the actual kit, audio route and renderer meet the measured latency and frame-stability gates in the architecture plan?
 
