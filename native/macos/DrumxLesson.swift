@@ -247,25 +247,93 @@ struct LessonAttempt: Codable, Equatable, Identifiable {
   }
 }
 
-/// Serial/main-thread use. Only complete natural takes are persisted.
+/// Serial/main-thread use. Only complete natural takes are persisted. A supplied
+/// archive keeps all valid takes; the legacy defaults-only store retains 200.
 final class LessonHistory {
   private let defaults: UserDefaults
   private let key: String
+  private let archiveURL: URL?
+  private var archiveIsBlocked = false
   private(set) var attempts: [LessonAttempt] = []
   private(set) var lastError: String?
 
-  init(defaults: UserDefaults = .standard, key: String = "drumx.lessonHistory.v1") {
+  init(defaults: UserDefaults = .standard, key: String = "drumx.lessonHistory.v1",
+       archiveURL: URL? = nil) {
     self.defaults = defaults
     self.key = key
-    guard let data = defaults.data(forKey: key) else { return }
+    self.archiveURL = archiveURL
+    if let archiveURL {
+      guard archiveURL.isFileURL else {
+        archiveIsBlocked = true
+        lastError = "The lesson archive needs a local file location. Saving is paused."
+        return
+      }
+      do {
+        attempts = try Self.decodeAttempts(Data(contentsOf: archiveURL), requireAllValid: true)
+        return
+      } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+        // First archive use adopts the retained legacy history without changing it.
+        guard Self.archiveIsAbsent(at: archiveURL) else {
+          archiveIsBlocked = true
+          lastError = "The lesson archive location is unavailable. Existing history has been kept; saving is paused."
+          return
+        }
+      } catch {
+        archiveIsBlocked = true
+        lastError = "Saved lesson archive could not be read. The original file has been kept; saving is paused."
+        return
+      }
+    }
     do {
-      let decoded = try JSONDecoder().decode([LessonAttempt].self, from: data)
-      var unique: [UUID: LessonAttempt] = [:]
-      for attempt in decoded where attempt.isValid { unique[attempt.id] = attempt }
-      attempts = Array(unique.values.sorted { $0.endedAt < $1.endedAt }.suffix(200))
+      if let data = defaults.data(forKey: key) {
+        attempts = Array(try Self.decodeAttempts(data).suffix(200))
+      }
     } catch {
       lastError = "Saved lesson history could not be read."
+      return
     }
+    if let archiveURL {
+      do {
+        try Self.writeArchive(attempts, to: archiveURL)
+      } catch {
+        lastError = "The lesson archive could not be created. Existing history has been kept."
+      }
+    }
+  }
+
+  private static func decodeAttempts(_ data: Data, requireAllValid: Bool = false) throws -> [LessonAttempt] {
+    let decoded = try JSONDecoder().decode([LessonAttempt].self, from: data)
+    if requireAllValid && !decoded.allSatisfy({ $0.isValid }) {
+      throw CocoaError(.fileReadCorruptFile)
+    }
+    var unique: [UUID: LessonAttempt] = [:]
+    for attempt in decoded where attempt.isValid { unique[attempt.id] = attempt }
+    return unique.values.sorted { $0.endedAt < $1.endedAt }
+  }
+
+  /// ENOENT can describe a missing leaf, a dangling link, or an unusable parent.
+  /// Only a genuinely missing path below a directory may begin migration.
+  private static func archiveIsAbsent(at url: URL) -> Bool {
+    var candidate = url
+    while true {
+      do {
+        let attributes = try FileManager.default.attributesOfItem(atPath: candidate.path)
+        return candidate != url && attributes[.type] as? FileAttributeType == .typeDirectory
+      } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
+        let parent = candidate.deletingLastPathComponent()
+        guard parent.path != candidate.path else { return false }
+        candidate = parent
+      } catch {
+        return false
+      }
+    }
+  }
+
+  private static func writeArchive(_ attempts: [LessonAttempt], to url: URL) throws {
+    let data = try JSONEncoder().encode(attempts)
+    try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                            withIntermediateDirectories: true)
+    try data.write(to: url, options: .atomic)
   }
 
   /// Reuse the take UUID and end date when preserved MIDI timestamps correct its result.
@@ -274,6 +342,7 @@ final class LessonHistory {
     id: UUID, settings: TakeSettings, snapshot: DXSnapshot, completedNaturally: Bool,
     endedAt: Date = Date()
   ) -> LessonAttempt? {
+    guard !archiveIsBlocked else { return nil }
     guard completedNaturally, settings.isValid, isCompleteSnapshot(snapshot),
       endedAt.timeIntervalSinceReferenceDate.isFinite,
       abs(snapshot.bpm - settings.tempo) < 0.000001,
@@ -298,10 +367,15 @@ final class LessonHistory {
     var updated = attempts.filter { $0.id != id }
     updated.append(attempt)
     updated.sort { $0.endedAt < $1.endedAt }
-    updated = Array(updated.suffix(200))
+    if archiveURL == nil { updated = Array(updated.suffix(200)) }
     do {
-      let data = try JSONEncoder().encode(updated)
-      defaults.set(data, forKey: key)
+      if let archiveURL {
+        // Publish only after atomic replacement succeeds. Legacy defaults remain
+        // untouched, including their original migration bytes.
+        try Self.writeArchive(updated, to: archiveURL)
+      } else {
+        defaults.set(try JSONEncoder().encode(updated), forKey: key)
+      }
       attempts = updated
       lastError = nil
       return attempt

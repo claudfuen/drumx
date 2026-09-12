@@ -301,6 +301,165 @@ private func historyChecks(defaults: UserDefaults) {
     "corrupt local history does not prevent practice")
 }
 
+private func archiveHistoryChecks(defaults: UserDefaults) throws {
+  let directory = FileManager.default.temporaryDirectory
+    .appendingPathComponent("drumx-history-checks-\(UUID().uuidString)", isDirectory: true)
+  try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+  defer { try? FileManager.default.removeItem(at: directory) }
+  let archiveURL = directory.appendingPathComponent("History/player-a.json")
+  let base = settings()
+  let date = Date(timeIntervalSince1970: 10_000)
+  let full = TestTake()
+  full.play(offset: 0.02)
+  full.finish()
+  let earlyBestID = UUID()
+  let legacy = LessonHistory(defaults: defaults, key: "archive-legacy")
+  check(legacy.record(id: earlyBestID, settings: base, snapshot: full.snapshot,
+    completedNaturally: true, endedAt: date) != nil, "legacy best prepared for archive migration")
+  let originalDefaults = defaults.data(forKey: "archive-legacy")!
+
+  let history = LessonHistory(defaults: defaults, key: "archive-legacy", archiveURL: archiveURL)
+  check(history.lastError == nil && history.attempts == legacy.attempts,
+    "absent archive seeds from retained legacy attempts")
+  let migratedAttempts = try JSONDecoder().decode([LessonAttempt].self, from: Data(contentsOf: archiveURL))
+  check(migratedAttempts == legacy.attempts,
+    "legacy migration creates a readable archive immediately")
+  check(defaults.data(forKey: "archive-legacy") == originalDefaults,
+    "archive migration preserves original defaults bytes")
+
+  let weaker = TestTake()
+  weaker.play(offset: 0.06)
+  weaker.finish()
+  for index in 1...205 {
+    check(history.record(id: UUID(), settings: base, snapshot: weaker.snapshot,
+      completedNaturally: true, endedAt: date.addingTimeInterval(Double(index))) != nil,
+      "every complete archived attempt reports a successful durable write")
+  }
+  check(history.attempts.count == 206 && history.best(matching: base)?.id == earlyBestID,
+    "more than 200 new takes cannot evict an earlier archived personal best")
+  check(history.recent(matching: base).count == 6
+    && history.recent(matching: base, limit: Int.max).count == 200,
+    "recent display remains bounded while the archive retains all attempts")
+  let reopened = LessonHistory(defaults: defaults, key: "archive-legacy", archiveURL: archiveURL)
+  check(reopened.attempts == history.attempts && reopened.best(matching: base)?.id == earlyBestID,
+    "full history and earliest personal best survive reopening")
+  check(defaults.data(forKey: "archive-legacy") == originalDefaults,
+    "archive recording never rewrites the migration source")
+
+  let otherURL = directory.appendingPathComponent("History/player-b.json")
+  let other = LessonHistory(defaults: defaults, key: "archive-other-player", archiveURL: otherURL)
+  check(other.attempts.isEmpty && other.best(matching: base) == nil,
+    "new player archive does not inherit another player's score history")
+  let otherID = UUID()
+  check(other.record(id: otherID, settings: base, snapshot: full.snapshot,
+    completedNaturally: true, endedAt: date) != nil, "second player can save independently")
+  check(LessonHistory(defaults: defaults, key: "archive-other-player", archiveURL: otherURL)
+    .attempts.map(\.id) == [otherID], "second player's archive reopens independently")
+  check(LessonHistory(defaults: defaults, key: "archive-legacy", archiveURL: archiveURL)
+    .attempts == history.attempts, "second player recording leaves first player's archive unchanged")
+  check(defaults.object(forKey: "archive-other-player") == nil,
+    "archive-only player does not need a duplicate defaults history")
+
+  let delayed = TestTake()
+  delayed.finish()
+  let delayedID = UUID(), delayedDate = date.addingTimeInterval(500)
+  check(history.record(id: delayedID, settings: base, snapshot: delayed.snapshot,
+    completedNaturally: true, endedAt: delayedDate)?.missed == 48,
+    "archive accepts naturally completed omissions before delayed input arrives")
+  delayed.play(offset: 0.005)
+  check(history.record(id: delayedID, settings: base, snapshot: delayed.snapshot,
+    completedNaturally: true, endedAt: delayedDate)?.matched == 48,
+    "same UUID corrects archived omissions using preserved input timestamps")
+  check(history.attempts.count == 207 && history.best(matching: base)?.id == delayedID,
+    "upward archive correction updates rank without appending a duplicate take")
+  _ = dx_core_input(delayed.core, 0, -0.08, 0.8)
+  check(history.record(id: delayedID, settings: base, snapshot: delayed.snapshot,
+    completedNaturally: true, endedAt: delayedDate)?.extra == 1,
+    "downward archive correction retains the chronological duplicate strike")
+  check(history.attempts.count == 207 && history.best(matching: base)?.id == earlyBestID,
+    "downward correction restores the earlier personal best across all saved takes")
+  check(LessonHistory(defaults: defaults, key: "archive-legacy", archiveURL: archiveURL)
+    .attempts == history.attempts, "latest UUID correction persists across reopening")
+
+  let beforePartial = try Data(contentsOf: archiveURL)
+  let partial = TestTake()
+  partial.play(include: { $0.id == 0 })
+  check(history.record(id: UUID(), settings: base, snapshot: partial.snapshot,
+    completedNaturally: false) == nil, "live or partial take does not enter the archive")
+  let afterPartial = try Data(contentsOf: archiveURL)
+  check(afterPartial == beforePartial,
+    "an unfinished live snapshot leaves archive bytes untouched")
+
+  // Once present, the archive is authoritative even if legacy defaults change.
+  defaults.set(Data("changed legacy value".utf8), forKey: "archive-legacy")
+  let preferred = LessonHistory(defaults: defaults, key: "archive-legacy", archiveURL: archiveURL)
+  check(preferred.lastError == nil && preferred.attempts == history.attempts,
+    "existing valid archive is preferred over an unreadable legacy source")
+  defaults.set(originalDefaults, forKey: "archive-legacy")
+
+  let corruptURL = directory.appendingPathComponent("History/corrupt.json")
+  let corruptBytes = Data("{ damaged archive".utf8)
+  try corruptBytes.write(to: corruptURL)
+  let corrupt = LessonHistory(defaults: defaults, key: "archive-legacy", archiveURL: corruptURL)
+  check(corrupt.attempts.isEmpty && corrupt.lastError != nil,
+    "corrupt existing archive fails closed instead of silently falling back to legacy history")
+  check(corrupt.record(id: UUID(), settings: base, snapshot: full.snapshot,
+    completedNaturally: true) == nil && corrupt.lastError != nil,
+    "corrupt archive blocks new writes until explicit recovery")
+  let preservedCorruptBytes = try Data(contentsOf: corruptURL)
+  check(preservedCorruptBytes == corruptBytes,
+    "failed load and attempted record preserve the exact corrupt file")
+  check(defaults.data(forKey: "archive-legacy") == originalDefaults,
+    "corrupt archive handling preserves the legacy source too")
+
+  var mixedObjects = try JSONSerialization.jsonObject(with: originalDefaults) as! [[String: Any]]
+  var invalidObject = mixedObjects[0]
+  invalidObject["id"] = UUID().uuidString
+  invalidObject["matched"] = 500
+  mixedObjects.append(invalidObject)
+  let invalidBytes = try JSONSerialization.data(withJSONObject: mixedObjects)
+  let invalidURL = directory.appendingPathComponent("History/invalid-record.json")
+  try invalidBytes.write(to: invalidURL)
+  let invalidArchive = LessonHistory(defaults: defaults, key: "archive-legacy", archiveURL: invalidURL)
+  check(invalidArchive.attempts.isEmpty && invalidArchive.lastError != nil,
+    "one invalid record blocks the entire existing archive instead of silently dropping evidence")
+  check(invalidArchive.record(id: UUID(), settings: base, snapshot: full.snapshot,
+    completedNaturally: true) == nil, "semantically invalid archive rejects later writes")
+  let preservedInvalidBytes = try Data(contentsOf: invalidURL)
+  check(preservedInvalidBytes == invalidBytes, "invalid record leaves the complete original archive intact")
+  defaults.set(invalidBytes, forKey: "archive-legacy-filter")
+  check(LessonHistory(defaults: defaults, key: "archive-legacy-filter").attempts.count == 1,
+    "defaults-only decoding retains its prior invalid-record filtering behavior")
+
+  let writableParent = directory.appendingPathComponent("write-failure", isDirectory: true)
+  let writableURL = writableParent.appendingPathComponent("history.json")
+  let unwritable = LessonHistory(defaults: defaults, key: "archive-legacy", archiveURL: writableURL)
+  let priorAttempts = unwritable.attempts
+  let priorBytes = try Data(contentsOf: writableURL)
+  let preservedParent = directory.appendingPathComponent("preserved-history", isDirectory: true)
+  try FileManager.default.moveItem(at: writableParent, to: preservedParent)
+  let blocker = Data("a file cannot be an archive directory".utf8)
+  try blocker.write(to: writableParent)
+  check(unwritable.record(id: UUID(), settings: base, snapshot: full.snapshot,
+    completedNaturally: true, endedAt: date.addingTimeInterval(1000)) == nil,
+    "blocked parent makes an atomic archive write fail")
+  check(unwritable.lastError != nil && unwritable.attempts == priorAttempts,
+    "failed archive write neither claims success nor publishes an unsaved take")
+  let preservedBlocker = try Data(contentsOf: writableParent)
+  check(preservedBlocker == blocker,
+    "archive write failure does not replace the blocking file")
+  let preservedArchive = try Data(contentsOf: preservedParent.appendingPathComponent("history.json"))
+  check(preservedArchive == priorBytes,
+    "prior durable archive remains unchanged after failed write")
+  check(defaults.data(forKey: "archive-legacy") == originalDefaults,
+    "failed archive write does not use legacy defaults as an unnoticed fallback")
+  let blockedAtOpen = LessonHistory(defaults: defaults, key: "archive-legacy", archiveURL: writableURL)
+  check(blockedAtOpen.lastError != nil && blockedAtOpen.attempts.isEmpty,
+    "existing non-directory parent is not mistaken for an absent archive eligible for migration")
+  check(blockedAtOpen.record(id: UUID(), settings: base, snapshot: full.snapshot,
+    completedNaturally: true) == nil, "blocked archive location cannot report a saved take")
+}
+
 private func scoreSnapshot(
   onTime: Int32, expected: Int32 = 10_000, extra: Int32 = 0,
   missed: Int32 = 0, complete: Bool = true
@@ -404,13 +563,14 @@ private func runScoreChecks() {
 
 @main
 enum DrumxLessonChecks {
-  static func main() {
+  static func main() throws {
     let suite = "drumx.lesson-tests.\(UUID().uuidString)"
     let defaults = UserDefaults(suiteName: suite)!
     defer { defaults.removePersistentDomain(forName: suite) }
     reviewChecks()
     sparseOneBarReviewChecks()
     historyChecks(defaults: defaults)
+    try archiveHistoryChecks(defaults: defaults)
     runScoreChecks()
     print("Drumx lesson review/history: \(checks) checks passed.")
   }

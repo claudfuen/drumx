@@ -42,6 +42,7 @@ final class LessonButton: NSButton {
 final class LessonRootView: NSView {
   weak var controller: LabController?
   override var acceptsFirstResponder: Bool { true }
+  override func cancelOperation(_ sender: Any?) { controller?.dismissOrStop() }
   override func keyDown(with event: NSEvent) {
     guard !event.isARepeat else { return }
     if event.keyCode == 53 {
@@ -68,6 +69,29 @@ final class LabController: NSObject {
   let scene = PracticeView()
   let root = LessonRootView()
   let prepareView = NSView(), reviewView = NSView()
+  let welcomeView = NSView(), courseView = DrumxCourseMenuView()
+  let progress = DrumxProgress()
+  var lesson = DrumxCourse.lessons[0]
+  var currentPage: Page = .welcome
+  let playerButton = LessonButton(title: "Player 1", target: nil, action: nil)
+  let courseButton = LessonButton(title: "Course", target: nil, action: nil)
+  let welcomeName = NSTextField(string: "Player 1")
+  let welcomeError = NSTextField(labelWithString: "")
+  let lessonHeading = NSTextField(labelWithString: "")
+  let lessonSubtitle = NSTextField(wrappingLabelWithString: "")
+  let lessonExplanation = NSTextField(wrappingLabelWithString: "")
+  let lessonPractice = NSTextField(labelWithString: "")
+  let lessonEvidence = NSTextField(labelWithString: "")
+  let notation = DrumxNotationView()
+  let lengthMenu = NSPopUpButton()
+  let kitCheckStatus = NSTextField(labelWithString: "Play hi-hat, snare, and kick to check your input.")
+  var checkedPads: Set<Int> = []
+  var playerWindow: NSWindow?, checkWindow: NSWindow?
+  let playerMenu = NSPopUpButton()
+  let newPlayerName = NSTextField(string: "")
+  let playerError = NSTextField(labelWithString: "")
+  let checkFeedback = NSTextField(wrappingLabelWithString: "")
+  let techniqueCheck = NSButton(checkboxWithTitle: "I checked this myself", target: nil, action: nil)
   var snapshot = DXSnapshot()
   var running = false, completed = false, demonstrating = false
   var transportActive: Bool { running || demonstrating }
@@ -80,7 +104,7 @@ final class LabController: NSObject {
   var learning: Int?
   var drumSound = true
   let modeNames = ["Guided", "Hidden bars", "From memory"]
-  private let history = LessonHistory()
+  var history: LessonHistory!
   private var takeID = UUID(), takeSettings: TakeSettings?, endedAt = Date()
   private var takeWindow: DrumxTakeWindow?
   private var finishedNaturally = false
@@ -127,7 +151,9 @@ final class LabController: NSObject {
       styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false
     )
     super.init()
-    window.title = "Drumx · Your first backbeat"
+    history = makePlayerHistory()
+    restorePlayer()
+    window.title = "Drumx · Foundations"
     window.minSize = NSSize(width: 1020, height: 780)
     window.appearance = NSAppearance(named: .darkAqua)
     window.backgroundColor = ink
@@ -140,6 +166,10 @@ final class LabController: NSObject {
     let savedOffset = UserDefaults.standard.double(forKey: "drumx.lab.inputOffsetMS")
     calibrationMS = savedOffset.isFinite ? min(200, max(-200, savedOffset)) : 0
     offsetField.stringValue = String(format: "%.0f", calibrationMS)
+    showHands = (UserDefaults.standard.object(forKey: "drumx.lab.handHints") as? Bool) ?? true
+    if let volume = UserDefaults.standard.object(forKey: "drumx.lab.volume") as? Double, volume.isFinite {
+      volumeSlider.doubleValue = min(1, max(0, volume))
+    }
     buildUI()
     scene.controller = self
     root.controller = self
@@ -174,8 +204,13 @@ final class LabController: NSObject {
       self?.setStatus(message)
     }
     updateSources(io.sources)
+    if let savedSource = UserDefaults.standard.object(forKey: "drumx.lab.lastSourceID") as? NSNumber,
+       io.sources.contains(where: { $0.id == savedSource.int32Value }) {
+      io.connect(sourceID: savedSource.int32Value)
+      updateSources(io.sources)
+    }
     resetCore()
-    showPage(.prepare)
+    showPage(progress.selectedProfile.hasCompletedWelcome ? .course : .welcome)
     timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 120.0, repeats: true) { [weak self] _ in
       self?.tick()
     }
@@ -191,7 +226,7 @@ final class LabController: NSObject {
     dx_core_destroy(core)
   }
 
-  private func label(
+  func label(
     _ text: String, _ size: CGFloat = 13, weight: NSFont.Weight = .regular,
     color: NSColor = .secondaryLabelColor
   ) -> NSTextField {
@@ -200,26 +235,26 @@ final class LabController: NSObject {
     l.textColor = color
     return l
   }
-  private func row(_ views: [NSView], spacing: CGFloat = 12) -> NSStackView {
+  func row(_ views: [NSView], spacing: CGFloat = 12) -> NSStackView {
     let r = NSStackView(views: views)
     r.orientation = .horizontal
     r.spacing = spacing
     r.alignment = .centerY
     return r
   }
-  private func column(_ views: [NSView], spacing: CGFloat = 16) -> NSStackView {
+  func column(_ views: [NSView], spacing: CGFloat = 16) -> NSStackView {
     let c = NSStackView(views: views)
     c.orientation = .vertical
     c.alignment = .leading
     c.spacing = spacing
     return c
   }
-  private func spacer() -> NSView {
+  func spacer() -> NSView {
     let v = NSView()
     v.setContentHuggingPriority(.defaultLow, for: .horizontal)
     return v
   }
-  private func button(_ title: String, _ action: Selector, primary: Bool = false) -> LessonButton {
+  func button(_ title: String, _ action: Selector, primary: Bool = false) -> LessonButton {
     let b = LessonButton(title: title, target: self, action: action)
     b.primary = primary
     b.isBordered = false
@@ -235,7 +270,7 @@ final class LabController: NSObject {
       child.bottomAnchor.constraint(equalTo: parent.bottomAnchor, constant: -inset),
     ])
   }
-  private func center(_ child: NSView, in parent: NSView, width: CGFloat = 880) {
+  func center(_ child: NSView, in parent: NSView, width: CGFloat = 880) {
     child.translatesAutoresizingMaskIntoConstraints = false
     parent.addSubview(child)
     NSLayoutConstraint.activate([
@@ -250,7 +285,7 @@ final class LabController: NSObject {
     root.layer?.backgroundColor = ink.cgColor
     let logo = label("drumx", 28, weight: .bold, color: paper)
     let header = row(
-      [logo, label("FOUNDATIONS  /  01", 10, weight: .semibold), spacer(), results, runScoreHUD, kitButton],
+      [logo, label("FOUNDATIONS", 10, weight: .semibold), spacer(), results, runScoreHUD, courseButton, playerButton, kitButton],
       spacing: 22)
     runScoreHUD.widthAnchor.constraint(equalToConstant: 420).isActive = true
     runScoreHUD.heightAnchor.constraint(equalToConstant: 44).isActive = true
@@ -259,6 +294,8 @@ final class LabController: NSObject {
     kitButton.target = self
     kitButton.action = #selector(showSetup)
     kitButton.isBordered = false
+    playerButton.target = self; playerButton.action = #selector(showPlayers); playerButton.isBordered = false
+    courseButton.target = self; courseButton.action = #selector(backToCourse); courseButton.isBordered = false
     play.target = self
     play.action = #selector(stopAction)
     play.isBordered = false
@@ -288,74 +325,55 @@ final class LabController: NSObject {
       main.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 20),
       main.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -20),
     ])
-    for page in [prepareView, scene, reviewView] { anchor(page, in: main) }
+    for page in [welcomeView, courseView, prepareView, scene, reviewView] { anchor(page, in: main) }
+    buildWelcome()
+    courseView.onSelect = { [weak self] id in self?.selectLesson(id) }
+    courseView.onContinue = { [weak self] in self?.openCurrentLesson() }
     buildPreparation()
     buildReview()
   }
 
   private func buildPreparation() {
-    let eyebrow = label("YOUR FIRST GROOVE", 11, weight: .semibold, color: lime)
-    let title = label("Your first backbeat.", 52, weight: .bold, color: paper)
-    let intro = label(
-      "Keep the hi-hat steady. Let the snare carry beats 2 and 4.", 18,
-      color: paper.withAlphaComponent(0.75))
-    let notation = GrooveNotationView()
+    lessonHeading.font = .systemFont(ofSize: 42, weight: .bold)
+    lessonHeading.textColor = paper
+    lessonSubtitle.font = .systemFont(ofSize: 18)
+    lessonSubtitle.textColor = paper.withAlphaComponent(0.8)
+    lessonSubtitle.maximumNumberOfLines = 2
+    lessonExplanation.font = .systemFont(ofSize: 14)
+    lessonExplanation.textColor = .secondaryLabelColor
+    lessonExplanation.maximumNumberOfLines = 3
     notation.heightAnchor.constraint(equalToConstant: 172).isActive = true
-    notation.wantsLayer = true
-    notation.layer?.cornerRadius = 14
-    notation.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.025).cgColor
-    notation.setAccessibilityElement(true)
-    notation.setAccessibilityRole(.image)
-    notation.setAccessibilityLabel(
-      "One bar in four-four time. Hi-hat plays eight eighth notes, counted 1 and 2 and 3 and 4 and. Snare plays on beats 2 and 4. Kick plays on beats 1 and 3. Sticking suggestions: right hand hi-hat, left hand snare."
-    )
-    let plan = row([
-      column(
-        [
-          label("01  HEAR IT", 11, weight: .semibold, color: paper),
-          label("Listen, then count out loud.", 13),
-        ], spacing: 7), spacer(),
-      column(
-        [
-          label("02  PLAY IT", 11, weight: .semibold, color: paper),
-          label("Follow one shared timing line.", 13),
-        ], spacing: 7), spacer(),
-      column(
-        [
-          label("03  REMEMBER IT", 11, weight: .semibold, color: paper),
-          label("Keep the groove when notes fade.", 13),
-        ], spacing: 7),
-    ])
-    tempoSlider.target = self
-    tempoSlider.action = #selector(settingsChanged)
-    tempoSlider.widthAnchor.constraint(equalToConstant: 130).isActive = true
+    notation.wantsLayer = true; notation.layer?.cornerRadius = 14
+    lessonPractice.font = .systemFont(ofSize: 12)
+    lessonEvidence.font = .systemFont(ofSize: 12)
+    lessonEvidence.textColor = lime
+    tempoSlider.target = self; tempoSlider.action = #selector(settingsChanged)
+    tempoSlider.widthAnchor.constraint(equalToConstant: 115).isActive = true
     tempoSlider.setAccessibilityLabel("Practice tempo")
     tempoLabel.font = .monospacedSystemFont(ofSize: 13, weight: .medium)
     tempoLabel.widthAnchor.constraint(equalToConstant: 68).isActive = true
     modeMenu.addItems(withTitles: modeNames)
-    modeMenu.target = self
-    modeMenu.action = #selector(settingsChanged)
+    modeMenu.target = self; modeMenu.action = #selector(settingsChanged)
     modeMenu.setAccessibilityLabel("Visual guidance")
-    liveToggle.target = self
-    liveToggle.action = #selector(liveChanged(_:))
-    liveToggle.state = .on
-    liveToggle.toolTip =
-      "Shows early/late feedback as you play. Turn off for a click-only memory check."
-    let controls = row(
-      [
-        label("TEMPO", 10, weight: .semibold), tempoSlider, tempoLabel, spacer(), modeMenu,
-        liveToggle,
-      ], spacing: 16)
-    let actions = row(
-      [
-        button("Start playing", #selector(beginLesson), primary: true),
-        button("Hear the groove", #selector(hearDemo)), label("4-beat count-in · 4 short bars", 12),
-      ], spacing: 16)
-    let stack = column([eyebrow, title, intro, notation, plan, controls, actions], spacing: 23)
-    [notation, plan, controls].forEach {
+    lengthMenu.addItems(withTitles: ["1 bar", "4 bars", "8 bars"])
+    lengthMenu.selectItem(at: 1); lengthMenu.target = self; lengthMenu.action = #selector(lengthChanged)
+    lengthMenu.setAccessibilityLabel("Practice phrase length")
+    liveToggle.target = self; liveToggle.action = #selector(liveChanged(_:))
+    liveToggle.state = showLive ? .on : .off
+    liveToggle.toolTip = "Shows early/late and score feedback. Turn off for a click-only memory check."
+    let controls = row([label("TEMPO", 10, weight: .semibold), tempoSlider, tempoLabel,
+                        spacer(), lengthMenu, modeMenu, liveToggle], spacing: 14)
+    let actions = row([button("Start playing", #selector(beginLesson), primary: true),
+                       button("Hear the pattern", #selector(hearDemo)),
+                       button("Lesson check", #selector(showLearningCheck)),
+                       label("4-beat count-in", 12)], spacing: 16)
+    let stack = column([label("HEAR IT. COUNT IT. MAKE IT YOURS.", 11, weight: .semibold, color: lime),
+      lessonHeading, lessonSubtitle, lessonExplanation, notation, lessonPractice, controls, actions, lessonEvidence], spacing: 16)
+    [lessonSubtitle, lessonExplanation, notation, controls].forEach {
       $0.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
     }
     center(stack, in: prepareView)
+    refreshLesson()
   }
 
   private func buildReview() {
@@ -394,43 +412,64 @@ final class LabController: NSObject {
       [
         label("LISTEN. ADJUST. GO AGAIN.", 11, weight: .semibold, color: lime), reviewConditions,
         reviewTitle, reviewDetail, runScoreReview, stats, scoreCaption, personalBest,
-        actions,
-      ], spacing: 16)
+        actions, row([button("Lesson check", #selector(showLearningCheck)), button("Next lesson", #selector(nextLesson)), label("Move on when the pattern feels comfortable.", 12)]),
+      ], spacing: 12)
     [reviewDetail, runScoreReview, stats].forEach {
       $0.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
     }
     center(stack, in: reviewView)
   }
 
-  private enum Page { case prepare, stage, review }
-  private func showPage(_ page: Page) {
+  enum Page { case welcome, course, prepare, stage, review }
+  func showPage(_ page: Page) {
+    currentPage = page
     showingReview = page == .review
     prepareView.isHidden = page != .prepare
     scene.isHidden = page != .stage
     reviewView.isHidden = page != .review
+    welcomeView.isHidden = page != .welcome
+    courseView.isHidden = page != .course
+    playerButton.isHidden = page == .stage || page == .welcome
+    courseButton.isHidden = page == .stage || page == .welcome || page == .course
     kitButton.isHidden = page == .stage
     homeButton.isHidden = page != .review
     play.isHidden = page != .stage
     runScoreHUD.isHidden = page != .stage
-    results.isHidden = page == .stage
-    if page == .prepare { results.stringValue = "LISTEN   /   PLAY   /   REMEMBER" }
+    // Score HUD is the only header feedback while playing; menus never occupy the stage.
+    results.isHidden = true
+    if page == .course {
+      refreshCourse()
+      setStatus("Continue your selected lesson, or choose a new focus. Progress stays on this Mac.")
+    }
+    if page == .prepare { refreshLesson() }
+    if page == .welcome {
+      welcomeName.stringValue = progress.selectedProfile.name
+      window.title = "Drumx · Welcome"
+      setStatus("Choose your player name. Connect a kit, or try the keyboard.")
+    }
+    if page == .course { window.title = "Drumx · Foundations" }
+    if let error = history.lastError ?? progress.lastError { setStatus(error) }
     focusStage()
   }
-  private func focusStage() {
-    if setupWindow == nil { window.makeFirstResponder(transportActive ? scene : root) }
+  func focusStage() {
+    if setupWindow == nil && playerWindow == nil && checkWindow == nil { window.makeFirstResponder(transportActive ? scene : root) }
   }
-  private func setStatus(_ text: String) {
+  func setStatus(_ text: String) {
     status.stringValue = text
     setupStatus.stringValue = text
   }
-  private func resetCore() {
+  func resetCore() {
     completed = false
     finishedNaturally = false
     takeWindow = nil
     hitFeedback.reset()
     runScoreHUD.update(score: nil, bestPoints: nil, state: "COUNT-IN")
     lastDemoVisualTime = -Double.infinity
-    _ = dx_core_reset(core, tempo, Int32(lessonBars))
+    var chart = repeatedNotes.map { DXChartEvent(pad: Int32($0.pad), beat: $0.beat) }
+    let loaded = chart.withUnsafeMutableBufferPointer {
+      dx_core_load_chart(core, tempo, Double(lessonBars * 4), $0.baseAddress, Int32($0.count))
+    }
+    precondition(loaded == 1, "Built-in lesson chart must be valid")
     dx_core_set_guidance(core, Int32(mode))
     dx_core_snapshot(core, &snapshot)
     scene.needsDisplay = true
@@ -445,6 +484,7 @@ final class LabController: NSObject {
     let previous = (sourceMenu.selectedItem?.representedObject as? NSNumber)?.int32Value
     if let previous, !sources.contains(where: { $0.id == previous }) {
       stopTake()
+      checkedPads.removeAll(); refreshKitCheck()
       setStatus("MIDI disconnected. Reconnect or choose an input in Kit & sound.")
     }
     let selected = io.selectedSourceID
@@ -469,7 +509,7 @@ final class LabController: NSObject {
   @objc func showSetup() {
     guard !transportActive, setupWindow == nil else { return }
     let panel = NSWindow(
-      contentRect: NSRect(x: 0, y: 0, width: 800, height: 350), styleMask: [.titled],
+      contentRect: NSRect(x: 0, y: 0, width: 800, height: 390), styleMask: [.titled],
       backing: .buffered, defer: false)
     panel.title = "Your kit"
     panel.appearance = window.appearance
@@ -478,6 +518,8 @@ final class LabController: NSObject {
     panel.contentView = content
     panel.initialFirstResponder = content
     setupStatus.stringValue = "Choose an input. To map a pad, click its button and strike it once."
+    kitCheckStatus.font = .systemFont(ofSize: 12)
+    refreshKitCheck()
     sourceMenu.target = self
     sourceMenu.action = #selector(sourceChanged)
     sourceMenu.widthAnchor.constraint(equalToConstant: 260).isActive = true
@@ -516,7 +558,7 @@ final class LabController: NSObject {
         row([soundToggle, label("Volume"), volumeSlider, spacer(), hands]), soundStatus,
         row([label("Input offset (ms)"), offsetField, label("Shift + key plays a softer hit.", 12)]
         ),
-        setupStatus, row([spacer(), button("Done", #selector(closeSetup), primary: true)]),
+        kitCheckStatus, setupStatus, row([spacer(), button("Done", #selector(closeSetup), primary: true)]),
       ], spacing: 18)
     stack.arrangedSubviews.forEach {
       $0.widthAnchor.constraint(lessThanOrEqualTo: stack.widthAnchor).isActive = true
@@ -542,7 +584,10 @@ final class LabController: NSObject {
     completed = false
     learning = nil
     io.setMIDILearnActive(false)
-    io.connect(sourceID: (sourceMenu.selectedItem?.representedObject as? NSNumber)?.int32Value)
+    let source = (sourceMenu.selectedItem?.representedObject as? NSNumber)?.int32Value
+    UserDefaults.standard.set(source.map { Int($0) }, forKey: "drumx.lab.lastSourceID")
+    checkedPads.removeAll(); refreshKitCheck()
+    io.connect(sourceID: source)
   }
   @objc func learnMapping(_ sender: NSButton) {
     guard !transportActive else { return }
@@ -556,15 +601,21 @@ final class LabController: NSObject {
     tempo = tempoSlider.doubleValue.rounded()
     tempoLabel.stringValue = "\(Int(tempo)) BPM"
     mode = modeMenu.indexOfSelectedItem
+    if mode == 1 && lessonBars == 1 {
+      lessonBars = 4; lengthMenu.selectItem(at: 1)
+    }
+    saveResume()
     resetCore()
     focusStage()
   }
   @objc func handsChanged(_ sender: NSButton) {
     showHands = sender.state == .on
+    UserDefaults.standard.set(showHands, forKey: "drumx.lab.handHints")
     scene.needsDisplay = true
   }
   @objc func liveChanged(_ sender: NSButton) {
     showLive = sender.state == .on
+    saveResume()
     scene.needsDisplay = true
     focusStage()
   }
@@ -580,20 +631,29 @@ final class LabController: NSObject {
     io.setMonitoring(enabled: drumSound)
     UserDefaults.standard.set(drumSound, forKey: "drumx.lab.drumSound")
   }
-  @objc func volumeChanged() { io.setMonitorVolume(Float(volumeSlider.doubleValue)) }
-  func dismissOrStop() { setupWindow != nil ? closeSetup() : stopTake() }
+  @objc func volumeChanged() {
+    io.setMonitorVolume(Float(volumeSlider.doubleValue))
+    UserDefaults.standard.set(volumeSlider.doubleValue, forKey: "drumx.lab.volume")
+  }
+  func dismissOrStop() {
+    if checkWindow != nil { closeLearningCheck() }
+    else if playerWindow != nil { closePlayers() }
+    else if setupWindow != nil { closeSetup() }
+    else if transportActive { stopTake() }
+    else if currentPage == .prepare || currentPage == .review { backToCourse() }
+  }
   func quickStart() {
     if setupWindow != nil {
       closeSetup()
       return
     }
+    if playerWindow != nil || checkWindow != nil { return }
     guard !transportActive else { return }
-    showingReview ? startTake() : beginLesson()
+    if currentPage == .welcome { finishWelcome() }
+    else if currentPage == .course { openCurrentLesson() }
+    else { startTake() }
   }
-  @objc func beginLesson() {
-    lessonBars = 4
-    startTake()
-  }
+  @objc func beginLesson() { startTake() }
   @objc func retryTake() { startTake() }
   @objc func stopAction() { stopTake() }
   @objc func slowerTake() {
@@ -603,16 +663,16 @@ final class LabController: NSObject {
     startTake()
   }
   @objc func repairBar() {
-    // This first lesson repeats the same bar. A one-bar take isolates that groove.
+    // Each foundation exercise is one authored bar. Isolate it without changing its notes.
     lessonBars = lessonBars == 1 ? 4 : 1
     mode = 0
     modeMenu.selectItem(at: mode)
     startTake()
   }
   @objc func nextChallenge() {
-    lessonBars = 4
     if mode == 0 {
       mode = 1
+      if lessonBars == 1 { lessonBars = 4 }
     } else {
       mode = 2
       showLive = false
@@ -624,7 +684,7 @@ final class LabController: NSObject {
   @objc func backToLesson() {
     stopTake()
     completed = false
-    lessonBars = 4
+    saveResume()
     resetCore()
     showPage(.prepare)
     setStatus(
@@ -632,13 +692,15 @@ final class LabController: NSObject {
   }
   @objc func hearDemo() {
     guard !transportActive else { return }
-    lessonBars = 4
+    saveResume()
     resetCore()
     learning = nil
     io.setMIDILearnActive(false)
     clickStart = DrumxIO.hostNowSeconds() + 0.75
     practiceStart = clickStart + 240 / tempo
-    guard io.startDemo(bpm: tempo, firstBeatHostTime: practiceStart, bars: lessonBars) else {
+    let demoHits = repeatedNotes.map { DrumxDemoHit(pad: $0.pad, beat: $0.beat, velocity: $0.velocity) }
+    guard io.startDemo(bpm: tempo, firstBeatHostTime: practiceStart,
+                       durationBeats: Double(lessonBars * 4), hits: demoHits) else {
       setStatus("Couldn't start the drum demo. Check Kit & sound.")
       return
     }
@@ -653,7 +715,7 @@ final class LabController: NSObject {
     play.title = "Stop listening"
     showPage(.stage)
     results.stringValue = "LISTEN  /  COUNT OUT LOUD"
-    setStatus("Listen for the snare on 2 and 4. Count 1 & 2 & 3 & 4 &.")
+    setStatus("Listen, then count aloud: \(lesson.counts).")
   }
   func startTake() {
     guard !transportActive else { return }
@@ -661,6 +723,7 @@ final class LabController: NSObject {
     learning = nil
     io.setMIDILearnActive(false)
     io.stopDemo()
+    saveResume()
     resetCore()
     usedLiveFeedback = showLive
     takeID = UUID()
@@ -668,7 +731,7 @@ final class LabController: NSObject {
       tempo: tempo, mode: mode, liveFeedback: showLive, bars: lessonBars,
       calibrationMS: calibrationMS,
       inputIdentity: io.selectedSourceID.map { "midi:\($0)" } ?? "keyboard", mapping: mappings,
-      handHints: showHands)
+      lessonVersion: lesson.version, handHints: showHands)
     previousBestPoints = takeSettings.flatMap { history.best(matching: $0) }
       .map { DrumxRunScore(attempt: $0).points }
     clickStart = DrumxIO.hostNowSeconds() + 0.75
@@ -686,7 +749,7 @@ final class LabController: NSObject {
     setStatus(
       mode == 2 && !showLive
         ? "Click-only check. Your results appear after the phrase."
-        : "\(lessonBars == 1 ? "One-bar practice" : "Four bars") · \(modeNames[mode]) · Esc to stop"
+        : "\(lessonBars) \(lessonBars == 1 ? "bar" : "bars") · \(modeNames[mode]) · Esc to stop"
     )
   }
   func stopTake() {
@@ -725,6 +788,7 @@ final class LabController: NSObject {
     if let pad = learning, !transportActive {
       for i in 0..<3 { mappings[i].removeAll { $0 == note } }
       mappings[pad] = [note]
+      checkedPads.insert(pad); refreshKitCheck()
       learning = nil
       io.setMIDIMapping(mappings)
       io.setMIDILearnActive(false)
@@ -746,6 +810,8 @@ final class LabController: NSObject {
   }
   private func receive(pad: Int, velocity: Double, hostTime: Double, inputIdentity: String) {
     let now = DrumxIO.hostNowSeconds()
+    let selectedInput = io.selectedSourceID.map { "midi:\($0)" } ?? "keyboard"
+    if inputIdentity == selectedInput { checkedPads.insert(pad); refreshKitCheck() }
     var result: DXHitResult?
     if !demonstrating, running || completed,
       let songTime = takeWindow?.songTime(capturedAt: hostTime, inputIdentity: inputIdentity),
@@ -791,6 +857,10 @@ final class LabController: NSObject {
       recent = history.recent(matching: settings)
       if let attempt {
         savedID = attempt.id
+        if attempt.matched > 0 {
+          _ = progress.markPracticeCompleted(lessonID: lesson.id, version: lesson.version,
+            recall: settings.mode == 2 && !settings.liveFeedback, at: endedAt)
+        }
         personalBest.stringValue =
           "Saved on this Mac · comparisons use the same lesson, tempo, input, and aids."
       }
@@ -834,7 +904,7 @@ final class LabController: NSObject {
       io.stopDemo()
       io.stopClick()
       showPage(.prepare)
-      setStatus("That's the backbeat. Keep the hi-hat even and try it yourself.")
+      setStatus("That's the pattern. Count \(lesson.counts), then try it yourself.")
     }
     if now - lastStatusUpdate > 0.12 {
       if running {

@@ -1,6 +1,6 @@
 # Drumx starting curriculum
 
-This is a **proposed curriculum**, recorded in [lessons-draft.json](lessons-draft.json). The native lab has one playable backbeat lesson with an original one-bar staff study, listening, assistance modes, and review. It does not load this draft course or implement its full lesson sequence and learning gates.
+This is a **proposed curriculum**, recorded in [lessons-draft.json](lessons-draft.json), extending foundations into named rudiments and further reading practice. The native app has a separate 12-lesson foundation unit in [DrumxCourse.swift](../native/macos/DrumxCourse.swift), with notation, demonstrations, and scoring drawn from the same authored events. See the [native guide](native-lab.md) for its three chapters, local players, assistance modes, checks, and review. The app does not load this JSON draft or implement its full lesson sequence. **M1 remains active** under the [learning milestones](learning-milestones.md).
 
 The proposed course starts with a steady pulse, introduces three useful rudimental stickings, then applies timing to a basic drum-set groove. The learner should leave able to name, count, read, and explain what they played to a drum teacher. This is an original introductory practice sequence, not the full PAS curriculum or a substitute for a teacher observing technique.
 
@@ -89,4 +89,4 @@ Sources checked September 12, 2026.
 - Open hi-hat control, pedal articulation, cymbal choking and multi-zone technique need controller and module-specific mapping.
 - Hand verification needs an independently validated sensing method. Ordinary single-zone snare MIDI cannot supply it.
 - Adaptive progression and technique assessment need evidence beyond a timing percentage, including consistency across sessions and learner or teacher checks.
-- Additional lead-hand variations, fills, musical backing tracks and an expanded rudiment library can follow this proposed introductory course. The current backbeat staff study is an initial reading example; extending paired notation and reading across this draft course remains planned.
+- Additional lead-hand variations, fills, musical backing tracks and an expanded rudiment library can follow this proposed introductory course. The native foundation unit already pairs notation with its practice events; extending that teaching to this draft's named rudiments and full reading sequence remains planned.

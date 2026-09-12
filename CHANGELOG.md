@@ -4,6 +4,14 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### A playable foundation journey
+
+- Connect a first-launch welcome, local player selection, a focused three-chapter course menu, and all 12 foundation lessons to the existing practice stage.
+- Generate notation and authored R/L hints from each lesson's events. Offer listening, 1/4/8-bar takes, tempo and guidance choices, a reading question, and an explicit technique self-check.
+- Save the selected player's lesson and practice settings, show separate practice/reading/recall evidence, and add a next-lesson route from review.
+- Remember the selected MIDI source when available and show receipt checks for the selected input's pads.
+- Archive all completed takes per player, preserve retained legacy scores, and keep dated course checkpoints. Invalid archives remain intact with saving paused.
+
 ### A reusable foundation course and local player model
 
 - Author 12 original lessons in three chapters, with shared event data, explanations, counts, reading questions, and technique tips.

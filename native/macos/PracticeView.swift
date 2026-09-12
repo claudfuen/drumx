@@ -300,7 +300,7 @@ final class PracticeView: NSView {
     }
 
     let title = demo ? "Listen to the groove" : countIn ? "Settle into the click"
-      : inMemoryBar ? "From memory" : c.completed ? "Take complete" : "Eighth-note rock groove"
+      : inMemoryBar ? "From memory" : c.completed ? "Take complete" : c.lesson.title
     text(title, x: 28, y: 15, size: 15, color: PracticePalette.ink)
     let mode = demo ? "Demonstration" : c.modeNames[min(max(0, c.mode), c.modeNames.count - 1)]
     text("\(Int(bpm)) BPM  ·  \(mode)", x: bounds.width - 28, y: 18, alignment: .right)
@@ -439,8 +439,9 @@ final class PracticeView: NSView {
                    color: PracticePalette.background.withAlphaComponent(0.25 * alpha), width: 1)
             }
             // Sticking text is a screen-space teaching annotation, not note geometry.
-            if c.showHands && width >= 24 && height >= 13 {
-              text(pad == 0 ? "R" : "L", x: x, y: y - 7, size: 11,
+            if c.showHands && width >= 24 && height >= 13,
+               let hand = c.handHint(pad: pad, seconds: event.time_seconds) {
+              text(hand, x: x, y: y - 7, size: 11,
                    color: PracticePalette.background.withAlphaComponent(alpha), alignment: .center)
             }
           }
@@ -538,137 +539,5 @@ final class PracticeView: NSView {
       }
       text(label, x: right + 18, y: row - 7)
     }
-  }
-}
-
-/// One original bar. The upper voice beams eighth-note hi-hat hits and joins the
-/// snare on beats 2 and 4 to the same stem; the lower voice is kick/rest/kick/rest.
-public final class GrooveNotationView: NSView {
-  public override var isFlipped: Bool { true }
-  public override var isOpaque: Bool { true }
-
-  public override init(frame frameRect: NSRect) {
-    super.init(frame: frameRect)
-    setAccessibilityElement(true)
-    setAccessibilityRole(.image)
-    setAccessibilityLabel("One bar in four-four time. Count one and two and three and four and. Upper voice: eight hi-hat eighth notes, with snare joined on beats two and four. Lower voice: kick quarter note, quarter rest, kick quarter note, quarter rest.")
-  }
-
-  public required init?(coder: NSCoder) { super.init(coder: coder) }
-
-  private func text(_ value: String, x: CGFloat, y: CGFloat, size: CGFloat = 11,
-                    color: NSColor = PracticePalette.muted, centered: Bool = false,
-                    font: NSFont? = nil) {
-    let attributes: [NSAttributedString.Key: Any] = [
-      .font: font ?? NSFont.systemFont(ofSize: size, weight: .medium), .foregroundColor: color,
-    ]
-    let string = value as NSString
-    let width = string.size(withAttributes: attributes).width
-    string.draw(at: NSPoint(x: centered ? x - width / 2 : x, y: y), withAttributes: attributes)
-  }
-
-  private func line(x1: CGFloat, y1: CGFloat, x2: CGFloat, y2: CGFloat,
-                    color: NSColor = PracticePalette.ink, width: CGFloat = 1.1) {
-    color.setStroke()
-    let path = NSBezierPath()
-    path.move(to: NSPoint(x: x1, y: y1))
-    path.line(to: NSPoint(x: x2, y: y2))
-    path.lineWidth = width
-    path.stroke()
-  }
-
-  private func notehead(x: CGFloat, y: CGFloat) {
-    NSGraphicsContext.saveGraphicsState()
-    let transform = NSAffineTransform()
-    transform.translateX(by: x, yBy: y)
-    transform.rotate(byDegrees: -17)
-    transform.concat()
-    PracticePalette.ink.setFill()
-    NSBezierPath(ovalIn: NSRect(x: -5.5, y: -3.5, width: 11, height: 7)).fill()
-    NSGraphicsContext.restoreGraphicsState()
-  }
-
-  private func quarterRest(x: CGFloat, y: CGFloat) {
-    // An authored quarter-rest outline, independent of music-font availability.
-    // Its upper zigzag and curled lower stroke identify a quarter rest in voice 2.
-    let rest = NSBezierPath()
-    rest.move(to: NSPoint(x: x + 1, y: y - 17))
-    rest.line(to: NSPoint(x: x + 7, y: y - 9))
-    rest.line(to: NSPoint(x: x + 2, y: y - 3))
-    rest.line(to: NSPoint(x: x + 7, y: y + 4))
-    rest.curve(to: NSPoint(x: x - 4, y: y + 6),
-               controlPoint1: NSPoint(x: x + 1, y: y + 1),
-               controlPoint2: NSPoint(x: x - 4, y: y + 2))
-    rest.curve(to: NSPoint(x: x + 1, y: y + 16),
-               controlPoint1: NSPoint(x: x - 4, y: y + 10),
-               controlPoint2: NSPoint(x: x - 1, y: y + 13))
-    rest.curve(to: NSPoint(x: x - 8, y: y + 5),
-               controlPoint1: NSPoint(x: x - 4, y: y + 13),
-               controlPoint2: NSPoint(x: x - 8, y: y + 9))
-    rest.curve(to: NSPoint(x: x - 1, y: y - 1),
-               controlPoint1: NSPoint(x: x - 8, y: y + 1),
-               controlPoint2: NSPoint(x: x - 4, y: y - 2))
-    rest.line(to: NSPoint(x: x - 5, y: y - 7))
-    rest.line(to: NSPoint(x: x + 1, y: y - 13))
-    rest.line(to: NSPoint(x: x - 2, y: y - 18))
-    rest.close()
-    PracticePalette.ink.setFill()
-    rest.fill()
-  }
-
-  public override func draw(_ dirtyRect: NSRect) {
-    PracticePalette.background.setFill()
-    bounds.fill()
-    guard bounds.width > 260, bounds.height >= 160 else { return }
-    let offset = max(0, (bounds.height - 175) / 2)
-    let left: CGFloat = 29, right = bounds.width - 28
-    let staffTop = offset + 54
-    let noteStart: CGFloat = 119
-    let step = (right - noteStart - 12) / 8
-    let hatY = staffTop - 5, snareY = staffTop + 15, kickY = staffTop + 35
-    let beamY = staffTop - 23
-    text("THE BACKBEAT", x: left, y: offset + 7)
-    for row in 0..<5 {
-      let y = staffTop + CGFloat(row) * 10
-      line(x1: left, y1: y, x2: right, y2: y, color: PracticePalette.muted.withAlphaComponent(0.55), width: 0.65)
-    }
-    line(x1: left, y1: staffTop, x2: left, y2: staffTop + 40,
-         color: PracticePalette.muted.withAlphaComponent(0.65), width: 0.8)
-    line(x1: right - 4, y1: staffTop, x2: right - 4, y2: staffTop + 40, width: 0.8)
-    line(x1: right, y1: staffTop, x2: right, y2: staffTop + 40, width: 2)
-    // Unpitched percussion clef.
-    PracticePalette.ink.setFill()
-    NSRect(x: left + 13, y: staffTop + 8, width: 3, height: 24).fill()
-    NSRect(x: left + 21, y: staffTop + 8, width: 3, height: 24).fill()
-    let signatureFont = NSFont.systemFont(ofSize: 22, weight: .medium)
-    text("4", x: left + 52, y: staffTop - 4, color: PracticePalette.ink, centered: true, font: signatureFont)
-    text("4", x: left + 52, y: staffTop + 17, color: PracticePalette.ink, centered: true, font: signatureFont)
-
-    for eighth in 0..<8 {
-      let x = noteStart + CGFloat(eighth) * step
-      // X notehead in the space immediately above the staff: closed hi-hat.
-      line(x1: x - 4, y1: hatY - 3.5, x2: x + 4, y2: hatY + 3.5, width: 1.5)
-      line(x1: x - 4, y1: hatY + 3.5, x2: x + 4, y2: hatY - 3.5, width: 1.5)
-      let snare = eighth == 2 || eighth == 6
-      if snare { notehead(x: x, y: snareY) }
-      line(x1: x + 5, y1: snare ? snareY : hatY, x2: x + 5, y2: beamY, width: 1.1)
-      if eighth % 2 == 0 {
-        PracticePalette.ink.setFill()
-        NSRect(x: x + 4.5, y: beamY - 1, width: step + 1, height: 3.7).fill()
-      }
-      text(eighth % 2 == 0 ? String(eighth / 2 + 1) : "&", x: x, y: offset + 133,
-           size: 12, color: eighth % 2 == 0 ? PracticePalette.ink : PracticePalette.muted, centered: true)
-    }
-    for beat in 0..<4 {
-      let x = noteStart + CGFloat(beat * 2) * step
-      if beat == 0 || beat == 2 {
-        notehead(x: x, y: kickY)
-        line(x1: x - 5, y1: kickY, x2: x - 5, y2: staffTop + 67, width: 1.1)
-      } else {
-        quarterRest(x: x, y: staffTop + 50)
-      }
-    }
-    text("×  Hi-hat above staff     ●  Snare in upper space     ●  Kick in lower space",
-         x: bounds.midX, y: offset + 156, centered: true)
   }
 }

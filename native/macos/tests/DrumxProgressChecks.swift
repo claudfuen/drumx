@@ -145,6 +145,94 @@ private func resumeCompatibilityChecks(defaults: UserDefaults) {
   check(defaults.data(forKey: "invalidResumeVersion") == invalidData, "invalid stored revision bytes remain untouched")
 }
 
+private func durablePracticeChecks(defaults: UserDefaults) {
+  let store = DrumxProgress(defaults: defaults, storageKey: "durablePractice")
+  let firstID = store.selectedProfileID
+  let date = store.selectedProfile.createdAt.addingTimeInterval(10)
+  check(store.practiceEvidence(lessonID: "pulse", version: "v1") == nil
+          && store.recallEvidence(lessonID: "pulse", version: "v1") == nil,
+        "fresh profile has no fabricated practice or recall evidence")
+  check(store.markPracticeCompleted(lessonID: "pulse", version: "v1", recall: false, at: date),
+        "ordinary completed practice can record its own condition")
+  check(store.practiceEvidence(lessonID: "pulse", version: "v1")?.kind == .completedPractice
+          && store.practiceEvidence(lessonID: "pulse", version: "v1")?.recordedAt == date,
+        "completed practice records kind and date")
+  check(store.recallEvidence(lessonID: "pulse", version: "v1") == nil,
+        "ordinary practice does not create click-only evidence")
+  check(store.readingEvidence(lessonID: "pulse", version: "v1") == nil
+          && store.techniqueEvidence(lessonID: "pulse", version: "v1") == nil,
+        "playing cannot award reading or self-reported technique checks")
+  let recallDate = date.addingTimeInterval(30)
+  check(store.markPracticeCompleted(lessonID: "pulse", version: "v1", recall: true, at: recallDate),
+        "explicit recall conditions record click-only attempt")
+  check(store.practiceEvidence(lessonID: "pulse", version: "v1")?.recordedAt == date,
+        "recall does not replace earlier practice date")
+  check(store.recallEvidence(lessonID: "pulse", version: "v1")?.recordedAt == recallDate
+          && store.recallEvidence(lessonID: "pulse", version: "v1")?.kind == .clickOnlyAttempt,
+        "recall conditions carry their own date")
+  check(store.markPracticeCompleted(lessonID: "pulse", version: "v1", recall: false,
+                                     at: recallDate.addingTimeInterval(5)),
+        "ordinary practice still succeeds after recall")
+  check(store.recallEvidence(lessonID: "pulse", version: "v1")?.recordedAt == recallDate,
+        "later ordinary practice cannot erase prior recall")
+  check(store.selectedProfile.checks.count == 2, "repeated takes do not accumulate score or count records")
+  check(store.markReadingChecked(lessonID: "pulse", version: "v1", at: date)
+          && store.markTechniqueChecked(lessonID: "pulse", version: "v1", at: date),
+        "manual reading and technique evidence remains available separately")
+  check(store.practiceEvidence(lessonID: "pulse", version: "v2") == nil
+          && store.recallEvidence(lessonID: "pulse", version: "v2") == nil,
+        "practice and recall cannot leak to a new lesson revision")
+  check(store.practiceEvidence(lessonID: "other", version: "v1") == nil
+          && store.recallEvidence(lessonID: "other", version: "v1") == nil,
+        "practice and recall cannot leak to another lesson")
+
+  // Replace an opaque recent-history window as its independent owner does when
+  // older attempts age out. Progress must not depend on any record in that key.
+  let originalAttemptID = UUID().uuidString
+  var rollingHistory = [originalAttemptID]
+  for _ in 0..<205 {
+    rollingHistory.append(UUID().uuidString)
+    rollingHistory = Array(rollingHistory.suffix(200))
+  }
+  check(rollingHistory.count == 200 && !rollingHistory.contains(originalAttemptID),
+        "history fixture has evicted the original completed take")
+  let historyData = try! JSONEncoder().encode(rollingHistory)
+  defaults.set(historyData, forKey: store.selectedHistoryKey)
+  let reopened = DrumxProgress(defaults: defaults, storageKey: "durablePractice")
+  check(reopened.practiceEvidence(lessonID: "pulse", version: "v1")?.recordedAt == date,
+        "completed-practice evidence survives eviction from the separate 200-take window")
+  check(reopened.recallEvidence(lessonID: "pulse", version: "v1")?.recordedAt == recallDate,
+        "recall evidence survives eviction from the separate history window")
+  check(reopened.readingEvidence(lessonID: "pulse", version: "v1") != nil
+          && reopened.techniqueEvidence(lessonID: "pulse", version: "v1") != nil,
+        "new practice flags preserve existing manual evidence across reopen")
+  check(defaults.data(forKey: reopened.selectedHistoryKey) == historyData,
+        "progress reopening cannot mutate the separate history store")
+
+  _ = reopened.addProfile(name: "Another Player")
+  check(reopened.practiceEvidence(lessonID: "pulse", version: "v1") == nil
+          && reopened.recallEvidence(lessonID: "pulse", version: "v1") == nil,
+        "practice evidence is isolated from another player")
+  check(reopened.markPracticeCompleted(lessonID: "pulse", version: "v2", recall: true),
+        "new player may create independent recall evidence")
+  check(reopened.selectedProfile.checks.count == 2
+          && reopened.practiceEvidence(lessonID: "pulse", version: "v2") != nil,
+        "first recall attempt stores both required conditions together")
+  check(reopened.selectProfile(id: firstID), "original player can resume after another player's take")
+  check(reopened.recallEvidence(lessonID: "pulse", version: "v2") == nil,
+        "new player's version evidence does not leak backward")
+  let beforeInvalid = defaults.data(forKey: "durablePractice")
+  check(!reopened.markPracticeCompleted(lessonID: "", version: "v1", recall: true),
+        "invalid lesson cannot create either practice condition")
+  check(!reopened.markPracticeCompleted(lessonID: "pulse", version: "", recall: false),
+        "invalid version cannot create practice evidence")
+  check(!reopened.markPracticeCompleted(lessonID: "pulse", version: "v3", recall: true,
+                                        at: Date(timeIntervalSinceReferenceDate: .infinity)),
+        "invalid practice date is rejected")
+  check(defaults.data(forKey: "durablePractice") == beforeInvalid,
+        "invalid practice records cannot partially mutate durable evidence")
+}
+
 private func corruptRecordChecks(defaults: UserDefaults) {
   let corrupt = Data("not a progress record".utf8)
   defaults.set(corrupt, forKey: "corrupt")
@@ -205,6 +293,13 @@ private func corruptRecordChecks(defaults: UserDefaults) {
     profiles[0]["usesLegacyHistory"] = false
     object["profiles"] = profiles
   }
+  reject("recallWithoutCompletion") { object in
+    var profiles = object["profiles"] as! [[String: Any]]
+    var evidence = profiles[0]["checks"] as! [[String: Any]]
+    evidence[0]["kind"] = "clickOnlyAttempt"
+    profiles[0]["checks"] = evidence
+    object["profiles"] = profiles
+  }
 }
 
 @main
@@ -216,6 +311,7 @@ enum DrumxProgressChecks {
     profileChecks(defaults: defaults)
     invalidInputChecks(defaults: defaults)
     resumeCompatibilityChecks(defaults: defaults)
+    durablePracticeChecks(defaults: defaults)
     corruptRecordChecks(defaults: defaults)
     print("Drumx local player/progress: \(checks) checks passed.")
   }

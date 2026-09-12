@@ -155,6 +155,7 @@ final class RunScoreReviewView: NSView {
     self.currentID = currentID
     self.bestPoints = bestPoints
     var description = "Take result: \(ScoreStyle.points(score.points)) points, \(score.stars) of 5 stars. Best combo \(score.bestCombo)."
+    if score.isComplete && currentID == nil { description += " This result has not been saved." }
     if let bestPoints { description += " Previous comparable best \(ScoreStyle.points(bestPoints)) points." }
     if self.recent.isEmpty {
       description += " No saved comparable takes yet."
@@ -178,20 +179,22 @@ final class RunScoreReviewView: NSView {
     ScoreStyle.text("/ 10,000", at: NSPoint(x: 342, y: 20), size: 12, monospaced: true)
 
     let comparisonX = max(456, bounds.width - 328)
+    let saved = score.isComplete && currentID != nil
     if let bestPoints {
       ScoreStyle.text("PREVIOUS BEST  \(ScoreStyle.points(bestPoints))",
                       at: NSPoint(x: comparisonX, y: 5), size: 11, monospaced: true)
       let difference = score.points - bestPoints
-      let comparison = !score.isComplete ? "Finish the phrase to save a result."
+      let comparison = !saved ? (score.isComplete ? "Result not saved. See the message below." : "Finish the phrase to save a result.")
         : difference > 0 ? "+\(ScoreStyle.points(difference)) · NEW PERSONAL BEST"
         : difference == 0 ? "PERSONAL BEST MATCHED"
         : "\(ScoreStyle.points(-difference)) points to your best"
       ScoreStyle.text(comparison, at: NSPoint(x: comparisonX, y: 25),
-                      size: 12, color: score.isComplete && difference >= 0 ? ScoreStyle.gold : ScoreStyle.muted)
+                      size: 12, color: saved && difference >= 0 ? ScoreStyle.gold : ScoreStyle.muted)
     } else {
-      ScoreStyle.text(score.isComplete ? "FIRST COMPARABLE TAKE" : "YOUR NEXT BENCHMARK",
+      ScoreStyle.text(saved ? "FIRST COMPARABLE TAKE" : score.isComplete ? "TAKE NOT SAVED" : "YOUR NEXT BENCHMARK",
                       at: NSPoint(x: comparisonX, y: 5), size: 11)
-      ScoreStyle.text(score.isComplete ? "Complete another take to compare."
+      ScoreStyle.text(saved ? "Complete another take to compare."
+                        : score.isComplete ? "See the message below to restore saving."
                         : "Complete a take to start your comparison.",
                       at: NSPoint(x: comparisonX, y: 25), size: 12)
     }

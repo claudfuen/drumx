@@ -1,7 +1,7 @@
 {
   "status": "curriculum and literacy draft; not an implemented course",
   "schemaDraftVersion": 2,
-  "implementationScope": "Framework-independent lesson proposals. The native lab has one playable backbeat lesson with an original one-bar staff study, listening, assistance modes, and review. It does not load this draft course or implement its full lesson sequence and learning gates.",
+  "implementationScope": "Framework-independent proposals extending foundations into named rudiments and further reading practice. The native app has a separate 12-lesson foundation unit in native/macos/DrumxCourse.swift, with notation, demonstrations, and scoring drawn from the same authored events. It does not load this JSON draft or implement its full lesson sequence. M1 remains active under docs/learning-milestones.md.",
   "sourceReferences": [
     {
       "id": "pas-rudiments",
@@ -35,7 +35,7 @@
     "dynamicsVerification": "Velocity depends on trigger settings. Timing accuracy does not verify accents, grip, rebound, posture, or foot technique."
   },
   "learningViews": {
-    "status": "planned for this draft course; the current native lab has one original backbeat staff study",
+    "status": "planned for this draft course; the separate native foundation unit pairs original staff studies, demonstrations, and scoring across 12 lessons",
     "sharedMusicalSource": "Generate staff notation, counts, sticking, accents, and game targets from the same lesson steps.",
     "sequence": [
       "hear and name",

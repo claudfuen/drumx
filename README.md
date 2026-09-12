@@ -4,9 +4,9 @@
 
 Drumx is a desktop trainer for real MIDI drum kits: the pull of a rhythm game, built around listening, counting, and learning to play without the screen.
 
-The first playable lesson is **Your first backbeat**. Read its drum notation, hear the groove, then play four short bars. Keep the hi-hat moving, put the snare on 2 and 4, and gradually remove the guide.
+Start with **Find the pulse**, then work through **12 foundation lessons**: count quarter and eighth notes, give rests their space, combine hands and feet, build a backbeat, and return to one after a short fill. Every lesson connects real drum notation, recorded drum sounds, and the same focused practice highway.
 
-**Current build:** one playable native macOS lesson. Free public distribution is the goal; the larger course, production renderer, and Windows version are still ahead.
+**Current build:** a playable native macOS foundation course, welcome flow, separate local players, and saved progress. The unit suggests **96 minutes of repeat practice**, taken at your pace across listening, playing, checks, and recall. Free public distribution is the goal; a release installer, deeper rudiments, the production renderer, and Windows are still ahead.
 
 [Run it](#quick-start) · [Current milestone](#current-milestone) · [Lesson guide](docs/native-lab.md) · [Changelog](CHANGELOG.md)
 
@@ -16,7 +16,7 @@ The first playable lesson is **Your first backbeat**. Read its drum notation, he
 
 The prototype established the shared timing line, stable kit layout, capture feedback, sound, guidance modes, and practice/review loop. We have an accepted concept to build on. Physical-kit latency, sustained frame pacing, and release readiness still need evidence.
 
-Our next milestone is a player outcome: **a new drummer can connect their kit, learn a small foundation unit, try it with less help, and return knowing what to practise next.** The menu, settings, curriculum, and saved progress should make that journey feel like one focused experience.
+The active milestone is a player outcome: **a new drummer can connect their kit, learn a small foundation unit, try it with less help, and return knowing what to practise next.** Welcome, course selection, teaching, practice, review, and local progress are now connected. The next evidence comes from using the whole course with a beginner and a physical kit.
 
 **Quality bar: a small, finished game that could belong on Steam.** The first unit should feel deliberately designed from launch through the return visit: clear onboarding, cohesive visuals and sound, responsive play, satisfying feedback, and dependable recovery. This is an experience target, not a claim of Steam availability; free public distribution remains the goal.
 
@@ -31,32 +31,41 @@ Our next milestone is a player outcome: **a new drummer can connect their kit, l
 ### What closes M1
 
 - [ ] **A confident first setup:** verify the kit's pads, sound route, and basic timing; recover clearly from a disconnected input.
-- [ ] **A starting point for each player:** two local players can share a kit while keeping separate baselines and progress.
-- [ ] **One coherent foundation unit:** teach pulse and counts, build the backbeat in manageable steps, and connect the sounds to real drum notation.
+- [x] **A starting point for each player:** separate local profiles, practice archives, checks, and resume settings; legacy history stays with the first player.
+- [x] **One coherent foundation unit:** 12 original lessons build pulse, counts, rests, coordination, the backbeat, variations, and a short fill using real notation.
 - [ ] **A useful learning checkpoint:** check counting/reading, repeat the pattern, and attempt it with less guidance. Keep technique self-checks separate from MIDI evidence.
 - [ ] **An intentional next step:** review explains one useful adjustment and recommends practice or progression from the player's evidence.
-- [ ] **A complete return journey:** close and reopen, resume the right player's work, and retain comparable attempts with their exercise version and aids.
+- [x] **A complete return journey:** verified close/reopen with the selected player, lesson, eight-bar settings, saved takes, and independent reading evidence intact.
 - [ ] **A polished complete experience:** inspect launch, setup, lesson selection, count-in, play, review, retry, and return as one flow, including empty states, interruptions, readable feedback, reduced motion, and supported window sizes.
-- [ ] **A reusable lesson foundation:** add the unit's exercises as versioned content using shared teaching, audio, notation, scoring, and progress systems. Verify their agreement without bespoke controller logic for every lesson.
+- [x] **A reusable lesson foundation:** versioned content drives shared teaching, audio, notation, scoring, and progress. Tests compare the authored targets and rendered audio across all 12 lessons.
 - [ ] **An observed end-to-end run:** a beginner completes setup → lesson → practice → review → next step → return without developer intervention, including a documented real-kit session.
 
-These checkboxes are acceptance criteria, not completed features. A bigger lesson list or five-star run alone does not close the milestone. Stars reward a take; learning gates describe readiness using timing, reading, recall, and the evidence MIDI cannot provide.
+Checked items have implementation and verification evidence. The remaining acceptance gates keep M1 active. A bigger lesson list or five-star run alone does not close the milestone. Stars reward a take; learning gates describe readiness using timing, reading, recall, and the evidence MIDI cannot provide.
 
 [Learning definitions and gates](docs/learning-milestones.md) specify the shared terms, evidence, and boundaries behind this roadmap. Reliability, accessibility, and distribution run alongside the learning milestones; a free public preview need not wait for the intermediate course. We close each milestone with a demonstrated journey, relevant checks, known limitations, and an updated README and changelog.
 
-## A small lesson worth repeating
+## A foundation worth practising
+
+| Chapter | What you work on |
+| --- | --- |
+| **1 · Pulse and counts** | Snare pulse, hi-hat eighth notes, snare rests, and bass-drum placement. |
+| **2 · Build your backbeat** | Hand/foot coordination, hat/snare coordination, the full groove, and a quarter-note variation. |
+| **3 · Read, vary, and remember** | Alternating hands, an offbeat kick, counting through a gap, and a groove-to-fill phrase. |
+
+Each lesson offers a clear objective, counts, a staff study, an audible demonstration, short repeatable takes, a reading question, and a technique self-check. Choose 1, 4, or 8 bars; vary the tempo; reduce assistance when comfortable. Suggested minutes are practice guidance, not a timer or a promise of learning speed.
 
 | You can do this now | What it teaches |
 | --- | --- |
-| **Hear the groove** | Listen to an acoustic drum demonstration and count `1 & 2 & 3 & 4 &`. |
+| **Hear the pattern** | Listen to the selected lesson's acoustic drum demonstration and count along. |
 | **Read, then play** | Connect a one-bar staff study and sticking suggestions to a shared timing line. |
 | **Hide a phrase** | Alternate guided and hidden bars, then try a click-only take. |
 | **Catch the note** | Fixed bottom receptors react to every strike, capture matched notes, and distinguish extra hits when live feedback is on. |
 | **Make one adjustment** | Review hits, misses, extras, and recent early/late tendencies; retry slower or work on one bar. |
 | **Chase a clean phrase** | Earn up to five stars and 10,000 points; build a combo, then compare the last six matching takes and your previous best. |
 | **Use your own kit** | Select a MIDI input, learn pad mappings, and choose app sounds or your module's sounds. |
+| **Return to your practice** | Continue the selected player's lesson with saved tempo, phrase length, and guidance. Reading and recall evidence stay separate. |
 
-The lesson plays **hi-hat, snare, and kick**. Seven stable hand-instrument positions and a full-width kick bar establish the visual layout; the other kit positions are reserved for future exercises.
+The foundation unit plays **hi-hat, snare, and kick**. Seven stable hand-instrument positions and a full-width kick bar establish the visual layout; the other kit positions are reserved for future exercises.
 
 Five stars mean a complete take with every target within the current ±50 ms timing band and no misses or extras. Points use the whole phrase, so an early streak cannot finish the challenge. Click-only practice reveals its score after the phrase. [Scoring and comparisons](docs/native-lab.md#scores-and-saved-attempts) describe the tiers and saved conditions; a perfect game result is evidence about that take, not a technique or mastery certificate.
 
@@ -73,12 +82,13 @@ open .build/DrumxLab.app
 
 No MIDI kit is required to try the lesson:
 
-1. Choose **Hear the groove** and count along.
-2. Select a comfortable tempo, choose **Start playing**, and come in after the four-beat count-in.
-3. Read the review. Try **Play again**, **Slow it down**, or **Work on one bar**.
-4. When the groove feels familiar, choose **Hide a phrase**, then **Try click-only**.
+1. Enter a player name on the welcome page, then choose **Let's play**.
+2. Choose **Find the pulse**. Read the counts and choose **Hear the pattern**.
+3. Select a comfortable tempo, choose **Start playing**, and come in after the four-beat count-in.
+4. Read the review. Try **Play again**, **Slow it down**, or **Work on one bar**. Use **Lesson check** to connect the pattern to drum language.
+5. When comfortable, try **Hide a phrase**, then **Try click-only**, or open the **Next lesson**. Return to **Course** whenever you want to choose your next focus.
 
-Spend five minutes repeating these short takes. This is not a timed five-minute lesson: a four-bar take lasts ten seconds at the default 96 BPM, plus the count-in.
+Try five minutes of short takes first. A four-bar take lasts 16 seconds at 60 BPM, plus the count-in. Your completed attempts are archived on this Mac and the course remembers your reading and practice evidence. Add another local player from the player button to keep their progress separate.
 
 | Control | Action |
 | --- | --- |
@@ -86,8 +96,8 @@ Spend five minutes repeating these short takes. This is not a timed five-minute 
 | **S** | Snare |
 | **Space** | Kick |
 | **Shift + key** | Softer strike |
-| **Enter** | Start or retry a take |
-| **Esc** | Stop playing or listening; close setup |
+| **Enter** | Continue from the course; start or retry from a lesson |
+| **Esc** | Stop playing/listening, close a sheet, or return to the course |
 | **Kit & sound** | MIDI input, pad mapping, sound, volume, sticking hints, and input offset |
 
 For a physical kit, open **Kit & sound**, choose its MIDI source, and check each pad before playing. The [lesson guide](docs/native-lab.md) covers setup and sound routing.
@@ -123,13 +133,13 @@ bash scripts/test-native.sh
 
 The native checks exercise scoring boundaries, simultaneous notes, late input, MIDI parsing and virtual input, sample integrity, audio/demo behavior, projection and count-in continuity, and comparable lesson history. They validate software behavior, not physical pad-to-sound latency.
 
-Start with the [scoring interface](native/core/drumx_core.h), [lesson controller](native/macos/DrumxLab.swift), [practice drawing](native/macos/PracticeView.swift), or [review/history model](native/macos/DrumxLesson.swift).
+Start with the [scoring interface](native/core/drumx_core.h), [journey controller](native/macos/DrumxJourneyController.swift), [practice drawing](native/macos/PracticeView.swift), [notation](native/macos/DrumxNotationView.swift), or [review/history model](native/macos/DrumxLesson.swift).
 
 See [troubleshooting](docs/native-lab.md#troubleshooting) for setup help. Builds are locally ad-hoc signed; quit and reopen after rebuilding. There is no notarized release download yet.
 
 ## Where this goes next
 
-The active focus is **M1, the complete beginner journey**, using the accepted mechanics as its foundation. Real-kit validation and rendering work support that journey. The broader course remains a draft.
+The active focus is **M1, the complete beginner journey**. The foundation course is playable; real-kit validation, beginner observation, sustained practice feedback, and further experience polish remain open. The broader rudiment course remains a draft.
 
 - [Learning definitions and gates](docs/learning-milestones.md): the milestone contract and evidence for progression.
 - [Product pitch](docs/pitch.md): the learning experience and its scope.

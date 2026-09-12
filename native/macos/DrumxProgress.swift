@@ -29,10 +29,12 @@ struct PracticeResume: Codable, Equatable {
 enum DrumxCheckKind: String, Codable {
   case readingQuizPassed
   case techniqueSelfCheck
+  case completedPractice
+  case clickOnlyAttempt
 }
 
 /// Versioned evidence of an explicit learner action. A self-check is not an
-/// observed technique assessment, and neither kind claims MIDI-verified mastery.
+/// observed technique assessment. Practice flags mean tried, never mastery.
 struct DrumxCheckEvidence: Codable, Equatable {
   let lessonID: String
   let version: String
@@ -71,9 +73,12 @@ struct DrumxPlayerProfile: Codable, Equatable, Identifiable {
       createdAt.timeIntervalSinceReferenceDate.isFinite, resume.isValid, checks.count <= 2048,
       checks.allSatisfy({ $0.isValid && $0.recordedAt >= createdAt })
     else { return false }
-    // Each kind/version has one explicit check date, never duplicate pass records.
+    // Each kind/version has one evidence date, never duplicate pass or take records.
     let keys = checks.map { EvidenceKey(lessonID: $0.lessonID, version: $0.version, kind: $0.kind) }
-    return Set(keys).count == keys.count
+    let keySet = Set(keys)
+    return keySet.count == keys.count && checks.filter { $0.kind == .clickOnlyAttempt }.allSatisfy {
+      keySet.contains(EvidenceKey(lessonID: $0.lessonID, version: $0.version, kind: .completedPractice))
+    }
   }
 }
 
@@ -117,8 +122,8 @@ private func normalizedPlayerName(_ value: String) -> String {
   value.folding(options: [.caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
 }
 
-/// Serial/main-thread use. Score progress remains derived from each player's
-/// LessonHistory. Only profile selection, resume settings and explicit checks live here.
+/// Serial/main-thread use. Scores remain in each player's LessonHistory. Profile
+/// selection, resume settings and durable dated evidence live here without score duplication.
 final class DrumxProgress {
   private let defaults: UserDefaults
   private let storageKey: String
@@ -233,6 +238,40 @@ final class DrumxProgress {
 
   func techniqueEvidence(lessonID: String, version: String) -> DrumxCheckEvidence? {
     selectedProfile.evidence(lessonID: lessonID, version: version, kind: .techniqueSelfCheck)
+  }
+
+  func practiceEvidence(lessonID: String, version: String) -> DrumxCheckEvidence? {
+    selectedProfile.evidence(lessonID: lessonID, version: version, kind: .completedPractice)
+  }
+
+  func recallEvidence(lessonID: String, version: String) -> DrumxCheckEvidence? {
+    selectedProfile.evidence(lessonID: lessonID, version: version, kind: .clickOnlyAttempt)
+  }
+
+  /// Caller must first obtain a valid LessonHistory.record from a naturally completed
+  /// take with at least one matched hit. Set recall only for mode 2 with live feedback off.
+  /// These durable flags describe attempted practice, not score quality or mastery.
+  /// Both conditions persist together; the bounded recent-take store remains untouched.
+  @discardableResult
+  func markPracticeCompleted(lessonID: String, version: String, recall: Bool,
+                             at date: Date = Date()) -> Bool {
+    let kinds: [DrumxCheckKind] = recall ? [.completedPractice, .clickOnlyAttempt] : [.completedPractice]
+    let evidence = kinds.map {
+      DrumxCheckEvidence(lessonID: lessonID, version: version, kind: $0, recordedAt: date)
+    }
+    guard evidence.allSatisfy({ $0.isValid }), date >= selectedProfile.createdAt else {
+      lastError = "The completed practice details are invalid."
+      return false
+    }
+    let newEvidence = evidence.filter {
+      selectedProfile.evidence(lessonID: lessonID, version: version, kind: $0.kind) == nil
+    }
+    guard !newEvidence.isEmpty else { return true }
+    guard selectedProfile.checks.count + newEvidence.count <= 2048 else {
+      lastError = "This player's saved check record is full."
+      return false
+    }
+    return updateSelected { $0.checks.append(contentsOf: newEvidence) }
   }
 
   /// Invoke only after the learner explicitly passes this lesson version's reading quiz.

@@ -1,10 +1,10 @@
 # Learning definitions and product milestones
 
-Drumx should help a player hear, count, read, play, recall, and use a rhythm. These definitions connect that promise to the product we build and the evidence we collect. They are a planning contract, not an implemented course or a certification standard.
+Drumx should help a player hear, count, read, play, recall, and use a rhythm. These definitions connect that promise to the product we build and the evidence we collect. They define product acceptance and proposed learning gates, not a certification standard. The implementation status below is separate from those gates.
 
 **Current milestone: M0 done, mechanics/UI prototype accepted as a concept. M1 active, complete beginner learning loop. M2 through M4 planned.** Hardware latency and sustained frame pacing remain unmeasured; accepting the concept does not close those quality questions.
 
-The current macOS lab has one playable backbeat lesson, an original staff study, demonstrations, assistance modes, review, and local comparable attempt history. Separate player profiles and a complete beginner unit are still ahead. See [current behavior](native-lab.md), [curriculum proposals](curriculum.md), and [draft lesson data](lessons-draft.json). This document owns definitions and milestone acceptance; the lesson guide owns implementation details.
+The current macOS build connects welcome and local player profiles to 12 authored foundation lessons in three chapters, shared notation/audio/scoring events, reading checks, technique self-checks, assistance, review, and versioned resume. These are M1 implementation progress, not evidence that a real beginner has completed the intended journey successfully. See [current behavior](native-lab.md), [authored course](../native/macos/DrumxCourse.swift), and the separate [rudiment curriculum proposals](curriculum.md). This document owns definitions and milestone acceptance; the lesson guide owns implementation details.
 
 ## Shared learning language
 
@@ -50,6 +50,8 @@ Stars, streaks, percentages, and personal bests reward a performance under state
 
 Suggested gate labels are **needs practice**, **ready to try the next task**, **recalled later**, and **applied in a variation**. Each names the evidence and any unresolved dimension. A next-task recommendation can coexist with an unobserved technique check; it must not label that check passed.
 
+The implemented course uses narrower labels: **Practised**, **Reading checked**, and **Recall tried**. A correct reading response and explicit technique self-check are different records. None of these labels establishes mastery or blocks browsing other lessons. The first completed pulse attempt is a baseline comparison, not automatic skill placement. Scheduled revisits and adaptive readiness decisions remain planned.
+
 Use repeated comparable attempts rather than only a best take. Retain supported and less-supported performances separately. A reading attempt with a staff is not a memory attempt. A click-only attempt tests recall against an external pulse; maintaining tempo through missing-click bars is a separate, later test.
 
 Timing windows and numerical star boundaries are **prototype score policy**, not learner gates. Any future numerical learning cutoff, repetition count, tempo target, or revisit interval is an **untested starting hypothesis** until evaluated with learners. Keep it configurable and versioned. No research-backed mastery percentage or automatic certification is specified here.
@@ -74,6 +76,19 @@ Timing windows and numerical star boundaries are **prototype score policy**, not
 - **Acceptance evidence:** demonstrate the full setup → baseline → lesson → practice → review → next step → reopen/resume path without developer intervention. Two local players keep independent baselines and progress while sharing a kit. Saved evidence records the exercise and aids; a representative real-kit session confirms mappings, simultaneous hits, and recovery from a disconnected input under documented conditions.
 - **Learning gate:** the player can count the unit's pattern, recognize its basic notation, repeat it comfortably, and attempt it with less guidance. The review distinguishes measured performance from the learner's technique self-check and recommends a concrete next action.
 - **What does not count:** a longer lesson menu, automatic advancement from stars, a single polished screen, or treating keyboard success as physical-kit evidence.
+
+### M1 progress and remaining evidence
+
+| Work | Implementation progress | Acceptance still needed |
+| --- | --- | --- |
+| Coherent foundation unit | Twelve authored lessons in three chapters cover pulse/counts, a layered backbeat, rests, variations, and a short fill. All 12 passed scoring/audio event and sample-frame checks; their generated notation was visually inspected. | Observe learner comprehension and the musical experience on a physical kit. |
+| Welcome, setup, and local players | Welcome, a fresh second player, separate reading evidence, and course navigation were checked in the app. Models verify independent history keys and archive migration. | Observe physical-kit setup and exercise missing/disconnected inputs across players. |
+| Baseline and resume | Close/reopen preserved the selected player, final lesson, eight-bar settings, and completed takes; switching back restored the first player's separate reading check. Durable archives and versioned resume have model coverage. | Validate the first pulse as a useful learner baseline and exercise changed-device recovery. |
+| Understand, practice, review | Lesson objectives, counts, three-choice reading questions, explicit technique self-checks, scores/PBs, and a next-lesson route are available. Estimated repetition time totals 96 suggested minutes, not recorded-content duration. | Observe a beginner understanding the task, interpreting feedback, and choosing a useful next action without developer intervention. |
+| Early recall | Hidden-bar and click-only attempts are available; course evidence records that recall was tried separately from supported practice. | Verify cue suppression and honest evidence labels in the integrated experience; do not infer later retention. |
+| Reliability and experience | Native checks cover custom charts, shared course audio, local profiles, durable archives, and delayed corrections. Welcome, course, lesson, notation, and check-sheet layouts have been inspected. | Real-kit reliability, physical latency and sustained frame measurements, graceful interruptions, accessibility, and the full finished-game experience bar remain open. |
+
+**M1 is still active.** Available controls and passing content/model tests do not by themselves complete these acceptance checks. Record integrated verification separately from the untested real-beginner and hardware outcomes, then update this checklist as evidence arrives.
 
 ## M2: Rudiments, reading, and coordination
 
