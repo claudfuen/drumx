@@ -4,6 +4,11 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### A finished beginner experience as the quality bar
+
+- Add a commercial-quality experience target to M1: cohesive launch, setup, lesson selection, play, review, and return, with clear feedback and graceful recovery.
+- Require a reusable lesson foundation so the first unit's exercises share teaching, playback, notation, scoring, and progress systems. Free public distribution remains the goal.
+
 ### Learning milestones and the next product gate
 
 - Mark M0, the mechanics and UI concept, achieved; make M1, a complete beginner learning journey, the active focus in the README.

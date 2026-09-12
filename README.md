@@ -18,6 +18,8 @@ The prototype established the shared timing line, stable kit layout, capture fee
 
 Our next milestone is a player outcome: **a new drummer can connect their kit, learn a small foundation unit, try it with less help, and return knowing what to practise next.** The menu, settings, curriculum, and saved progress should make that journey feel like one focused experience.
 
+**Quality bar: a small, finished game that could belong on Steam.** The first unit should feel deliberately designed from launch through the return visit: clear onboarding, cohesive visuals and sound, responsive play, satisfying feedback, and dependable recovery. This is an experience target, not a claim of Steam availability; free public distribution remains the goal.
+
 | Milestone | Status | What the player gains |
 | --- | --- | --- |
 | **M0 · Mechanics and UI concept** | Achieved | Hear, play, capture, review, and retry a short backbeat on a consistent highway. |
@@ -34,6 +36,8 @@ Our next milestone is a player outcome: **a new drummer can connect their kit, l
 - [ ] **A useful learning checkpoint:** check counting/reading, repeat the pattern, and attempt it with less guidance. Keep technique self-checks separate from MIDI evidence.
 - [ ] **An intentional next step:** review explains one useful adjustment and recommends practice or progression from the player's evidence.
 - [ ] **A complete return journey:** close and reopen, resume the right player's work, and retain comparable attempts with their exercise version and aids.
+- [ ] **A polished complete experience:** inspect launch, setup, lesson selection, count-in, play, review, retry, and return as one flow, including empty states, interruptions, readable feedback, reduced motion, and supported window sizes.
+- [ ] **A reusable lesson foundation:** add the unit's exercises as versioned content using shared teaching, audio, notation, scoring, and progress systems. Verify their agreement without bespoke controller logic for every lesson.
 - [ ] **An observed end-to-end run:** a beginner completes setup → lesson → practice → review → next step → return without developer intervention, including a documented real-kit session.
 
 These checkboxes are acceptance criteria, not completed features. A bigger lesson list or five-star run alone does not close the milestone. Stars reward a take; learning gates describe readiness using timing, reading, recall, and the evidence MIDI cannot provide.
