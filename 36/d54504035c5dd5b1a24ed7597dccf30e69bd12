@@ -1,0 +1,82 @@
+native/core/tests.cpp
+  s_f983bef49b9fee::t_72b530fcff23e4 1-175,178-196,241-251,253-254
+  s_f983bef49b9fee::t_57039044228f42 176-177,197-240,252
+native/macos/DrumxLab.swift
+  s_f983bef49b9fee::t_14c36aa55ce7ed 1-7,11,17,27,29,41,50,120,192,228,235,240,242-244,273,316,332,338,356,416,443,522,575,638-639,647-649,665
+  s_f983bef49b9fee::t_50d49a21065692 8-10,12-16,18-19,23-26,28,30-40,42-49,51-77,79-82,84-119,121-122,124,128-191,193-194,202-210,214-227,229-234,236-239,241,245-272,274-315,317-331,333-337,339-355,357-396,411-413,415,417-442,444-521,523-555,557-574,576-637,640-646,650-664
+scripts/test-native.sh
+  s_f983bef49b9fee::t_ce4f245df1f996 1-8,10-22
+  s_f983bef49b9fee::t_412ff30b6793ba 9
+.gitignore
+  s_f983bef49b9fee::t_14c36aa55ce7ed 1-2
+native/macos/DrumxSampler.swift
+  s_f983bef49b9fee::t_34c919995afb42 305-307,312,315-316
+  s_f983bef49b9fee::t_46b6ecd5e0b19c 1-73,75-80,84-177,179-248,253-290,292-299,301-304,308-311,313-314,317-342,344-354,361-363,365-378,380,382,391-406
+  s_f983bef49b9fee::t_cd7f19fa195ac0 74,81-83,178,249-252,343,355-360,364,381
+  s_f983bef49b9fee::t_7af8357ea7d3ef 291,300,379,383-390
+native/macos/tests/DrumxIOChecks.swift
+  s_f983bef49b9fee::t_d19fee444ca35b 1-6,9-107,223-224
+  s_f983bef49b9fee::t_59973b9d3cc6b4 141-142,160-167,170,173,177
+  s_f983bef49b9fee::t_34c919995afb42 109-110,116-117,181-183,194-222
+  s_f983bef49b9fee::t_0ee4b5330766d0 179-180,184-185
+  s_f983bef49b9fee::t_3bf4059ea4d435 8,188-189
+  s_f983bef49b9fee::t_8819f8e3092a22 7,108,111-115,118-140,143-159,168-169,171-172,174-176,178,186-187,190-193
+docs/pitch.md
+  s_f983bef49b9fee::t_5c3b87122979a5 3,27-29,46-47,52,64,66,68,95,106,110-112,116,118,120,126,128
+native/macos/DrumxIO.swift
+  s_f983bef49b9fee::t_ab1dafb9b3338e 22-24,43,56-59,138,320,349-353,355-361
+  s_f983bef49b9fee::t_a53bd24d06cf37 5,20-21,42,76,208-209,218,222-225,277-290,299-300,309-315,367-369,420-423
+  s_f983bef49b9fee::t_881b9e064af764 84,88-90,97-100,298,308
+  s_f983bef49b9fee::t_34c919995afb42 154-155
+  s_f983bef49b9fee::t_84f11788649a50 1-4,6-19,25-41,44-55,60-75,77-83,85-87,91-96,101-137,139-153,156-207,210-217,219-221,226-276,291-297,301-307,316-319,321-348,354,362-366,370-419,424
+native/macos/tests/README.md
+  s_f983bef49b9fee::t_d19fee444ca35b 1-2,4-17,25
+  s_f983bef49b9fee::t_3bf0cae834dcba 3,18-24,26
+native/core/drumx_core.h
+  s_f983bef49b9fee::t_57039044228f42 11-12
+  s_f983bef49b9fee::t_f9eb8368c32b81 99-103
+  s_f983bef49b9fee::t_8d2d641845db9a 1-10,13-98,104-119
+scripts/build-macos-lab.sh
+  s_f983bef49b9fee::t_50d49a21065692 9,14-15,36
+  s_f983bef49b9fee::t_412ff30b6793ba 10
+  s_f983bef49b9fee::t_14c36aa55ce7ed 1-8,11,16-17,19-22,27-35,37-42
+  s_f983bef49b9fee::t_f0e345b38cdbcd 12-13,18
+  s_f983bef49b9fee::t_cf71bdeaa31d60 23-26
+README.md
+  s_f983bef49b9fee::t_4a7415ec7cf6a1 3,7-17,19-30,33
+  s_f983bef49b9fee::t_5c3b87122979a5 5
+  s_f983bef49b9fee::t_09a51ca3755f08 18
+docs/native-lab.md
+  s_f983bef49b9fee::t_09a51ca3755f08 34,36,59,79
+  s_f983bef49b9fee::t_509f17260551f3 16-17
+  s_f983bef49b9fee::t_4a7415ec7cf6a1 1-15,18-33,35,37-49,51,60-78,80-83
+  s_f983bef49b9fee::t_5c3b87122979a5 50,52-58
+native/core/drumx_core.cpp
+  s_f983bef49b9fee::t_57039044228f42 215-216,228-231,272-282
+  s_f983bef49b9fee::t_f9eb8368c32b81 1-23,25-196,198-214,217-227,232,235-237,248-251,253-264,266-271,283-358
+  s_f983bef49b9fee::t_72b530fcff23e4 24,197,233-234,238-247,252,265
+native/assets/BigRusty/README.md
+  s_f983bef49b9fee::t_b9a025597c2f95 1-56
+docs/architecture-options.md
+  s_f983bef49b9fee::t_4a7415ec7cf6a1 1,3-12,14-15,38,40,50-52,69,81
+  s_f983bef49b9fee::t_5c3b87122979a5 13
+scripts/fetch-samples.py
+  s_f983bef49b9fee::t_b9a025597c2f95 1-28,32-101
+  s_f983bef49b9fee::t_8b11979c9e1c73 29-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "36d54504035c5dd5b1a24ed7597dccf30e69bd12",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
