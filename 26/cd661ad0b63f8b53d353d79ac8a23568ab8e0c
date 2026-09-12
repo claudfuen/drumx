@@ -1,0 +1,25 @@
+native/macos/tests/DrumxProjectionChecks.swift
+  s_f983bef49b9fee::t_1181f0337d320b 1-19,27-73,94-97
+  s_f983bef49b9fee::t_1859361cce6cce 20-26
+  s_f983bef49b9fee::t_0aced981db4987 74-93
+native/macos/DrumxProjection.swift
+  s_f983bef49b9fee::t_1181f0337d320b 1-39,47-59,65-113
+  s_f983bef49b9fee::t_1859361cce6cce 60-64
+  s_f983bef49b9fee::t_0aced981db4987 40-46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "26cd661ad0b63f8b53d353d79ac8a23568ab8e0c",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
