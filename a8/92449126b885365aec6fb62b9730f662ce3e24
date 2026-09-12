@@ -1,0 +1,60 @@
+docs/cross-platform.md
+  s_f983bef49b9fee::t_84e69167738259 5,44
+apps/game/native/backend.cpp
+  s_f983bef49b9fee::t_8f5547e230c063 1-50,52-101,103-109,111-120,122-126,128-133,135-136,144-189
+  s_f983bef49b9fee::t_ec59edeffc7363 137-140,142-143
+  s_f983bef49b9fee::t_bd09d8386d90ad 102
+  s_f983bef49b9fee::t_12a84391679094 51,110,121,127,134,141
+apps/game/native/build_profile.json
+  s_f983bef49b9fee::t_68a6eaa2140d4c 1
+CHANGELOG.md
+  s_f983bef49b9fee::t_84e69167738259 7-13
+apps/game/native/drumx_engine.cpp
+  s_f983bef49b9fee::t_1f82f44396aadb 1-20,22-102,104-110,112-116
+  s_f983bef49b9fee::t_68a6eaa2140d4c 21,103,111
+apps/game/native/register_types.cpp
+  s_f983bef49b9fee::t_1f82f44396aadb 1-17
+.gitignore
+  s_f983bef49b9fee::t_a48c6fbaf64b24 3-5
+apps/game/native/coremidi_checks.cpp
+  s_f983bef49b9fee::t_bd09d8386d90ad 1-53
+apps/game/native/CMakeLists.txt
+  s_f983bef49b9fee::t_3c6549ff655e32 11-12
+  s_f983bef49b9fee::t_bd09d8386d90ad 44-49
+  s_f983bef49b9fee::t_1fae3ebf344e5b 1,5-10,13-16,19-43,50
+  s_f983bef49b9fee::t_12a84391679094 2-4,17-18
+apps/game/native/README.md
+  s_f983bef49b9fee::t_0b42b7a7ac3b4a 1-44
+README.md
+  s_f983bef49b9fee::t_84e69167738259 82
+apps/game/native/backend.h
+  s_f983bef49b9fee::t_1fae3ebf344e5b 1-35,37-72,74-79,81-98
+  s_f983bef49b9fee::t_a087356003434b 80
+  s_f983bef49b9fee::t_ec59edeffc7363 36,73
+apps/game/native/backend_checks.cpp
+  s_f983bef49b9fee::t_a087356003434b 7-17,61-64,66-99
+  s_f983bef49b9fee::t_1f82f44396aadb 1-6,18-60,65,100-102
+apps/game/native/native_midi.cpp
+  s_f983bef49b9fee::t_3c6549ff655e32 1-151
+apps/game/native/drumx_engine.h
+  s_f983bef49b9fee::t_68a6eaa2140d4c 27
+  s_f983bef49b9fee::t_1f82f44396aadb 1-26,28-32
+apps/game/native/native_audio.cpp
+  s_f983bef49b9fee::t_ec59edeffc7363 1-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "a892449126b885365aec6fb62b9730f662ce3e24",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
