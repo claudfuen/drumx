@@ -1,0 +1,36 @@
+README.md
+  s_f983bef49b9fee::t_9d69a163c94c73 56,61
+native/macos/DrumxScoreViews.swift
+  s_f983bef49b9fee::t_381d95b7398e6f 1-184,187-189,191-227
+  s_f983bef49b9fee::t_0662026d0e31aa 185-186,190
+docs/native-lab.md
+  s_f983bef49b9fee::t_9d69a163c94c73 95-109,115
+CHANGELOG.md
+  s_f983bef49b9fee::t_9d69a163c94c73 7-13
+native/macos/DrumxLab.swift
+  s_f983bef49b9fee::t_f7c5c12ceb830c 105-107,115,253,255-256,368-372,374,376-377,396,398-399,414-415,431,652,672-673,774-775,778-779,781-785,789-793,795-798,801,841-851
+native/macos/tests/DrumxLessonChecks.swift
+  s_f983bef49b9fee::t_c88ccbb79d8eb0 112,151-152,160-161,181-193,233-249,255-325,327-335,337-355,364
+  s_f983bef49b9fee::t_539bd26f139e33 326,336
+scripts/build-macos-lab.sh
+  s_f983bef49b9fee::t_f7c5c12ceb830c 20
+native/macos/DrumxLesson.swift
+  s_f983bef49b9fee::t_c88ccbb79d8eb0 96-97,99
+  s_f983bef49b9fee::t_904b62b6b02333 43-95,98,100-111,217-218,225-226,281-282,319-327
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ae093cdfdedcf95a92416214faeab9f2bd53cf8f",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
