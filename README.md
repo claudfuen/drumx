@@ -81,6 +81,17 @@ Stars on **Learn** show your best saved result for that lesson version across an
 
 **Cross-platform work runs alongside the Mac app:** the C++ scoring core and C API consumer passed Debug/Release checks on macOS and Windows, plus Mac sanitizers, in the [first hosted CI run](https://github.com/claudfuen/drumx/actions/runs/34710014677). An [experimental native MIDI/audio bridge](apps/game/native/README.md) also builds and passes its Mac checks. The first shared interface failed visual review; the working Mac app remains the presentation baseline. The [experimental desktop workflow](.github/workflows/desktop-preview.yml) builds and tests both exported apps as CI artifacts, with automatic public release disabled during recovery. [Recovery scope and acceptance gates](docs/desktop-preview.md) keep known gaps explicit. The [first paired app run](https://github.com/claudfuen/drumx/actions/runs/34713214121) passed exported-app execution on both operating systems. Visual parity at matching display sizes and physical-kit testing remain open gates. [Platform contracts and early risks](docs/cross-platform.md)
 
+## Experimental desktop test builds
+
+The shared port is under regression review. The native Mac app above remains the primary experience. These packages come from commit `7f15952`; both exported executables passed 7,717 checks on their target operating systems in the [verified paired run](https://github.com/claudfuen/drumx/actions/runs/34713689821).
+
+| Platform | Test package |
+| --- | --- |
+| Apple Silicon Mac | [Download Mac ARM64 artifact](https://github.com/claudfuen/drumx/actions/runs/34713689821/artifacts/10304476030) |
+| Windows 64-bit | [Download Windows x64 artifact](https://github.com/claudfuen/drumx/actions/runs/34713689821/artifacts/10304770498) |
+
+GitHub requires sign-in for artifacts and retains these for 14 days. Open the downloaded artifact ZIP, then extract the enclosed Drumx ZIP completely. Public releases remain on hold while visual parity and physical-kit testing are incomplete. The port uses a separate progress store and still lacks some native Mac features. Read the [inspection guide and known gaps](docs/desktop-preview.md) before testing.
+
 ## Quick start
 
 Requires **macOS 15+**, **full Xcode**, and **Python 3** as `python3`. The script selects `/Applications/Xcode.app` when present and builds for your Mac's architecture. Command Line Tools alone are not supported.
