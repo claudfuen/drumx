@@ -83,7 +83,7 @@ final class LessonRootView: NSView {
   }
 }
 
-final class LabController: NSObject {
+final class LabController: NSObject, NSWindowDelegate {
   let io = DrumxIO()
   let core: OpaquePointer
   let scene = PracticeView()
@@ -172,6 +172,10 @@ final class LabController: NSObject {
   private var takeWindow: DrumxTakeWindow?
   var finishedNaturally = false
   private var timer: Timer?, lastStatusUpdate = 0.0
+  private var nextHistoryRetry = 0.0
+  private var pendingPracticeMarks: Set<UUID> = []
+  private var allowsUnsavedExit = false
+  private var closePromptActive = false
   private var showingReview = false
   private var demoEnd = 0.0
   private var lastDemoVisualTime = -Double.infinity
@@ -212,6 +216,7 @@ final class LabController: NSObject {
       styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false
     )
     super.init()
+    window.delegate = self
     history = makePlayerHistory()
     restorePlayer()
     window.title = "Drumx · Foundations"
@@ -923,7 +928,7 @@ final class LabController: NSObject {
       revealJudgment: running && showLive && !demonstrating)
     scene.needsDisplay = true
   }
-  private func updateReview() {
+  private func updateReview(saveResult: Bool = true) {
     let review = LessonReview(snapshot: snapshot, completedNaturally: finishedNaturally)
     reviewTitle.stringValue = review.headline
     reviewDetail.stringValue = review.detail
@@ -942,18 +947,22 @@ final class LabController: NSObject {
     var bestPoints: Int?
     var savedID: UUID?
     if let settings = takeSettings {
-      let attempt = history.record(
-        id: takeID, settings: settings, snapshot: snapshot, completedNaturally: finishedNaturally,
-        endedAt: endedAt)
+      let attempt: LessonAttempt?
+      if saveResult {
+        attempt = history.record(
+          id: takeID, settings: settings, snapshot: snapshot, completedNaturally: finishedNaturally,
+          endedAt: endedAt)
+        if attempt != nil || history.hasPendingSave(id: takeID) { pendingPracticeMarks.insert(takeID) }
+        nextHistoryRetry = DrumxIO.hostNowSeconds() + 1
+        if attempt != nil { registerCommittedPractice() }
+      } else {
+        attempt = history.hasPendingSave(id: takeID) ? nil : history.attempts.first { $0.id == takeID }
+      }
       bestPoints = history.best(matching: settings, excluding: takeID)
         .map { DrumxRunScore(attempt: $0).points }
       recent = history.recent(matching: settings)
       if let attempt {
         savedID = attempt.id
-        if attempt.matched > 0 {
-          _ = progress.markPracticeCompleted(lessonID: lesson.id, version: lesson.version,
-            recall: settings.mode == 2 && !settings.liveFeedback, at: endedAt)
-        }
         personalBest.stringValue =
           "Saved on this Mac · comparisons use the same lesson, tempo, input, and aids."
       }
@@ -969,6 +978,100 @@ final class LabController: NSObject {
     results.stringValue = finishedNaturally ? "TAKE COMPLETE" : "TAKE STOPPED"
     refreshUnlockReview()
   }
+
+  private func registerCommittedPractice() {
+    // A queued take may belong to a lesson visited earlier in this session.
+    // Resolve its captured version, never the lesson currently on screen.
+    for attempt in history.attempts where pendingPracticeMarks.contains(attempt.id) {
+      guard !history.hasPendingSave(id: attempt.id) else { continue }
+      guard attempt.matched > 0,
+        let definition = DrumxCourse.lessons.first(where: { $0.version == attempt.settings.lessonVersion })
+      else { pendingPracticeMarks.remove(attempt.id); continue }
+      if progress.markPracticeCompleted(lessonID: definition.id, version: definition.version,
+        recall: attempt.settings.mode == 2 && !attempt.settings.liveFeedback, at: attempt.endedAt) {
+        pendingPracticeMarks.remove(attempt.id)
+      }
+    }
+  }
+
+  @discardableResult
+  func retryPendingHistory(force: Bool = false) -> Bool {
+    guard !transportActive else { return !history.hasPendingSaves }
+    let now = DrumxIO.hostNowSeconds()
+    guard force || now >= nextHistoryRetry else { return !history.hasPendingSaves }
+    let hadPending = history.hasPendingSaves
+    guard hadPending || !pendingPracticeMarks.isEmpty else { return true }
+    nextHistoryRetry = now + 1
+    let saved = history.retryPendingSaves()
+    if saved {
+      registerCommittedPractice()
+      if showingReview { updateReview(saveResult: false) }
+      if currentPage == .course { refreshCourse() }
+      if currentPage == .prepare { refreshLesson() }
+      if currentPage == .mainMenu {
+        let state = unlockState
+        mainMenuView.update(lesson: lesson, player: progress.selectedProfile.name,
+          unlocked: state.availableIDs.count, cleared: state.clearedIDs.count)
+      }
+      if let error = progress.lastError { setStatus(error) }
+      else if hadPending { setStatus("Your takes are saved on this Mac.") }
+    } else {
+      setStatus(history.lastError ?? "Your takes are waiting to save. Keep Drumx open and retry before quitting.")
+    }
+    return !history.hasPendingSaves
+  }
+
+  func prepareHistoryForPlayerChange() -> Bool {
+    _ = retryPendingHistory(force: true)
+    guard !history.hasPendingSaves else {
+      playerError.stringValue = "This player has \(history.pendingSaveCount) \(history.pendingSaveCount == 1 ? "take" : "takes") waiting to save. Keep this session open and retry before changing players."
+      setStatus(history.lastError ?? playerError.stringValue)
+      return false
+    }
+    return true
+  }
+
+  func resetHistorySaveTracking() {
+    pendingPracticeMarks.removeAll()
+    nextHistoryRetry = 0
+  }
+
+  func confirmApplicationClose() -> Bool {
+    if allowsUnsavedExit { return true }
+    guard !closePromptActive else { return false }
+    // Closing ends the active phrase. Only actual completed unsaved attempts
+    // below can prompt; a partial take never creates a hypothetical warning.
+    if transportActive { stopTake() }
+    _ = retryPendingHistory(force: true)
+    while history.hasPendingSaves {
+      let count = history.pendingSaveCount
+      let alert = NSAlert()
+      alert.alertStyle = .warning
+      alert.messageText = "\(count) \(count == 1 ? "take is" : "takes are") waiting to save."
+      alert.informativeText = "Your results are kept in this session. Retry saving, or keep Drumx open. Quitting now will lose these unsaved takes."
+      alert.addButton(withTitle: "Retry saving")
+      alert.addButton(withTitle: "Keep playing")
+      alert.addButton(withTitle: "Quit without saving")
+      alert.buttons[1].keyEquivalent = "\u{1b}"
+      closePromptActive = true
+      let response = alert.runModal()
+      closePromptActive = false
+      switch response {
+      case .alertFirstButtonReturn:
+        _ = retryPendingHistory(force: true)
+      case .alertThirdButtonReturn:
+        // Also covers the app termination caused by closing the last window.
+        allowsUnsavedExit = true
+        return true
+      default:
+        return false
+      }
+    }
+    return true
+  }
+
+  func windowShouldClose(_ sender: NSWindow) -> Bool { confirmApplicationClose() }
+
   private func tick() {
     let now = DrumxIO.hostNowSeconds()
     let hadPulses = !hitFeedback.pulses.isEmpty
@@ -1001,6 +1104,7 @@ final class LabController: NSObject {
       showPage(.prepare)
       setStatus("That's the pattern. Count \(lesson.counts), then try it yourself.")
     }
+    if !transportActive { _ = retryPendingHistory() }
     if now - lastStatusUpdate > 0.12 {
       updateKitMenuLegend()
       if running {
@@ -1041,6 +1145,9 @@ final class LabAppDelegate: NSObject, NSApplicationDelegate {
     NSApp.activate(ignoringOtherApps: true)
   }
   func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+  func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+    controller?.confirmApplicationClose() == false ? .terminateCancel : .terminateNow
+  }
   func applicationWillTerminate(_ notification: Notification) {
     if controller?.currentPage == .settings { controller?.leaveSettings() }
     controller?.saveResume()

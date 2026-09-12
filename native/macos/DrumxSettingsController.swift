@@ -4,10 +4,15 @@ extension LabController {
   func buildSettings() {
     settingsButtons = ["Your kit", "Sound", "Playing", "Players"].enumerated().map { index, name in
       let tab = button(name, #selector(selectSettingsSection(_:))); tab.tag = index; tab.quiet = true
+      tab.setButtonType(.radio)
+      tab.setAccessibilityLabel("\(name) settings")
       return tab
     }
     sourceMenu.target = self; sourceMenu.action = #selector(sourceChanged)
     sourceMenu.setAccessibilityLabel("MIDI input")
+    sourceMenu.setAccessibilityHelp("Choose a connected drum module, or use the keyboard preview.")
+    sourceMenu.toolTip = "MIDI selects the drum module. Keyboard preview stays available for setup."
+    sourceMenu.font = .systemFont(ofSize: 14, weight: .medium)
     sourceMenu.heightAnchor.constraint(equalToConstant: 38).isActive = true
     mapNoteButton.target = self; mapNoteButton.action = #selector(learnSelectedPad)
     mapNoteButton.primary = true; mapNoteButton.isBordered = false
@@ -32,13 +37,26 @@ extension LabController {
 
     soundToggle.target = self; soundToggle.action = #selector(soundChanged)
     soundToggle.title = "Drumx drum sounds"
+    soundToggle.font = .systemFont(ofSize: 13, weight: .medium)
+    soundToggle.setAccessibilityHelp("Turn off when listening to your drum module's own sounds. This does not mute the practice click.")
     volumeSlider.target = self; volumeSlider.action = #selector(volumeChanged)
-    volumeSlider.widthAnchor.constraint(equalToConstant: 230).isActive = true
+    volumeSlider.widthAnchor.constraint(equalToConstant: 196).isActive = true
+    volumeSlider.heightAnchor.constraint(equalToConstant: 36).isActive = true
+    let volumeValue = label("", 13, weight: .medium, color: .labelColor)
+    volumeValue.font = .monospacedDigitSystemFont(ofSize: 13, weight: .medium)
+    volumeValue.alignment = .right
+    volumeValue.widthAnchor.constraint(equalToConstant: 46).isActive = true
+    volumeValue.setAccessibilityElement(false)
+    volumeSlider.attachValueLabel(volumeValue) { "\(Int(($0 * 100).rounded()))%" }
+    let volumeControl = row([volumeSlider, volumeValue], spacing: 12)
     volumeSlider.setAccessibilityLabel("Drum and demonstration volume")
     soundStatus.font = .systemFont(ofSize: 12); soundStatus.textColor = .secondaryLabelColor
+    soundStatus.cell?.usesSingleLineMode = false; soundStatus.cell?.wraps = true
+    soundStatus.maximumNumberOfLines = 2
+    soundStatus.setAccessibilityLabel("Drum sound status")
     let soundRows = column([
       settingsRow("Hear your hits", detail: "Turn off when you listen to the module's own sounds.", control: soundToggle),
-      settingsRow("Drums & demonstrations", detail: "Keep the click and your drums comfortable to hear together.", control: volumeSlider),
+      settingsRow("Drums & demonstrations", detail: "Keep the click and your drums comfortable to hear together.", control: volumeControl),
       settingsRow("Try the sound", detail: "Plays a short hi-hat, snare, and kick preview when Drumx sounds are enabled.",
         control: button("Test drums", #selector(testDrumSounds))),
       soundStatus,
@@ -48,12 +66,20 @@ extension LabController {
 
     handsToggle.target = self; handsToggle.action = #selector(handsChanged(_:))
     handsToggle.title = "Sticking hints"
+    handsToggle.font = .systemFont(ofSize: 13, weight: .medium)
+    handsToggle.setAccessibilityHelp("Displays suggested right and left hands. Drum MIDI does not identify the hand used.")
     kitMenuToggle.target = self; kitMenuToggle.action = #selector(kitMenuChanged)
+    kitMenuToggle.font = .systemFont(ofSize: 13, weight: .medium)
+    kitMenuToggle.setAccessibilityHelp("Available in the main menu, lesson preparation, review and pause. Settings and the learning path use keyboard or pointer controls.")
+    let offsetText = offsetField.stringValue
+    offsetField.cell = DrumxTextFieldCell(textCell: offsetText)
+    offsetField.focusRingType = .none
+    offsetField.heightAnchor.constraint(equalToConstant: 38).isActive = true
     offsetField.widthAnchor.constraint(equalToConstant: 80).isActive = true
     offsetField.target = self; offsetField.action = #selector(offsetChanged)
     offsetField.setAccessibilityLabel("Input scoring offset in milliseconds")
     let playingRows = column([
-      settingsRow("Play from the kit", detail: "Hi-hat: previous. Snare: next. Kick twice: choose. Menus only.", control: kitMenuToggle),
+      settingsRow("Play from the kit", detail: "Hi-hat: back. Snare: next. Kick twice: choose. Main menu, lesson, review and pause.", control: kitMenuToggle),
       settingsRow("Hand suggestions", detail: "R / L are suggestions. MIDI cannot verify your hands.", control: handsToggle),
       settingsRow("Input scoring offset", detail: "Leave at 0 to start. Positive moves scoring earlier; negative moves it later.",
         control: row([offsetField, label("ms", 13)])),
@@ -82,11 +108,12 @@ extension LabController {
   }
   private func settingsRow(_ title: String, detail: String, control: NSView) -> NSView {
     let card = DrumxSettingsSurface()
-    let copy = column([label(title, 17, weight: .medium, color: .labelColor), setupCopy(detail)], spacing: 7)
+    let copy = column([label(title, 17, weight: .semibold, color: .labelColor), setupCopy(detail)], spacing: 7)
+    card.setAccessibilityRole(.group); card.setAccessibilityLabel(title)
     for child in [copy, control] { child.translatesAutoresizingMaskIntoConstraints = false; card.addSubview(child) }
     copy.arrangedSubviews.last?.widthAnchor.constraint(equalTo: copy.widthAnchor).isActive = true
     NSLayoutConstraint.activate([
-      card.heightAnchor.constraint(equalToConstant: 92),
+      card.heightAnchor.constraint(equalToConstant: 88),
       copy.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 24),
       copy.centerYAnchor.constraint(equalTo: card.centerYAnchor),
       control.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -24),
@@ -100,13 +127,21 @@ extension LabController {
     let heading = label(title, 28, weight: .semibold, color: .labelColor)
     let description = setupCopy(detail), foot = setupCopy(footnote)
     let stack = column([heading, description, body, foot], spacing: 16)
-    body.arrangedSubviews.forEach { $0.widthAnchor.constraint(equalTo: body.widthAnchor).isActive = true }
+    func alignColumn(_ column: NSStackView) {
+      for child in column.arrangedSubviews {
+        child.widthAnchor.constraint(equalTo: column.widthAnchor).isActive = true
+        if let nested = child as? NSStackView, nested.orientation == .vertical { alignColumn(nested) }
+      }
+    }
+    alignColumn(body)
     for item in [description, body, foot] { item.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true }
     stack.translatesAutoresizingMaskIntoConstraints = false; panel.addSubview(stack)
     NSLayoutConstraint.activate([
       stack.leadingAnchor.constraint(equalTo: panel.leadingAnchor),
       stack.trailingAnchor.constraint(equalTo: panel.trailingAnchor),
       stack.centerYAnchor.constraint(equalTo: panel.centerYAnchor),
+      stack.topAnchor.constraint(greaterThanOrEqualTo: panel.topAnchor, constant: 8),
+      stack.bottomAnchor.constraint(lessThanOrEqualTo: panel.bottomAnchor, constant: -8),
     ])
     return panel
   }
@@ -121,20 +156,27 @@ extension LabController {
       details.leadingAnchor.constraint(equalTo: visual.trailingAnchor, constant: 32),
       details.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -28),
       details.centerYAnchor.constraint(equalTo: panel.centerYAnchor),
+      details.topAnchor.constraint(greaterThanOrEqualTo: panel.topAnchor, constant: 20),
+      details.bottomAnchor.constraint(lessThanOrEqualTo: panel.bottomAnchor, constant: -20),
+      panel.heightAnchor.constraint(greaterThanOrEqualToConstant: 430),
     ])
     return panel
   }
   @objc func selectSettingsSection(_ sender: NSButton) {
+    guard settingsPanels.indices.contains(sender.tag) else { return }
     leaveSettings(); settingsSection = sender.tag
-    updateSettingsSection(); focusStage()
+    updateSettingsSection()
+    window.makeFirstResponder(sender)
   }
   private func updateSettingsSection() {
     for (index, panel) in settingsPanels.enumerated() { panel.isHidden = index != settingsSection }
     for (index, item) in settingsButtons.enumerated() {
       item.primary = index == settingsSection
-      item.setAccessibilityValue(index == settingsSection ? "Selected" : "")
+      item.state = index == settingsSection ? .on : .off
+      item.setAccessibilityValue(index == settingsSection ? 1 : 0)
       item.needsDisplay = true
     }
+    settingsView.revealSelectedSection()
   }
 
   @objc func goMainMenu() {

@@ -233,13 +233,20 @@ extension LabController {
   }
 
   @objc func changePlayer() {
-    guard let id = playerMenu.selectedItem?.representedObject as? UUID, progress.selectProfile(id: id) else { return }
-    history = makePlayerHistory(); restorePlayer(); closePlayers()
+    guard let id = playerMenu.selectedItem?.representedObject as? UUID else { return }
+    guard id != progress.selectedProfile.id else { return }
+    guard prepareHistoryForPlayerChange() else {
+      playerMenu.selectItem(at: progress.profiles.firstIndex(where: { $0.id == progress.selectedProfile.id }) ?? 0)
+      return
+    }
+    guard progress.selectProfile(id: id) else { playerError.stringValue = progress.lastError ?? "This player could not be selected."; return }
+    resetHistorySaveTracking(); history = makePlayerHistory(); restorePlayer(); closePlayers()
     resetCore(); showPage(progress.selectedProfile.hasCompletedWelcome ? .mainMenu : .welcome)
   }
   @objc func addPlayer() {
+    guard prepareHistoryForPlayerChange() else { return }
     guard progress.addProfile(name: newPlayerName.stringValue) != nil else { playerError.stringValue = progress.lastError ?? "Choose a different name."; return }
-    history = makePlayerHistory(); restorePlayer(); closePlayers(); resetCore(); showPage(.welcome)
+    resetHistorySaveTracking(); history = makePlayerHistory(); restorePlayer(); closePlayers(); resetCore(); showPage(.welcome)
   }
   @objc func renamePlayer() {
     guard progress.renameSelectedProfile(name: newPlayerName.stringValue) else { playerError.stringValue = progress.lastError ?? "Check the name."; return }

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# Pure Foundation/C-ABI adapter contracts. This does not open the app, connect
+# Pure Foundation/C-ABI history and tempo adapter contracts. This does not open the app, connect
 # MIDI, initialize audio, fetch samples, or touch the player's saved progress.
 DRUMX_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if [ "$(uname -s)" != "Darwin" ]; then
@@ -21,16 +21,18 @@ for DRUMX_CORE_NAME in drumx_core drumx_tempo; do
     -c "$DRUMX_ROOT/native/core/$DRUMX_CORE_NAME.cpp" \
     -o "$DRUMX_TEMPO_BUILD/$DRUMX_CORE_NAME.o"
 done
-xcrun swiftc -target "$DRUMX_TEMPO_TARGET" -swift-version 5 \
-  -warnings-as-errors -parse-as-library \
-  -import-objc-header "$DRUMX_ROOT/native/macos/DrumxBridging.h" \
-  "$DRUMX_ROOT/native/macos/DrumxLesson.swift" \
-  "$DRUMX_ROOT/native/macos/DrumxCourse.swift" \
-  "$DRUMX_ROOT/native/macos/DrumxProgress.swift" \
-  "$DRUMX_ROOT/native/macos/DrumxPracticePlan.swift" \
-  "$DRUMX_ROOT/native/macos/DrumxTempoCoach.swift" \
-  "$DRUMX_ROOT/native/macos/DrumxUnlocks.swift" \
-  "$DRUMX_ROOT/native/macos/tests/DrumxTempoCoachChecks.swift" \
-  "$DRUMX_TEMPO_BUILD/drumx_core.o" "$DRUMX_TEMPO_BUILD/drumx_tempo.o" \
-  -Xlinker -lc++ -o "$DRUMX_TEMPO_BUILD/tempo-coach-checks"
-"$DRUMX_TEMPO_BUILD/tempo-coach-checks"
+for DRUMX_ADAPTER_CHECK in DrumxLessonChecks DrumxTempoCoachChecks; do
+  xcrun swiftc -target "$DRUMX_TEMPO_TARGET" -swift-version 5 \
+    -warnings-as-errors -parse-as-library \
+    -import-objc-header "$DRUMX_ROOT/native/macos/DrumxBridging.h" \
+    "$DRUMX_ROOT/native/macos/DrumxLesson.swift" \
+    "$DRUMX_ROOT/native/macos/DrumxCourse.swift" \
+    "$DRUMX_ROOT/native/macos/DrumxProgress.swift" \
+    "$DRUMX_ROOT/native/macos/DrumxPracticePlan.swift" \
+    "$DRUMX_ROOT/native/macos/DrumxTempoCoach.swift" \
+    "$DRUMX_ROOT/native/macos/DrumxUnlocks.swift" \
+    "$DRUMX_ROOT/native/macos/tests/${DRUMX_ADAPTER_CHECK}.swift" \
+    "$DRUMX_TEMPO_BUILD/drumx_core.o" "$DRUMX_TEMPO_BUILD/drumx_tempo.o" \
+    -Xlinker -lc++ -o "$DRUMX_TEMPO_BUILD/${DRUMX_ADAPTER_CHECK}"
+  "$DRUMX_TEMPO_BUILD/${DRUMX_ADAPTER_CHECK}"
+done

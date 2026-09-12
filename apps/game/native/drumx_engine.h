@@ -1,5 +1,6 @@
 #pragma once
 #include "backend.h"
+#include "progress_lock.h"
 #include <godot_cpp/classes/ref_counted.hpp>
 #include <godot_cpp/variant/array.hpp>
 #include <godot_cpp/variant/dictionary.hpp>
@@ -8,10 +9,12 @@ namespace godot {
 class DrumxEngine : public RefCounted {
   GDCLASS(DrumxEngine, RefCounted)
   drumx::Backend backend;
+  drumx::ProgressLock progress_lock;
 protected:
   static void _bind_methods();
 public:
   bool configure_window(int64_t native_handle);
+  bool acquire_progress_lock(const String &absolute_archive_path);
   Dictionary pulse_tempo_plan() const;
   Dictionary evaluate_pulse_tempo(const Array &attempts, const Dictionary &current) const;
   double get_host_time() const;

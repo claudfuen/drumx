@@ -15,6 +15,7 @@ on:
       - "scripts/fetch-godot.py"
       - "scripts/build-macos-lab.sh"
       - "scripts/test-tempo-adapter.sh"
+      - "scripts/test-settings-controls.sh"
       - "scripts/fetch-samples.py"
       - "scripts/distribution/**"
       - "scripts/tests/**"
@@ -32,6 +33,7 @@ on:
       - "scripts/fetch-godot.py"
       - "scripts/build-macos-lab.sh"
       - "scripts/test-tempo-adapter.sh"
+      - "scripts/test-settings-controls.sh"
       - "scripts/fetch-samples.py"
       - "scripts/distribution/**"
       - "scripts/tests/**"
@@ -72,11 +74,14 @@ jobs:
         run: python3 scripts/verify-game-content.py
       - name: Check packaging, content, and paired artifact validation
         run: python3 -m unittest discover -s scripts/tests -p 'test_*.py'
-      - name: Test native Swift tempo adapter (Foundation only)
+      - name: Test native Swift history recovery and tempo adapter (Foundation only)
         if: runner.os == 'macOS'
         run: |
           mkdir -p .build
           bash scripts/test-tempo-adapter.sh 2>&1 | tee .build/tempo-adapter.log
+      - name: Check native settings controls without showing a window
+        if: runner.os == 'macOS'
+        run: bash scripts/test-settings-controls.sh 2>&1 | tee .build/settings-controls.log
       - name: Compile native Mac app without launching
         if: runner.os == 'macOS'
         run: bash scripts/build-macos-lab.sh 2>&1 | tee .build/native-macos-build.log
@@ -129,6 +134,7 @@ jobs:
             .build/game-native/Testing/Temporary/LastTest.log
             .build/portable/Testing/Temporary/LastTest.log
             .build/tempo-adapter.log
+            .build/settings-controls.log
             .build/native-macos-build.log
           if-no-files-found: ignore
           include-hidden-files: true

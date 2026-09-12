@@ -4,6 +4,16 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Refine controls and protect interrupted sessions
+
+- Keep the existing menu and settings composition while improving pad focus/hover, readable volume values, keyboard section navigation, disabled actions, and body-only scrolling for shorter windows. Preserve an explicit return from shared Settings to the page that opened it.
+- Retain complete failed-save results by take ID independently of the active transport, retry between takes, and publish records/checkpoints only after persistence succeeds. Preserve captured conditions and late corrections; protect unsaved results when quitting or switching native players.
+- Stop shared practice explicitly after MIDI disappearance or audio-device interruption. Require a deliberate input choice or audio retry before starting again; do not silently switch a disconnected kit to keyboard scoring.
+- Reserve the shared progress archive with an operating-system lock before loading it; a second running copy cannot overwrite that history. Keep save results queued separately until durable writes succeed.
+- Verify native settings target/action and overflow without showing a window, and preserve a bitmap-only component fixture for review. Extend paired CI with native history recovery and settings-control checks.
+- Pass 8,026 checks in source and exported Mac application, the full native regression suite, 446 history / 57 tempo adapter / 20 control checks, 82 backend / 17 virtual CoreMIDI / 27 process-ownership checks, and native app compilation. Correct an actual UTF-8 bridge bug exposed by the Unicode archive fixture.
+- Keep full rendered-window acceptance, physical-kit/audio testing, and frame-pacing measurements open under the premium quality gate. Paired Windows execution follows in CI.
+
 ### Define the premium practice quality gate
 
 - Make the next M1 gate a coherent 30-minute practice session across the existing menus, lesson, settings, gameplay, review, and return journey.

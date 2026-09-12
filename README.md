@@ -26,6 +26,8 @@ The active milestone is a player outcome: **a new drummer can connect their kit,
 
 **Active quality gate: [a premium 30-minute practice session](docs/premium-quality-gate.md).** The current pass covers every existing screen, control state, navigation route, resize, feedback mode, and recovery path. It closes with zero blocking or major issues, an observed complete session, rendered Mac/Windows comparisons, and verified paired packages. **Status: open.** Interactive visual review, frame-pacing measurement, and physical-kit testing remain required.
 
+**This polish pass:** clearer settings values and pad states, shorter-window scrolling, deliberate keyboard focus, and a return route from Settings. Completed results wait for a successful save before affecting records or unlocks; interrupted input/audio requires an explicit recovery. The current visual composition and musical timeline remain the baseline for review.
+
 **Quality bar: a small, finished game that could belong on Steam.** The first unit should feel deliberately designed from launch through the return visit: clear onboarding, cohesive visuals and sound, responsive play, satisfying feedback, and dependable recovery. Steam distribution and possible paid release are aspirations to evaluate; availability, pricing, and a source-code license are not decided.
 
 | Milestone | Status | What the player gains |

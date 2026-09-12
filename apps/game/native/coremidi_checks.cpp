@@ -42,6 +42,17 @@ int main() {
     for(int i=0;i<100&&hits.empty();++i){std::this_thread::sleep_for(std::chrono::milliseconds(2));hits=backend.poll_hits();}
     check(hits.size()==1&&hits[0].mapping_changed,"native MIDI callback learns added alias");
     check(backend.mapping()[0].size()==4,"CoreMIDI learning preserves default hi-hat aliases");
+    check(MIDIEndpointDispose(source)==noErr,"remove only the test-owned MIDI endpoint");
+    source=0;
+    backend.sources();
+    check(backend.snapshot().source_lost&&backend.snapshot().lost_source_id==id,"actual source enumeration retains disconnected endpoint identity");
+    check(backend.start(4)<0,"disconnected endpoint cannot silently start keyboard transport");
+    check(MIDISourceCreate(client,CFSTR("Drumx Native CTest"),&source)==noErr,"recreate test-owned endpoint");
+    check(MIDIObjectSetIntegerProperty(source,kMIDIPropertyUniqueID,uid)==noErr,"restore test endpoint identity");
+    backend.sources();
+    check(backend.snapshot().source_lost&&backend.snapshot().source_id.empty(),"reappearing endpoint does not reconnect automatically");
+    check(backend.connect_source(id),"explicit reconnect opens restored CoreMIDI endpoint");
+    check(!backend.snapshot().source_lost&&backend.snapshot().lost_source_id.empty()&&backend.snapshot().error.empty()&&!backend.snapshot().running,"successful MIDI recovery clears loss without starting transport");
     backend.connect_source("");
     packet=MIDIPacketListInit(&packets);MIDIPacketListAdd(&packets,sizeof(packets),packet,mach_absolute_time(),3,bytes);MIDIReceived(source,&packets);
     std::this_thread::sleep_for(std::chrono::milliseconds(20));

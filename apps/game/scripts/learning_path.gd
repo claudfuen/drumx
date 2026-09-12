@@ -77,7 +77,7 @@ class PathButton extends Button:
 		var shape := StyleBoxFlat.new()
 		shape.set_corner_radius_all(8)
 		if primary:
-			shape.bg_color = Color(PAPER, 0.08) if disabled else Color(LIME, 0.76 if is_pressed() else 1.0)
+			shape.bg_color = Color(PAPER, 0.08) if disabled else Color(LIME, 0.76 if is_pressed() else 1.0 if active else 0.91)
 		else:
 			shape.bg_color = Color(LIME, 0.14) if inspected else Color(PAPER, 0.07 if active else 0.025)
 		shape.border_color = LIME if has_focus() or inspected else Color(PAPER, 0.3 if active else 0.10)
@@ -105,15 +105,16 @@ class CourseStars extends Control:
 	var detail_font: Font
 
 	func _ready() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mouse_filter = Control.MOUSE_FILTER_PASS
 
 	func _draw() -> void:
 		var scale := minf(size.x / 290, size.y / 146)
 		if scale <= 0 or label_font == null or detail_font == null:
 			return
 		draw_set_transform(Vector2((size.x - 290 * scale) / 2, 0), 0, Vector2.ONE * scale)
-		draw_string(label_font, Vector2(0, 4 + label_font.get_ascent(10)),
-			"BEST RECORDED" if has_record else "YOUR NEXT GOAL", HORIZONTAL_ALIGNMENT_CENTER, 290, 10, MUTED)
+		var header_size := maxi(10, ceili(11 / scale))
+		draw_string(label_font, Vector2(0, 4 + label_font.get_ascent(header_size)),
+			"BEST RECORDED" if has_record else "YOUR NEXT GOAL", HORIZONTAL_ALIGNMENT_CENTER, 290, header_size, MUTED)
 		for index in range(5):
 			var center := Vector2(29 + index * 58, 65)
 			var points := PackedVector2Array()
@@ -210,11 +211,12 @@ func _refresh() -> void:
 	_step_hint.text = lock_reason(featured_index) if not available else "Step complete. Repeat for a steadier score, or explore your next step." if complete else _available_hint(featured_index)
 	_play.tooltip_text = _step_hint.text
 	var best: Dictionary = model.best(featured_index)
-	_stars.conditions = "%d BPM · %s" % [int(best.settings.bpm), ["Guided", "Hidden bars", "Click-only"][int(best.settings.guidance)]] if not best.is_empty() else "72 BPM · guided checkpoint" if featured_index == 0 else "Build toward five stars."
+	_stars.conditions = "%d BPM · %s" % [int(best.settings.bpm), ["Guided", "Hidden bars", "From memory"][int(best.settings.guidance)]] if not best.is_empty() else "72 BPM · guided checkpoint" if featured_index == 0 else "Build toward five stars."
 	_stars.has_record = not best.is_empty()
 	_stars.stars = DataModel.stars(int(best.get("points", 0)), true)
 	_stars.accessibility_name = "%d of 5 stars recorded for %s. Build toward five stars." % [_stars.stars, lesson.title] if _stars.has_record else "Build toward five stars for %s." % lesson.title
 	_stars.accessibility_description = "Best recorded score across saved practice conditions. Stars are separate from step completion." if _stars.has_record else "No completed take recorded for this lesson yet."
+	_stars.tooltip_text = _stars.conditions + ". " + _stars.accessibility_description
 	for index in range(_nodes.size()):
 		var node := _nodes[index]
 		var definition: Dictionary = course.lessons[index]
@@ -226,7 +228,9 @@ func _refresh() -> void:
 		node.accessibility_name = "Inspect step %d. %s. %s." % [index + 1, definition.title, state]
 		node.accessibility_description = detail
 		node.tooltip_text = "%s. %s. %s" % [definition.title, state, detail]
+		node.focus_neighbor_top = node.get_path_to(_play) if not _play.disabled else NodePath()
 		node.queue_redraw()
+	_play.focus_neighbor_bottom = _play.get_path_to(_nodes[featured_index])
 	_play.queue_redraw()
 	_stars.queue_redraw()
 	_layout()
@@ -317,7 +321,7 @@ func _layout() -> void:
 	composition.position = (size - Vector2(width, height)) / 2
 	composition.size = Vector2(width, height)
 	for item in _labels:
-		item["view"].add_theme_font_size_override("font_size", roundi(float(item["size"]) * scale))
+		item["view"].add_theme_font_size_override("font_size", maxi(11, roundi(float(item["size"]) * scale)))
 	var left_width := minf(width * 0.64, 780 * scale)
 	_place(_title, 0, 0, width * 0.72, 49, scale)
 	_place(_subtitle, 2 * scale, 54, width * 0.75, 22, scale)

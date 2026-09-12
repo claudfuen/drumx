@@ -97,3 +97,5 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse
   "$DRUMX_ROOT/native/macos/tests/DrumxTempoCoachChecks.swift" \
   "$DRUMX_BUILD/lesson-core.o" "$DRUMX_BUILD/tempo-core.o" -Xlinker -lc++ -o "$DRUMX_BUILD/tempo-coach-checks"
 "$DRUMX_BUILD/tempo-coach-checks"
+
+"$DRUMX_ROOT/scripts/test-settings-controls.sh"

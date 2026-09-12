@@ -11,6 +11,17 @@ var tempo_decisions: Dictionary = {}
 var progress_revision := 0
 var error := ""
 var blocked := false
+# Completed evidence remains separate from published progress until an atomic
+# write succeeds. A new transport must never replace a failed take's payload.
+var pending_attempts: Dictionary = {}
+
+func pending_save_count() -> int:
+	return pending_attempts.size()
+
+func pending_save_message() -> String:
+	var count := pending_save_count()
+	if count == 0: return ""
+	return "%d %s waiting to save. Keep Drumx open; saving retries between takes." % [count, "result is" if count == 1 else "results are"]
 
 func load_course() -> bool:
 	var parsed = JSON.parse_string(FileAccess.get_file_as_string("res://data/course.json"))
@@ -34,14 +45,7 @@ func load_progress() -> void:
 	progress_revision += 1
 	save["settings"] = save.get("settings", {})
 	save["selected"] = int(save.get("selected", 0))
-	for attempt in save.attempts:
-		attempt.settings.bpm = float(attempt.settings.bpm)
-		attempt.settings.bars = int(attempt.settings.bars)
-		attempt.settings.guidance = int(attempt.settings.guidance)
-		attempt.settings.mapping = normalized_mapping(attempt.settings.mapping)
-		if attempt.settings.has("tempo_policy"):
-			attempt.settings.tempo_policy = int(attempt.settings.tempo_policy)
-			attempt.settings.calibration_ms = int(attempt.settings.calibration_ms)
+	for i in range(save.attempts.size()): save.attempts[i] = normalized_attempt(save.attempts[i])
 	if save.settings.has("mapping"):
 		save.settings.mapping = normalized_mapping(save.settings.mapping)
 	ensure_tempo_coach(true)
@@ -133,22 +137,72 @@ func record(identifier: String, index: int, snapshot: Dictionary, settings: Dict
 	if not valid_attempt(attempt):
 		error = "The completed take contained invalid score data and was not saved."
 		return false
+	attempt = normalized_attempt(attempt)
+	var original: Dictionary = pending_attempts.get(identifier, {})
+	if original.is_empty():
+		for saved in save.attempts:
+			if saved.id == identifier:
+				original = saved
+				break
+	if not original.is_empty():
+		if original.settings != attempt.settings or original.lesson != attempt.lesson or original.version != attempt.version:
+			error = "The take's captured conditions changed. Its original result has been preserved."
+			return false
+		if original == attempt and not pending_attempts.has(identifier): return true
+	pending_attempts[identifier] = attempt
+	return retry_pending()
+
+func retry_pending(restore_archive: bool = false) -> bool:
+	if pending_attempts.is_empty() and not (blocked and restore_archive): return true
+	if blocked:
+		# Only an explicit retry may inspect a repaired archive. Never overwrite
+		# the unreadable original or silently replace its surviving history.
+		if not restore_archive or not FileAccess.file_exists(save_path): return false
+		var parser := JSON.new()
+		if parser.parse(FileAccess.get_file_as_string(save_path)) != OK or not valid_save(parser.data): return false
+		var restored: Dictionary = parser.data
+		for i in range(restored.attempts.size()): restored.attempts[i] = normalized_attempt(restored.attempts[i])
+		for archived in restored.attempts:
+			if pending_attempts.has(archived.id):
+				var pending: Dictionary = pending_attempts[archived.id]
+				if archived.settings != pending.settings or archived.lesson != pending.lesson or archived.version != pending.version:
+					error = "The restored archive conflicts with a waiting result. Both have been preserved."
+					return false
+		save = restored
+		blocked = false
+		ensure_tempo_coach(true)
+		if pending_attempts.is_empty():
+			error = ""
+			progress_revision += 1
+			return true
 	var prior: Dictionary = save.duplicate(true)
-	var replaced := false
-	for i in range(save.attempts.size()):
-		if save.attempts[i].get("id") == identifier:
-			if save.attempts[i] == attempt:
-				return true
-			save.attempts[i] = attempt
-			replaced = true
-			break
-	if not replaced:
-		save.attempts.append(attempt)
+	for identifier in pending_attempts:
+		var replaced := false
+		for i in range(save.attempts.size()):
+			if save.attempts[i].id == identifier:
+				save.attempts[i] = pending_attempts[identifier].duplicate(true)
+				replaced = true
+				break
+		if not replaced: save.attempts.append(pending_attempts[identifier].duplicate(true))
 	if not persist():
 		save = prior
 		return false
+	pending_attempts.clear()
 	progress_revision += 1
 	return true
+
+static func normalized_attempt(value: Dictionary) -> Dictionary:
+	var attempt: Dictionary = value.duplicate(true)
+	for key in ["points", "matched", "on_time", "missed", "extra", "expected", "best_streak"]:
+		attempt[key] = int(attempt[key])
+	attempt.settings.bpm = float(attempt.settings.bpm)
+	attempt.settings.bars = int(attempt.settings.bars)
+	attempt.settings.guidance = int(attempt.settings.guidance)
+	attempt.settings.mapping = normalized_mapping(attempt.settings.mapping)
+	if attempt.settings.has("tempo_policy"):
+		attempt.settings.tempo_policy = int(attempt.settings.tempo_policy)
+		attempt.settings.calibration_ms = int(attempt.settings.calibration_ms)
+	return attempt
 
 static func whole(value: Variant, minimum: float, maximum: float) -> bool:
 	return (typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT) and is_finite(float(value)) and float(value) == floor(float(value)) and float(value) >= minimum and float(value) <= maximum

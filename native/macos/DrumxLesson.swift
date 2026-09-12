@@ -261,6 +261,12 @@ final class LessonHistory {
   private let key: String
   private let archiveURL: URL?
   private var archiveIsBlocked = false
+  // Separate from committed evidence. A new transport cannot replace this queue.
+  // Each UUID keeps its latest validated correction until atomic persistence succeeds.
+  private var pendingSaves: [UUID: LessonAttempt] = [:]
+  var pendingSaveCount: Int { pendingSaves.count }
+  var hasPendingSaves: Bool { !pendingSaves.isEmpty }
+  func hasPendingSave(id: UUID) -> Bool { pendingSaves[id] != nil }
   private(set) var attempts: [LessonAttempt] = []
   private(set) var lastError: String?
 
@@ -349,17 +355,20 @@ final class LessonHistory {
     id: UUID, settings: TakeSettings, snapshot: DXSnapshot, completedNaturally: Bool,
     endedAt: Date = Date()
   ) -> LessonAttempt? {
-    guard !archiveIsBlocked else { return nil }
     guard completedNaturally, settings.isValid, isCompleteSnapshot(snapshot),
       endedAt.timeIntervalSinceReferenceDate.isFinite,
       abs(snapshot.bpm - settings.tempo) < 0.000001,
       Int(snapshot.guidance) == settings.mode,
       abs(snapshot.duration_seconds - Double(settings.bars) * 240 / settings.tempo) < 0.000001
     else { return nil }
+    let existing = pendingSaves[id] ?? attempts.first(where: { $0.id == id })
+    guard existing == nil || existing?.settings == settings else {
+      return nil // Corrections cannot move an attempt into another comparison group.
+    }
     let total = snapshot.total
     let denominator = Double(total.expected) + Double(total.extra)
     let attempt = LessonAttempt(
-      id: id, endedAt: endedAt, settings: settings,
+      id: id, endedAt: existing?.endedAt ?? endedAt, settings: settings,
       matched: Int(total.matched), missed: Int(total.missed), extra: Int(total.extra),
       onTime: Int(total.on_time), expected: Int(total.expected),
       timingAccuracyPercent: Double(total.on_time) / denominator * 100,
@@ -368,11 +377,34 @@ final class LessonHistory {
       meanAbsoluteOffsetMS: total.matched > 0 ? total.mean_absolute_offset_ms : nil,
       bestStreak: Int(total.best_streak))
     guard attempt.isValid else { return nil }
-    if let existing = attempts.first(where: { $0.id == id }), existing.settings != settings {
-      return nil // A correction cannot silently move an attempt into another comparison group.
+    pendingSaves[id] = attempt
+    return retryPendingSaves() ? attempt : nil
+  }
+
+  /// Explicit recovery and bounded controller retries share this operation. The
+  /// queue, committed history and published PB/unlock evidence change together.
+  /// A corrupt archive is never replaced: it must first become readable again.
+  @discardableResult
+  func retryPendingSaves() -> Bool {
+    guard hasPendingSaves else { return true }
+    var committed = attempts
+    if archiveIsBlocked {
+      guard let archiveURL, archiveURL.isFileURL,
+        let bytes = try? Data(contentsOf: archiveURL),
+        let restored = try? Self.decodeAttempts(bytes, requireAllValid: true)
+      else {
+        lastError = "The archive is unavailable. Unsaved takes are held in this session. Restore the archive, then retry saving."
+        return false
+      }
+      committed = restored
     }
-    var updated = attempts.filter { $0.id != id }
-    updated.append(attempt)
+    for pending in pendingSaves.values {
+      if let existing = committed.first(where: { $0.id == pending.id }), existing.settings != pending.settings {
+        lastError = "The archive contains different settings for an unsaved take. Its original result has been kept in this session."
+        return false
+      }
+    }
+    var updated = committed.filter { pendingSaves[$0.id] == nil } + pendingSaves.values
     updated.sort { $0.endedAt < $1.endedAt }
     if archiveURL == nil { updated = Array(updated.suffix(200)) }
     do {
@@ -384,11 +416,13 @@ final class LessonHistory {
         defaults.set(try JSONEncoder().encode(updated), forKey: key)
       }
       attempts = updated
+      pendingSaves.removeAll(keepingCapacity: true)
+      archiveIsBlocked = false
       lastError = nil
-      return attempt
+      return true
     } catch {
-      lastError = "This lesson result could not be saved."
-      return nil
+      lastError = "\(pendingSaveCount) \(pendingSaveCount == 1 ? "take is" : "takes are") waiting to save. Kept in this session; retry before quitting."
+      return false
     }
   }
 

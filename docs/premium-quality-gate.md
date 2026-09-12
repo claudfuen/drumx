@@ -32,8 +32,10 @@ The gate closes only with **zero open blocking or major issues**, all seven rows
 
 | Area | Current state | Next proof |
 | --- | --- | --- |
-| Shared foundations and coached pulse | Implemented; previous paired candidate `21e709f` passed 7,900 checks per source/exported app. | Rerun on the polish candidate. |
-| Native Mac coaching and app build | 57 adapter checks and native build passed in the previous paired CI run; full local native suite passed. | Validate changed native controls and the final candidate. |
+| Shared foundations and coached pulse | Local polish candidate passes 8,026 checks in both source and exported Mac app. | Verify the same clean candidate on both operating systems in CI. |
+| Native Mac models and controls | Local full native suite and 446 history / 57 tempo adapter and 20 settings-control checks pass. [Control detail](images/settings-controls-detail.png) was rendered directly from native views into a bitmap and inspected. It is a component fixture, not an app screenshot. | Run control contracts in paired CI; inspect the complete app interactively. |
+| Save and device recovery | 29 isolated shared save-recovery checks and 31 additional native history checks pass; native backend checks cover lost/failed inputs and audio interruption. | Verify UI recovery and quit choices in the actual applications. |
+| Concurrent archive writers | 27 native ownership checks and 8 shared binding checks pass locally, including separate-process exclusion, abrupt-exit release, and Unicode paths. A second copy cannot practise or write that history. Native Mac and shared stores remain separate. | Verify ownership, process-exit release, and Unicode paths on both packaged platforms. |
 | Complete rendered journey | **Pending.** The slides remain in the foreground at the user's request. Offscreen component inspection is available. | Interactive window review once the display is available, plus physical Windows graphics/scaling. |
 | Frame pacing and physical kit/audio | **Pending.** No qualifying 10/30-minute measurement or observation recorded. | Run the stated sessions and attach concise results. |
 | Beginner/experienced-player journey | **Pending.** | Observe the loop without developer intervention. |

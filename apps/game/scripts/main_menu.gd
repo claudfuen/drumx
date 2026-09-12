@@ -35,6 +35,7 @@ class MenuAction extends Button:
 	func _ready() -> void:
 		mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		focus_mode = Control.FOCUS_ALL
+		add_theme_font_size_override("font_size", 1)
 		for state in ["normal", "hover", "pressed", "focus", "disabled", "hover_pressed"]:
 			add_theme_stylebox_override(state, StyleBoxEmpty.new())
 		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_disabled_color", "font_hover_pressed_color"]:
@@ -46,7 +47,7 @@ class MenuAction extends Button:
 		button_down.connect(queue_redraw)
 		button_up.connect(queue_redraw)
 	func _gui_input(event: InputEvent) -> void:
-		if event is InputEventKey and event.pressed and not event.echo:
+		if event is InputEventKey and event.pressed and not event.echo and not disabled:
 			if event.keycode in [KEY_UP, KEY_DOWN]:
 				navigation.emit(-1 if event.keycode == KEY_UP else 1)
 				accept_event()
@@ -58,16 +59,19 @@ class MenuAction extends Button:
 			return
 		draw_set_transform(Vector2.ZERO, 0, Vector2.ONE * drawing_scale)
 		var area := Rect2(Vector2.ZERO, size / drawing_scale)
-		var active := hovered or selected or has_focus()
+		var active := not disabled and (hovered or selected or has_focus())
 		var shape := StyleBoxFlat.new()
 		shape.set_corner_radius_all(8)
-		if primary:
+		if disabled:
+			shape.bg_color = Color(PAPER, 0.035)
+			draw_style_box(shape, area.grow(-2))
+		elif primary:
 			shape.bg_color = Color(LIME, 0.76 if is_pressed() else 1.0 if active else 0.91)
 			draw_style_box(shape, area.grow(-2))
 		elif active:
 			shape.bg_color = Color(PAPER, 0.1 if is_pressed() else 0.045)
 			draw_style_box(shape, area.grow(-2))
-		if selected or has_focus():
+		if not disabled and (selected or has_focus()):
 			var stripe := StyleBoxFlat.new()
 			stripe.bg_color = Color(LIME, 0.6 if primary else 0.9)
 			stripe.set_corner_radius_all(2)
@@ -80,17 +84,17 @@ class MenuAction extends Button:
 				ring.border_color = Color(LIME, 0.34)
 				ring.set_corner_radius_all(10)
 				draw_style_box(ring, area.grow(-0.5))
-		var foreground: Color = INK if primary else PAPER if active else MUTED
+		var foreground: Color = Color(MUTED, 0.7) if disabled else INK if primary else PAPER if active else MUTED
 		var point_size := 24 if primary else 18
 		var title_top := 15.0 if primary else 14.0 if subtitle.is_empty() else 6.0
 		draw_string(title_font, Vector2(22, title_top + title_font.get_ascent(point_size)), text,
 			HORIZONTAL_ALIGNMENT_LEFT, area.size.x - 76, point_size, foreground)
 		if not subtitle.is_empty():
-			var detail_size := 12 if primary else 11
+			var detail_size := maxi(12 if primary else 11, ceili(11 / drawing_scale))
 			var detail_top := 49.0 if primary else 31.0
 			draw_string(detail_font, Vector2(23, detail_top + detail_font.get_ascent(detail_size)), subtitle,
 				HORIZONTAL_ALIGNMENT_LEFT, area.size.x - 78, detail_size, Color(foreground, 0.76 if primary else 0.85))
-		if primary or active:
+		if not disabled and (primary or active):
 			var center := Vector2(area.size.x - 29, area.size.y / 2)
 			draw_line(center + Vector2(-11, 0), center + Vector2(1, 0), foreground, 1.6, true)
 			draw_polyline(PackedVector2Array([center + Vector2(-4, -5), center + Vector2(1, 0), center + Vector2(-4, 5)]), foreground, 1.6, true)
@@ -156,6 +160,9 @@ func _ready() -> void:
 		action.pressed.connect(func(): activate(index))
 		actions.append(action)
 		composition.add_child(action)
+	for index in range(actions.size()):
+		actions[index].focus_neighbor_top = actions[index].get_path_to(actions[posmod(index - 1, actions.size())])
+		actions[index].focus_neighbor_bottom = actions[index].get_path_to(actions[(index + 1) % actions.size()])
 	resized.connect(layout_menu)
 	refresh()
 	layout_menu()
@@ -167,6 +174,7 @@ func make_label(value: String, font: Font, color: Color) -> Label:
 	label.add_theme_color_override("font_color", color)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.clip_text = true
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	composition.add_child(label)
 	return label
 
@@ -187,6 +195,9 @@ func refresh() -> void:
 	actions[0].subtitle = lesson_title
 	actions[0].tooltip_text = "Continue " + lesson_title
 	actions[1].subtitle = "Explore foundations · %d lessons" % total
+	actions[0].accessibility_description = "Continue " + lesson_title
+	actions[1].accessibility_description = "Explore the learning path, including available and upcoming lessons."
+	actions[2].accessibility_description = "Connect your kit, adjust sounds, and review local saving."
 	for action in actions: action.queue_redraw()
 	select(selection)
 
@@ -220,9 +231,9 @@ func layout_menu() -> void:
 	art_caption.size = Vector2(444, 22) * art_scale
 	art_caption.add_theme_font_size_override("font_size", roundi(9 * art_scale))
 	caption_font.spacing_glyph = roundi(2 * art_scale)
-	player_label.add_theme_font_size_override("font_size", roundi(11 * scale))
-	chapter_label.add_theme_font_size_override("font_size", roundi(10 * scale))
-	progress_label.add_theme_font_size_override("font_size", roundi(11 * scale))
+	player_label.add_theme_font_size_override("font_size", maxi(11, roundi(11 * scale)))
+	chapter_label.add_theme_font_size_override("font_size", maxi(11, roundi(10 * scale)))
+	progress_label.add_theme_font_size_override("font_size", maxi(11, roundi(11 * scale)))
 	invitation.add_theme_font_size_override("font_size", roundi(16 * scale))
 	headline.add_theme_font_size_override("font_size", roundi(69 * scale))
 	headline.add_theme_constant_override("line_spacing", roundi(-4 * scale))
@@ -246,6 +257,7 @@ func select(index: int) -> void:
 		actions[i].queue_redraw()
 
 func activate(index: int) -> void:
+	if index < 0 or index >= actions.size() or actions[index].disabled: return
 	select(index)
 	match index:
 		0: continued.emit()

@@ -12,6 +12,16 @@ struct BackendTestAccess {
     b.state.source_id = "test-only:driver";
     return b.generation.fetch_add(1) + 1;
   }
+  static void phrase_boundary(Backend &b) {
+    std::lock_guard<std::mutex> lock(b.mutex);
+    b.state.practice_start = host_time() - dx_core_duration(b.core) - .01;
+  }
+  static void audio_opened(Backend &b) {
+    auto &status=b.audio->device_status();
+    status.begin_open(); status.confirm_started(true);
+  }
+  static void audio_notification(Backend &b, AudioDeviceEvent event) { b.audio->device_status().notify(event); }
+  static void advance_now(Backend &b) { b.advance(host_time()); }
 };
 }
 
@@ -32,6 +42,8 @@ int main(int argc, char **argv) {
   check(!backend.learn_pad(0),"keyboard cannot arm MIDI learning");
   check(!backend.connect_source("unavailable"),"unknown source cannot appear connected");
   check(backend.snapshot().source_id.empty(),"failed input selection clears source identity");
+  check(backend.snapshot().source_lost&&backend.snapshot().lost_source_id=="unavailable"&&backend.start(0)<0,"failed first MIDI choice cannot silently start a keyboard take");
+  check(backend.connect_source("")&&!backend.snapshot().source_lost,"explicit keyboard choice recovers failed first MIDI selection");
   check(backend.start(-1)<0,"invalid count-in rejected");
   double first=backend.start(0); check(first>drumx::host_time(),"native start is scheduled in future");
   check(!backend.load_chart(72,1,{{0,0}}),"cannot replace playing chart");
@@ -97,6 +109,89 @@ int main(int argc, char **argv) {
   check(input.snapshot().score.total.extra==0,"post-stop MIDI does not add new scores");
   input.connect_source("");
   check(input.snapshot().source_id.empty() && input.snapshot().pending_pad==-1,"disconnect clears input and learn identity");
+
+  drumx::Backend count_in_loss(false);
+  const auto count_in_epoch=drumx::BackendTestAccess::source(count_in_loss);
+  check(count_in_loss.start(4)>drumx::host_time(),"MIDI loss fixture starts in count-in");
+  check(count_in_loss.sources().empty(),"source enumeration detects vanished input");
+  auto lost=count_in_loss.snapshot();
+  check(lost.source_lost&&lost.lost_source_id=="test-only:driver"&&lost.source_id.empty(),"loss preserves intended source separately from connection");
+  check(lost.completed&&!lost.running&&!lost.naturally_completed&&lost.score.total.missed==0,"count-in unplug stops without missed notes or completion evidence");
+  check(!lost.error.empty()&&count_in_loss.start(4)<0,"unresolved loss explains why restart is blocked");
+  count_in_loss.sources();
+  check(count_in_loss.snapshot().lost_source_id==lost.lost_source_id,"repeated enumeration retains recovery identity");
+  count_in_loss.midi_hit(42,100,drumx::host_time(),count_in_epoch);
+  check(count_in_loss.poll_hits().empty(),"packets from lost source generation are rejected");
+  check(count_in_loss.set_mapping(mapping)&&!count_in_loss.snapshot().error.empty(),"mapping update cannot clear unresolved input-loss message");
+  check(!count_in_loss.connect_source("still-unavailable"),"failed reconnect remains explicit failure");
+  check(count_in_loss.snapshot().source_lost&&count_in_loss.snapshot().lost_source_id==lost.lost_source_id,"failed reconnect preserves intended lost device");
+  check(count_in_loss.load_chart(240,1,{{0,0}})&&count_in_loss.start(0)<0,"loading a new chart cannot bypass source-loss gate");
+  check(count_in_loss.connect_source(""),"explicit keyboard choice acknowledges disconnected kit");
+  lost=count_in_loss.snapshot();
+  check(!lost.source_lost&&lost.lost_source_id.empty()&&lost.error.empty()&&!lost.running,"explicit keyboard recovery clears loss without transport start");
+  check(count_in_loss.start(4)>0,"acknowledged keyboard mode can start a fresh count-in");
+  count_in_loss.stop();
+
+  drumx::Backend midphrase_loss(false);
+  const auto mid_epoch=drumx::BackendTestAccess::source(midphrase_loss);
+  midphrase_loss.load_chart(240,1,{{0,0},{1,1},{2,2}});
+  first=midphrase_loss.start(0);
+  std::this_thread::sleep_for(std::chrono::milliseconds(180));
+  midphrase_loss.midi_hit(42,100,first,mid_epoch);
+  midphrase_loss.sources(); lost=midphrase_loss.snapshot();
+  check(lost.source_lost&&!lost.running&&lost.completed&&!lost.naturally_completed&&lost.score.total.matched==1,"midphrase unplug preserves hits but excludes completion");
+  const auto loss_matched=lost.score.total.matched, loss_extra=lost.score.total.extra;
+  midphrase_loss.keyboard_hit(0,100);
+  check(midphrase_loss.snapshot().score.total.matched==loss_matched&&midphrase_loss.snapshot().score.total.extra==loss_extra,"keyboard preview cannot grade an unresolved lost MIDI take");
+
+  drumx::Backend boundary_loss(false);
+  drumx::BackendTestAccess::source(boundary_loss);
+  boundary_loss.load_chart(240,1,{{0,0}}); boundary_loss.start(4);
+  drumx::BackendTestAccess::phrase_boundary(boundary_loss);
+  boundary_loss.sources();
+  check(boundary_loss.snapshot().source_lost&&!boundary_loss.snapshot().naturally_completed,"loss detected in completion grace cannot become a natural take");
+  drumx::BackendTestAccess::source(backend); backend.sources();
+  check(backend.snapshot().source_lost&&backend.snapshot().naturally_completed,"later input loss does not revoke an already completed take");
+
+  drumx::AudioDeviceStatus lifecycle;
+  check(!lifecycle.ready()&&!lifecycle.interrupted(),"audio lifecycle starts unopened without interruption");
+  lifecycle.notify(drumx::AudioDeviceEvent::stopped);
+  check(!lifecycle.interrupted(),"intentional unopened device stop does not latch recovery");
+  lifecycle.begin_open(); lifecycle.notify(drumx::AudioDeviceEvent::started); lifecycle.confirm_started(true);
+  check(lifecycle.ready()&&!lifecycle.interrupted(),"confirmed started output establishes readiness");
+  lifecycle.notify(drumx::AudioDeviceEvent::stopped);
+  check(!lifecycle.ready()&&lifecycle.interrupted(),"unexpected device stop invalidates readiness");
+  lifecycle.notify(drumx::AudioDeviceEvent::started);
+  check(!lifecycle.ready()&&lifecycle.interrupted(),"automatic device restart cannot clear interruption evidence");
+  lifecycle.begin_open(); lifecycle.confirm_started(true);
+  check(lifecycle.ready()&&!lifecycle.interrupted(),"explicit successful reopen clears audio recovery gate");
+  lifecycle.notify(drumx::AudioDeviceEvent::rerouted);
+  check(!lifecycle.ready()&&lifecycle.interrupted(),"changed output route requires fresh phrase and explicit retry");
+  lifecycle.confirm_started(true);
+  check(lifecycle.interrupted(),"late start confirmation cannot erase a concurrent route interruption");
+  lifecycle.begin_open(); lifecycle.confirm_started(false);
+  check(!lifecycle.ready()&&lifecycle.interrupted(),"failed start confirmation never advertises usable output");
+
+  drumx::Backend audio_loss(false);
+  drumx::BackendTestAccess::audio_opened(audio_loss);
+  audio_loss.load_chart(240,1,{{0,0}}); audio_loss.start(4);
+  drumx::BackendTestAccess::audio_notification(audio_loss,drumx::AudioDeviceEvent::stopped);
+  drumx::BackendTestAccess::advance_now(audio_loss);
+  auto interrupted=audio_loss.snapshot();
+  check(interrupted.audio_interrupted&&!interrupted.audio_ready&&!interrupted.running&&interrupted.completed&&!interrupted.naturally_completed,"count-in device stop interrupts native transport without completion");
+  check(interrupted.score.total.missed==0&&!interrupted.error.empty(),"count-in audio loss has recoverable message and no omissions");
+  check(audio_loss.start(4)<0,"audio interruption blocks restart even when no physical devices are used by fixture");
+  drumx::BackendTestAccess::audio_notification(audio_loss,drumx::AudioDeviceEvent::started);
+  check(audio_loss.start(4)<0,"automatic audio restart does not resume scored practice");
+  drumx::BackendTestAccess::audio_opened(audio_loss);
+  check(!audio_loss.snapshot().running&&audio_loss.start(4)>0,"explicit successful audio reopen allows fresh count-in only");
+  drumx::BackendTestAccess::phrase_boundary(audio_loss);
+  drumx::BackendTestAccess::audio_notification(audio_loss,drumx::AudioDeviceEvent::rerouted);
+  drumx::BackendTestAccess::advance_now(audio_loss);
+  check(audio_loss.snapshot().audio_interrupted&&!audio_loss.snapshot().naturally_completed,"output change in completion grace cannot acquire natural completion");
+  drumx::BackendTestAccess::source(audio_loss); audio_loss.sources();
+  audio_loss.connect_source("");
+  check(audio_loss.snapshot().audio_interrupted&&audio_loss.start(4)<0,"explicit keyboard choice cannot clear independent audio-loss gate");
   std::cout<<checks<<" native backend checks, "<<failures<<" failures\n";
   return failures?1:0;
 }

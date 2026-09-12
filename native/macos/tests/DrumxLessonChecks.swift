@@ -460,6 +460,103 @@ private func archiveHistoryChecks(defaults: UserDefaults) throws {
     completedNaturally: true) == nil, "blocked archive location cannot report a saved take")
 }
 
+private func pendingSaveChecks(defaults: UserDefaults) throws {
+  let directory = FileManager.default.temporaryDirectory
+    .appendingPathComponent("drumx-pending-checks-\(UUID().uuidString)", isDirectory: true)
+  let parent = directory.appendingPathComponent("active", isDirectory: true)
+  let preserved = directory.appendingPathComponent("preserved", isDirectory: true)
+  let archive = parent.appendingPathComponent("history.json")
+  defer { try? FileManager.default.removeItem(at: directory) }
+  let history = LessonHistory(defaults: defaults, key: "pending-history", archiveURL: archive)
+  check(!history.hasPendingSaves && history.pendingSaveCount == 0 && history.retryPendingSaves(),
+    "an unused archive does not invent unsaved results or a quit warning")
+  let base = settings(), date = Date(timeIntervalSince1970: 30_000)
+  let baseline = TestTake(); baseline.finish()
+  let baselineID = UUID()
+  check(history.record(id: baselineID, settings: base, snapshot: baseline.snapshot,
+    completedNaturally: true, endedAt: date) != nil, "pending fixture starts with a durable baseline")
+  let original = try Data(contentsOf: archive)
+  try FileManager.default.moveItem(at: parent, to: preserved)
+  let blocker = Data("blocked path".utf8); try blocker.write(to: parent)
+  let first = TestTake(); first.play(); first.finish()
+  let firstID = UUID(), secondID = UUID()
+  check(history.record(id: firstID, settings: base, snapshot: first.snapshot,
+    completedNaturally: true, endedAt: date.addingTimeInterval(1)) == nil,
+    "a write failure does not report a durable complete take")
+  check(history.hasPendingSave(id: firstID) && history.pendingSaveCount == 1,
+    "the immutable completed result remains queued independently of its transport")
+  check(history.attempts.map(\.id) == [baselineID] && history.best(matching: base)?.id == baselineID,
+    "a queued perfect take does not manufacture a saved personal best")
+  check(!history.retryPendingSaves() && history.pendingSaveCount == 1,
+    "failed retries retain the exact pending result")
+  _ = dx_core_input(first.core, 0, -0.08, 0.8)
+  check(history.record(id: firstID, settings: base, snapshot: first.snapshot,
+    completedNaturally: true, endedAt: date.addingTimeInterval(99)) == nil && history.pendingSaveCount == 1,
+    "a same-ID late correction replaces the queued value without duplicating a take")
+  check(history.record(id: firstID, settings: settings(offset: 10), snapshot: first.snapshot,
+    completedNaturally: true) == nil && history.pendingSaveCount == 1,
+    "a correction cannot move queued evidence into a different condition group")
+  let second = TestTake(); second.play(offset: 0.02); second.finish()
+  check(history.record(id: secondID, settings: base, snapshot: second.snapshot,
+    completedNaturally: true, endedAt: date.addingTimeInterval(2)) == nil && history.pendingSaveCount == 2,
+    "starting and completing another transport does not replace the first unsaved result")
+  let partial = TestTake()
+  check(history.record(id: UUID(), settings: base, snapshot: partial.snapshot,
+    completedNaturally: false) == nil && history.pendingSaveCount == 2,
+    "stopped or partial work does not enter the recovery queue")
+  check(history.attempts.count == 1 && history.recent(matching: base).count == 1,
+    "all ranked and recent evidence stays committed-only during a failed batch")
+  let durableDuringFailure = try Data(contentsOf: preserved.appendingPathComponent("history.json"))
+  let blockingBytes = try Data(contentsOf: parent)
+  check(durableDuringFailure == original && blockingBytes == blocker,
+    "retries preserve both prior archive bytes and the unrelated blocking file")
+  try FileManager.default.removeItem(at: parent)
+  try FileManager.default.moveItem(at: preserved, to: parent)
+  check(history.retryPendingSaves() && !history.hasPendingSaves && history.pendingSaveCount == 0,
+    "restoring storage atomically publishes the entire queued batch")
+  check(history.attempts.map(\.id) == [baselineID, firstID, secondID],
+    "recovered corrections retain their original chronological position")
+  check(history.attempts.first(where: { $0.id == firstID })?.extra == 1,
+    "recovery saves the latest corrected counters for the original UUID")
+  check(history.best(matching: base)?.id == secondID && history.lastError == nil,
+    "personal best and error status change only after durable recovery")
+  check(LessonHistory(defaults: defaults, key: "pending-history", archiveURL: archive).attempts == history.attempts,
+    "a new process view reads every recovered result with no duplicates")
+  check(defaults.object(forKey: "pending-history") == nil,
+    "recovery never hides a write failure by falling back to defaults")
+
+  // A correction to an already saved take is held separately too.
+  try FileManager.default.moveItem(at: parent, to: preserved); try blocker.write(to: parent)
+  _ = dx_core_input(second.core, 0, -0.08, 0.8)
+  check(history.record(id: secondID, settings: base, snapshot: second.snapshot,
+    completedNaturally: true, endedAt: date.addingTimeInterval(200)) == nil && history.pendingSaveCount == 1,
+    "a failed correction to an existing UUID becomes recoverable without appending a record")
+  check(history.attempts.first(where: { $0.id == secondID })?.extra == 0,
+    "a failed correction does not publish counters that were not saved")
+  try FileManager.default.removeItem(at: parent); try FileManager.default.moveItem(at: preserved, to: parent)
+  check(history.retryPendingSaves() && history.attempts.count == 3,
+    "retry replaces the committed UUID atomically without duplication")
+  check(history.attempts.first(where: { $0.id == secondID })?.extra == 1
+    && history.attempts.last?.endedAt == date.addingTimeInterval(2),
+    "corrected saved counters retain the attempt's original end time")
+
+  let corruptURL = directory.appendingPathComponent("corrupt.json")
+  let corruptBytes = Data("unreadable but retained".utf8); try corruptBytes.write(to: corruptURL)
+  let blocked = LessonHistory(defaults: defaults, key: "pending-corrupt", archiveURL: corruptURL)
+  check(!blocked.hasPendingSaves, "a load error alone is not an unsaved result")
+  let recoveredID = UUID()
+  check(blocked.record(id: recoveredID, settings: base, snapshot: second.snapshot,
+    completedNaturally: true, endedAt: date.addingTimeInterval(3)) == nil && blocked.hasPendingSaves,
+    "completed work remains recoverable even when the archive was blocked at open")
+  check(!blocked.retryPendingSaves() && blocked.attempts.isEmpty,
+    "retry does not replace an unreadable archive with an empty history")
+  let unchanged = try Data(contentsOf: corruptURL)
+  check(unchanged == corruptBytes, "blocked retries preserve the original unreadable bytes")
+  try original.write(to: corruptURL, options: .atomic)
+  check(blocked.retryPendingSaves() && blocked.attempts.map(\.id) == [baselineID, recoveredID],
+    "explicit restoration of a valid archive recovers old and newly queued work together")
+}
+
 private func scoreSnapshot(
   onTime: Int32, expected: Int32 = 10_000, extra: Int32 = 0,
   missed: Int32 = 0, complete: Bool = true
@@ -571,6 +668,7 @@ enum DrumxLessonChecks {
     sparseOneBarReviewChecks()
     historyChecks(defaults: defaults)
     try archiveHistoryChecks(defaults: defaults)
+    try pendingSaveChecks(defaults: defaults)
     runScoreChecks()
     print("Drumx lesson review/history: \(checks) checks passed.")
   }

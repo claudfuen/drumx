@@ -22,24 +22,50 @@ final class DrumxSettingsPage: NSView {
   var panels: [NSView] = []
   private let heading = NSTextField(labelWithString: "Settings")
   private let caption = NSTextField(labelWithString: "Get comfortable. Then get playing.")
+  private let viewport = NSScrollView()
+  private let content = NSStackView()
   override var isFlipped: Bool { true }
   override init(frame: NSRect) {
     super.init(frame: frame)
     heading.textColor = SetupInk.paper; caption.textColor = SetupInk.muted
-    addSubview(heading); addSubview(caption)
+    viewport.drawsBackground = false; viewport.borderType = .noBorder
+    viewport.hasVerticalScroller = true; viewport.autohidesScrollers = true
+    viewport.scrollerStyle = .overlay
+    content.orientation = .vertical; content.alignment = .leading
+    content.spacing = 0; content.detachesHiddenViews = true
+    viewport.documentView = content
+    content.translatesAutoresizingMaskIntoConstraints = false
+    NSLayoutConstraint.activate([
+      content.leadingAnchor.constraint(equalTo: viewport.contentView.leadingAnchor),
+      content.topAnchor.constraint(equalTo: viewport.contentView.topAnchor),
+      content.widthAnchor.constraint(equalTo: viewport.contentView.widthAnchor),
+      content.heightAnchor.constraint(greaterThanOrEqualTo: viewport.contentView.heightAnchor),
+    ])
+    addSubview(heading); addSubview(caption); addSubview(viewport)
   }
   required init?(coder: NSCoder) { nil }
   func install(tabs: [LessonButton], panels: [NSView]) {
+    self.tabs.forEach { $0.removeFromSuperview() }
+    self.panels.forEach { content.removeArrangedSubview($0); $0.removeFromSuperview() }
     self.tabs = tabs; self.panels = panels
-    (tabs as [NSView] + panels).forEach { addSubview($0) }
+    tabs.forEach { addSubview($0) }
+    for panel in panels {
+      content.addArrangedSubview(panel)
+      panel.widthAnchor.constraint(equalTo: content.widthAnchor).isActive = true
+    }
     needsLayout = true
+  }
+  func revealSelectedSection() {
+    needsLayout = true
+    viewport.contentView.scroll(to: .zero)
+    viewport.reflectScrolledClipView(viewport.contentView)
   }
   override func layout() {
     super.layout()
-    let width = min(1500, max(800, bounds.width - 88))
+    let width = min(1500, max(0, bounds.width - 88))
     let x = (bounds.width - width) / 2
     let scale = min(1.3, max(1, (bounds.height - 40) / 660))
-    let totalHeight = min(bounds.height - 24, 740 * scale)
+    let totalHeight = max(0, min(bounds.height - 24, 740 * scale))
     let top = max(12, (bounds.height - totalHeight) / 2)
     heading.font = .systemFont(ofSize: 36 * scale, weight: .bold)
     caption.font = .systemFont(ofSize: 14 * scale)
@@ -47,13 +73,15 @@ final class DrumxSettingsPage: NSView {
     caption.frame = NSRect(x: x + width / 2, y: top + 21 * scale, width: width / 2, height: 24 * scale)
     caption.alignment = .right
     let tabY = top + 65 * scale, tabHeight = 48 * scale
+    let count = max(1, tabs.count), gap: CGFloat = 12
+    let tabWidth = max(0, (width - gap * CGFloat(count - 1)) / CGFloat(count))
     for (index, tab) in tabs.enumerated() {
-      tab.frame = NSRect(x: x + CGFloat(index) * (width + 12) / 4, y: tabY,
-        width: (width - 36) / 4, height: tabHeight)
+      tab.frame = NSRect(x: x + CGFloat(index) * (tabWidth + gap), y: tabY,
+        width: tabWidth, height: tabHeight)
     }
-    let panelRect = NSRect(x: x, y: tabY + tabHeight + 22 * scale, width: width,
-      height: max(360, totalHeight - 140 * scale))
-    panels.forEach { $0.frame = panelRect }
+    let panelY = tabY + tabHeight + 22 * scale
+    viewport.frame = NSRect(x: x, y: panelY, width: width,
+      height: max(0, top + totalHeight - panelY))
   }
 }
 
@@ -73,8 +101,17 @@ private final class KitPad: NSButton {
   var checked = false
   var pulsing = false
   var learning = false
+  private var hovered = false
   override var isFlipped: Bool { true }
-  override var acceptsFirstResponder: Bool { true }
+  override var acceptsFirstResponder: Bool { isEnabled }
+  override func updateTrackingAreas() {
+    super.updateTrackingAreas()
+    trackingAreas.forEach { removeTrackingArea($0) }
+    addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect], owner: self))
+  }
+  override func mouseEntered(with event: NSEvent) { hovered = true; needsDisplay = true }
+  override func mouseExited(with event: NSEvent) { hovered = false; needsDisplay = true }
+  override func resetCursorRects() { if isEnabled { addCursorRect(bounds, cursor: .pointingHand) } }
   override func becomeFirstResponder() -> Bool { needsDisplay = true; return true }
   override func resignFirstResponder() -> Bool { needsDisplay = true; return true }
   override func draw(_ dirtyRect: NSRect) {
@@ -85,7 +122,7 @@ private final class KitPad: NSButton {
       color.withAlphaComponent(0.14).setFill()
       NSBezierPath(ovalIn: disc.insetBy(dx: -8, dy: -8)).fill()
     }
-    color.withAlphaComponent(pulsing ? 0.26 : selected ? 0.11 : 0.045).setFill(); shape.fill()
+    color.withAlphaComponent(pulsing ? 0.26 : selected ? 0.14 : hovered ? 0.09 : 0.045).setFill(); shape.fill()
     color.withAlphaComponent(selected || pulsing || learning ? 0.95 : 0.3).setStroke()
     shape.lineWidth = selected || window?.firstResponder === self ? 2 : 1; shape.stroke()
     for fraction in pad == 0 ? [0.12, 0.22, 0.34] : [0.07] {
@@ -98,6 +135,15 @@ private final class KitPad: NSButton {
     } else if pad == 2 {
       let pedal = NSBezierPath(roundedRect: NSRect(x: disc.midX - 10, y: disc.midY - 16, width: 20, height: 32), xRadius: 6, yRadius: 6)
       color.withAlphaComponent(0.17).setFill(); pedal.fill()
+    }
+    if selected {
+      SetupInk.text("EDITING", in: NSRect(x: disc.minX, y: disc.maxY - 16, width: disc.width, height: 13),
+        size: 8, color: color, weight: .bold, center: true)
+    }
+    if window?.firstResponder === self {
+      SetupInk.paper.withAlphaComponent(0.85).setStroke()
+      let focus = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 12, yRadius: 12)
+      focus.lineWidth = 1.5; focus.stroke()
     }
     SetupInk.text(["HI-HAT", "SNARE", "KICK"][pad],
       in: NSRect(x: 0, y: bounds.height - 35, width: bounds.width, height: 19), size: 12, color: color, weight: .semibold, center: true)
@@ -114,9 +160,10 @@ final class DrumxKitCheckView: NSView {
   var selectedPad = 1 { didSet { refreshPads() } }
   var confirmed: Set<Int> = [] { didSet { refreshPads() } }
   var learningPad: Int? { didSet { refreshPads() } }
-  var lastPad: Int?
-  var lastVelocity = 0
-  var lastInput = "Strike a pad to see its signal."
+  private(set) var lastPad: Int?
+  private(set) var lastVelocity = 0
+  private(set) var lastInput = "Strike a pad to see its signal."
+  private let signalLabel = NSTextField(labelWithString: "Strike a pad to see its signal.")
   private var pads: [KitPad] = []
   private var pulseTimer: Timer?
   override var isFlipped: Bool { true }
@@ -128,6 +175,11 @@ final class DrumxKitCheckView: NSView {
       pad.setAccessibilityLabel("Select \(pad.title) mapping")
       pads.append(pad); addSubview(pad)
     }
+    signalLabel.font = .systemFont(ofSize: 12)
+    signalLabel.textColor = SetupInk.paper
+    signalLabel.lineBreakMode = .byTruncatingMiddle
+    signalLabel.setAccessibilityLabel("Latest kit signal")
+    addSubview(signalLabel)
     refreshPads()
   }
   required init?(coder: NSCoder) { nil }
@@ -138,9 +190,15 @@ final class DrumxKitCheckView: NSView {
     pads[0].frame = NSRect(x: bounds.width * 0.11, y: 49, width: size, height: size * 0.88)
     pads[1].frame = NSRect(x: bounds.width * 0.53, y: 89, width: size, height: size)
     pads[2].frame = NSRect(x: bounds.width * 0.33, y: bounds.height - size * 0.8 - 60, width: size * 0.8, height: size * 0.8)
+    signalLabel.frame = NSRect(x: 24, y: bounds.height - 37, width: max(0, bounds.width - 48), height: 18)
   }
   func showHit(pad: Int?, velocity: Int, description: String) {
-    lastPad = pad; lastVelocity = velocity; lastInput = description
+    let pad = pad.flatMap { (0..<3).contains($0) ? $0 : nil }
+    lastPad = pad; lastVelocity = min(127, max(0, velocity)); lastInput = description
+    signalLabel.stringValue = description
+    signalLabel.textColor = pad == nil && lastVelocity > 0 ? .systemOrange : SetupInk.paper
+    signalLabel.setAccessibilityLabel("Latest kit signal. Velocity \(lastVelocity) of 127.")
+    signalLabel.toolTip = description
     pulseTimer?.invalidate()
     for item in pads { item.pulsing = item.pad == pad; item.needsDisplay = true }
     needsDisplay = true
@@ -151,6 +209,8 @@ final class DrumxKitCheckView: NSView {
   func clearSignal() {
     pulseTimer?.invalidate(); pulseTimer = nil
     lastPad = nil; lastVelocity = 0; lastInput = "Strike a pad to see its signal."
+    signalLabel.stringValue = lastInput; signalLabel.textColor = SetupInk.paper
+    signalLabel.setAccessibilityLabel("Latest kit signal"); signalLabel.toolTip = nil
     pads.forEach { $0.pulsing = false; $0.needsDisplay = true }
     needsDisplay = true
   }
@@ -158,14 +218,12 @@ final class DrumxKitCheckView: NSView {
     for pad in pads {
       pad.selected = pad.pad == selectedPad; pad.checked = confirmed.contains(pad.pad)
       pad.learning = pad.pad == learningPad
-      pad.setAccessibilityValue(pad.learning ? "Waiting for MIDI mapping" : pad.checked ? "Input received" : "Waiting for input")
+      pad.setAccessibilityValue((pad.selected ? "Selected. " : "") + (pad.learning ? "Waiting for MIDI mapping" : pad.checked ? "Input received" : "Waiting for input"))
       pad.needsDisplay = true
     }
   }
   override func draw(_ dirtyRect: NSRect) {
     SetupInk.text("YOUR FOUNDATION KIT", in: NSRect(x: 24, y: 20, width: bounds.width - 48, height: 18), size: 11, color: SetupInk.muted, weight: .semibold)
-    SetupInk.text(lastInput, in: NSRect(x: 24, y: bounds.height - 37, width: bounds.width - 48, height: 18), size: 12,
-      color: lastPad == nil && lastVelocity > 0 ? .systemOrange : SetupInk.paper)
     let track = NSRect(x: 24, y: bounds.height - 14, width: bounds.width - 48, height: 3)
     NSColor.white.withAlphaComponent(0.06).setFill(); NSBezierPath(rect: track).fill()
     var signal = track; signal.size.width *= CGFloat(lastVelocity) / 127

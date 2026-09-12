@@ -23,11 +23,29 @@ struct Hit {
 struct State {
   DXSnapshot score{};
   bool running = false, completed = false, naturally_completed = false;
-  bool audio_ready = false, samples_ready = false;
+  bool audio_ready = false, samples_ready = false, audio_interrupted = false;
+  bool source_lost = false;
   double practice_start = 0, stop_time = 0;
   int pending_pad = -1;
   uint64_t dropped_hits = 0, dropped_audio = 0;
-  std::string source_id, error;
+  std::string source_id, lost_source_id, error;
+};
+// Device lifecycle state only. It does not estimate callback or output latency.
+enum class AudioDeviceEvent { started, stopped, rerouted };
+class AudioDeviceStatus {
+public:
+  void reset() { armed.store(false); active.store(false); interruption.store(false); }
+  void begin_open() { reset(); armed.store(true); }
+  void confirm_started(bool started) { active.store(started); if (!started) interruption.store(true); }
+  void notify(AudioDeviceEvent event) {
+    if (event == AudioDeviceEvent::started) active.store(true);
+    if (event == AudioDeviceEvent::stopped) active.store(false);
+    if (event != AudioDeviceEvent::started && armed.load()) interruption.store(true);
+  }
+  bool ready() const { return armed.load() && active.load() && !interruption.load(); }
+  bool interrupted() const { return interruption.load(); }
+private:
+  std::atomic<bool> armed{false}, active{false}, interruption{false};
 };
 class Audio {
 public:
@@ -35,7 +53,7 @@ public:
   bool load(const std::string &directory, bool open_device = true);
   bool load_memory(const std::vector<std::vector<uint8_t>> &files, bool open_device = true);
   bool open();
-  bool ready() const; bool samples_ready() const;
+  bool ready() const; bool samples_ready() const; bool interrupted() const;
   void monitoring(bool enabled); void volume(float value);
   void hit(int pad, int velocity);
   void click(double first, double bpm, double last);
@@ -43,6 +61,8 @@ public:
   uint64_t dropped() const;
   std::string error() const;
 private:
+  friend struct BackendTestAccess;
+  AudioDeviceStatus &device_status();
   struct Impl; std::unique_ptr<Impl> p;
 };
 class Backend;

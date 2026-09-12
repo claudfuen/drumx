@@ -13,6 +13,8 @@ const TempoContract = preload("res://scripts/tempo_contract.gd")
 const TempoBindingChecks = preload("res://scripts/pulse_tempo_contract.gd")
 const ScoreHUD = preload("res://scripts/score_hud.gd")
 const SettingsPanel = preload("res://scripts/settings_panel.gd")
+const SettingsContract = preload("res://scripts/settings_contract.gd")
+const RecoveryContract = preload("res://scripts/recovery_contract.gd")
 const INK = Color("0c1012")
 const PAPER = Color("f0f2e8")
 const MUTED = Color("92a5a3")
@@ -28,6 +30,7 @@ var guidance := 0
 var volume := 0.7
 var monitoring := true
 var source_id := ""
+var progress_owned := true
 var mappings: Array = [[42, 44, 46], [38, 40], [35, 36]]
 var snapshot: Dictionary = {}
 var root_stack: VBoxContainer
@@ -46,6 +49,13 @@ var kit_signal: Label
 var settings_panel: Control
 var source_option: OptionButton
 var source_ids: Array = []
+var source_names: Dictionary = {}
+var input_choice_required := false
+var settings_return_page := "main"
+var settings_return_index := 0
+var learning_path_index := 0
+var take_interruption := ""
+var pause_reason := ""
 var selected_pad := 1
 var checked: Array = []
 var pulses: Array = []
@@ -60,6 +70,10 @@ var save_retry_at := 0.0
 var result_metrics: Array[Label] = []
 var check_return := "prepare"
 var check_overlay: Control
+var quit_overlay: Control
+var quit_focus: Array = []
+var quit_return_focus: Control
+var quit_status: Label
 var modal_focus: Array = []
 var options_open := false
 var pulse_intent := "guided"
@@ -78,6 +92,7 @@ var take_lesson_index := 0
 var saved_fingerprint := ""
 
 func _ready() -> void:
+	get_tree().auto_accept_quit = false
 	smoke = "--smoke-test" in OS.get_cmdline_user_args() or "--ui-smoke-test" in OS.get_cmdline_user_args()
 	if not model.load_course():
 		push_error("The authored course could not be loaded.")
@@ -93,7 +108,14 @@ func _ready() -> void:
 	configure_logical_window()
 	if engine != null and OS.get_name() == "macOS":
 		engine.configure_window(DisplayServer.window_get_native_handle(DisplayServer.WINDOW_HANDLE, get_window().get_window_id()))
+	progress_owned = engine != null and engine.acquire_progress_lock(ProjectSettings.globalize_path(model.save_path))
+	# Read and write the exact canonical archive reserved by the native lock.
+	if progress_owned: model.save_path = str(engine.snapshot().progress_archive_path)
 	model.load_progress()
+	if not progress_owned:
+		model.blocked = true
+		preserve_error = str(engine.snapshot().get("progress_lock_error", "Progress is unavailable.")) if engine != null else "Native engine unavailable. Reopen a complete Drumx build."
+		model.error = preserve_error
 	lesson_index = clampi(int(model.save.selected), 0, 11)
 	tempo = float(model.course.lessons[lesson_index].bpm)
 	if lesson_index == 0: restore_pulse_plan()
@@ -109,11 +131,13 @@ func _ready() -> void:
 		mappings = engine.get_mapping()
 		engine.set_volume(volume)
 		engine.set_monitoring(monitoring)
-		engine.load_sample_bank("res://assets/BigRusty")
+		engine.load_sample_bank("res://assets/BigRusty", progress_owned)
 		snapshot = engine.snapshot()
 	else:
 		preserve_error = "Native engine unavailable. This build cannot play yet."
-	show_main()
+	if progress_owned: show_main()
+	else: show_progress_in_use()
+	get_window().focus_exited.connect(_keyboard_focus_lost)
 
 func setup_theme() -> void:
 	var look := Theme.new()
@@ -168,7 +192,7 @@ func build_shell() -> void:
 	score_hud = ScoreHUD.new()
 	score_hud.visible = false
 	header.add_child(score_hud)
-	back = button("Main menu", show_main)
+	back = button("Main menu", _header_back)
 	header.add_child(back)
 	settings_button = button("Settings", show_settings)
 	header.add_child(settings_button)
@@ -185,6 +209,8 @@ func build_shell() -> void:
 	content.add_theme_constant_override("separation", 20)
 	root_stack.add_child(content)
 	footer = label("", 11, MUTED)
+	footer.clip_text = true
+	footer.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var footer_margin := MarginContainer.new()
 	footer_margin.add_theme_constant_override("margin_left", 12)
 	footer_margin.add_theme_constant_override("margin_right", 12)
@@ -273,6 +299,8 @@ func clear_page(destination: String) -> void:
 		content.remove_child(child)
 		child.queue_free()
 	back.visible = destination not in ["main", "stage"]
+	back.text = {"prepare": "Return to lesson", "learn": "Return to path", "result": "Return to review", "pause": "Return to pause"}.get(settings_return_page, "Main menu") if destination == "settings" else "Main menu"
+	back.tooltip_text = "Return to where you opened Settings. Escape always opens the main menu." if destination == "settings" else "Open the main menu."
 	settings_button.visible = destination not in ["main", "stage", "settings"]
 	score_hud.visible = destination == "stage"
 	stop_button.visible = destination == "stage"
@@ -282,15 +310,46 @@ func clear_page(destination: String) -> void:
 func update_footer() -> void:
 	if footer == null:
 		return
-	var message: String = preserve_error if preserve_error != "" else str(model.error)
+	var message: String = model.pending_save_message() if model.pending_save_count() > 0 else preserve_error if preserve_error != "" else str(model.error)
 	if message == "" and engine != null:
 		message = str(snapshot.get("error", ""))
-	if message == "" and page == "main":
-		footer.text = "↑ ↓  choose    RETURN  select"
+	var identity := "MIDI disconnected" if bool(snapshot.get("source_lost", false)) or input_choice_required else "MIDI · " + str(source_names.get(source_id, "Drum kit")) if source_id != "" else "Keyboard practice"
+	var hint := "↑ ↓ choose · RETURN select" if page == "main" else "ESC pause" if page == "stage" else "ESC main menu"
+	if source_id == "" and not input_choice_required and not bool(snapshot.get("source_lost", false)) and page in ["stage", "prepare", "settings"]:
+		hint = "A hi-hat · S snare · SPACE kick" + (" · SHIFT softer · ESC pause" if page == "stage" else " · ESC main menu")
+	footer.text = message if message != "" else identity + "  /  " + hint
+	footer.tooltip_text = footer.text
+
+func _header_back() -> void:
+	if page != "settings":
+		show_main()
 		return
-	footer.text = message if message != "" else "A  hi-hat   ·   S  snare   ·   SPACE  kick   ·   SHIFT  softer   /   ESC  pause" if page == "stage" else "A  hi-hat   ·   S  snare   ·   SPACE  kick   /   ESC  main menu"
+	match settings_return_page:
+		"learn": show_learn(settings_return_index)
+		"prepare": build_prepare()
+		"result": show_result()
+		"pause": show_pause(pause_reason)
+		_: show_main()
+
+func show_progress_in_use() -> void:
+	clear_page("progress_locked")
+	back.hide()
+	settings_button.hide()
+	page_label.text = "PROGRESS UNAVAILABLE"
+	var stack := centered_column(18)
+	stack.add_child(label("KEEP ONE SESSION OPEN", 11, LIME))
+	stack.add_child(label("Your progress is protected.", 40, PAPER, true))
+	stack.add_child(label(preserve_error, 17, PAPER, true))
+	stack.add_child(label("Close this copy. If another Drumx window is using this progress, keep playing there, or close it before reopening this one.", 16, MUTED, true))
+	var close := button("Close this copy", request_quit, true)
+	close.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	stack.add_child(close)
+	if not smoke: close.call_deferred("grab_focus")
 
 func show_main() -> void:
+	if not progress_owned:
+		show_progress_in_use()
+		return
 	clear_page("main")
 	var menu := MainMenu.new()
 	menu.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -337,8 +396,10 @@ func star_string(value: int) -> String:
 
 func show_learn(index: int) -> void:
 	clear_page("learn")
+	learning_path_index = clampi(index, 0, 11)
 	var path := LearningPath.new()
-	path.configure(model, index)
+	path.configure(model, learning_path_index)
+	path.selected.connect(func(inspected): learning_path_index = inspected)
 	path.play_requested.connect(show_prepare)
 	content.add_child(path)
 
@@ -529,7 +590,8 @@ func accept_coaching() -> void:
 		return
 	match int(coaching.get("action", 0)):
 		5: show_prepare(mini(11, lesson_index + 1)); return
-		7: show_settings(); return
+		7: _show_recovery_settings(); return
+	if not _ensure_practice_ready(): return
 	if int(coaching.get("action", 0)) != 8:
 		tempo = float(coaching.get("next_bpm", tempo))
 		bars = int(coaching.get("next_bars", 16))
@@ -537,29 +599,34 @@ func accept_coaching() -> void:
 	start_take()
 
 func start_take() -> void:
-	if engine == null:
-		return
+	if not _ensure_practice_ready(): return
+	if model.pending_save_count() > 0: model.retry_pending()
 	engine.cancel_learning()
 	mappings = engine.get_mapping()
 	if not engine.load_chart(tempo, bars, model.chart(lesson_index, bars)):
 		preserve_error = "This lesson could not be loaded by the timing engine."
 		update_footer()
 		return
-	take_settings = current_take_settings()
+	var candidate_settings := current_take_settings()
+	var candidate_best := int(model.best(lesson_index, candidate_settings).get("points", -1))
 	remember_pulse_plan()
-	score_before = int(model.best(lesson_index, take_settings).get("points", -1))
+	var first: float = engine.start(4)
+	if first < 0:
+		snapshot = engine.snapshot()
+		_sync_input_state(snapshot)
+		_show_recovery_settings()
+		return
+	take_settings = candidate_settings
+	score_before = candidate_best
 	take_lesson_index = lesson_index
 	saved_fingerprint = ""
 	take_id = "%d-%d" % [int(Time.get_unix_time_from_system()), Time.get_ticks_usec()]
 	result_fingerprint = ""
 	stage_done = false
+	take_interruption = ""
+	pause_reason = ""
 	pulses.clear()
 	recent_offsets = [[], [], []]
-	var first: float = engine.start(4)
-	if first < 0:
-		snapshot = engine.snapshot()
-		update_footer()
-		return
 	clear_page("stage")
 	canvas = PracticeStage.new()
 	canvas.guidance = guidance
@@ -572,21 +639,64 @@ func start_take() -> void:
 	content.add_child(canvas)
 	score_hud.update_score({}, false, score_before, "COUNT-IN")
 
-func show_pause() -> void:
+func _ensure_practice_ready() -> bool:
+	if not progress_owned:
+		show_progress_in_use()
+		return false
+	if engine == null:
+		preserve_error = "Native engine unavailable. This build cannot play yet."
+		show_settings()
+		return false
+	engine.sources()
+	snapshot = engine.snapshot()
+	_sync_input_state(snapshot)
+	if bool(snapshot.get("running", false)): return false
+	if bool(snapshot.get("source_lost", false)) or input_choice_required or bool(snapshot.get("audio_interrupted", false)) or not bool(snapshot.get("audio_ready", false)):
+		_show_recovery_settings()
+		return false
+	return true
+
+func _show_recovery_settings() -> void:
+	show_settings()
+	if not bool(snapshot.get("source_lost", false)) and not input_choice_required and (bool(snapshot.get("audio_interrupted", false)) or not bool(snapshot.get("audio_ready", false))):
+		settings_panel.select_section(1)
+
+func _note_transport_interruption(state: Dictionary) -> void:
+	if page != "stage" or bool(state.get("naturally_completed", false)): return
+	if bool(state.get("source_lost", false)):
+		take_interruption = "Your MIDI input disconnected. This unfinished take was not added to your records. Reconnect it in Settings, then restart with a count-in."
+	elif bool(state.get("audio_interrupted", false)):
+		take_interruption = "Audio stopped during this take. This unfinished take was not added to your records. Retry audio in Settings, then restart with a count-in."
+
+func _keyboard_focus_lost() -> void:
+	if page != "stage" or source_id != "" or engine == null: return
+	snapshot = engine.snapshot()
+	_note_transport_interruption(snapshot)
+	if bool(snapshot.get("running", false)):
+		show_pause("Keyboard practice paused when the window lost focus. Restart when you are ready.")
+	elif bool(snapshot.get("completed", false)):
+		show_result()
+
+func show_pause(reason: String = "") -> void:
 	if engine != null:
 		engine.stop()
 		snapshot = engine.snapshot()
+	pause_reason = reason
 	clear_page("pause")
-	gap(content, 0, true)
-	content.add_child(label("TAKE A BREATH", 12, MUTED))
-	content.add_child(label("Practice paused.", 48))
-	content.add_child(label("Restart with a fresh count-in, or review the hits so far. An unfinished take doesn't change your records.", 18, MUTED, true))
+	var stack := centered_column(16)
+	stack.add_child(label("TAKE A BREATH", 11, LIME))
+	stack.add_child(label(model.course.lessons[lesson_index].title, 16, MUTED))
+	stack.add_child(label("Practice paused.", 42))
+	stack.add_child(label(reason if not reason.is_empty() else "Restart with a fresh count-in, or review the hits so far.", 18, Color(PAPER, 0.8), true))
+	stack.add_child(label("An unfinished take does not change your records.", 13, MUTED, true))
+	gap(stack, 8)
 	var actions := row()
-	content.add_child(actions)
-	actions.add_child(button("Restart with count-in", start_take, true))
+	stack.add_child(actions)
+	var restart := button("Restart with count-in", start_take, true)
+	actions.add_child(restart)
 	actions.add_child(button("Review this take", show_result))
 	actions.add_child(button("Main menu", show_main))
-	gap(content, 0, true)
+	if not smoke: restart.call_deferred("grab_focus")
 
 func stop_take() -> void:
 	if engine != null:
@@ -602,7 +712,7 @@ func show_result() -> void:
 	var stack := centered_column(12)
 	stack.add_child(label("LISTEN. ADJUST. GO AGAIN.", 11, LIME))
 	stack.add_child(label("%s  ·  %d BPM  ·  %d bars  ·  %s" % [model.course.lessons[lesson_index].title, tempo, bars, ["Guided", "Hide alternate bars", "Click-only"][guidance]], 11, MUTED))
-	stack.add_child(label("Your take." if bool(snapshot.get("naturally_completed", false)) else "Take stopped.", 36))
+	stack.add_child(label("Your take." if bool(snapshot.get("naturally_completed", false)) else "Take interrupted." if not take_interruption.is_empty() else "Take stopped.", 36))
 	result_detail = label("", 17, Color(PAPER, 0.75), true)
 	stack.add_child(result_detail)
 	if lesson_index == 0 and pulse_intent == "guided":
@@ -651,6 +761,7 @@ func show_result() -> void:
 	if lesson_index != 0: next_actions.add_child(button("Practice options", func(): options_open = true; build_prepare()))
 	next_actions.add_child(button("Learning path", func(): show_learn(model.frontier())))
 	update_result()
+	if not smoke and actions.get_child_count() > 0: actions.get_child(0).call_deferred("grab_focus")
 
 func show_learning_check() -> void:
 	if check_overlay != null: return
@@ -726,7 +837,7 @@ func update_result() -> void:
 	if complete and grade_fingerprint != result_grade_fingerprint:
 		model.record(take_id, take_lesson_index, snapshot, take_settings)
 		result_grade_fingerprint = grade_fingerprint
-	var fingerprint := JSON.stringify([grade_fingerprint, model.progress_revision, model.error, source_id, pulse_intent])
+	var fingerprint := JSON.stringify([grade_fingerprint, model.progress_revision, model.pending_save_count(), model.error, source_id, pulse_intent, take_interruption])
 	if fingerprint == result_fingerprint: return
 	result_fingerprint = fingerprint
 	var comparable_attempts: Array = model.save.attempts.filter(func(attempt): return attempt.lesson == model.course.lessons[lesson_index].id and attempt.version == model.course.lessons[lesson_index].version and attempt.settings == take_settings)
@@ -759,14 +870,23 @@ func update_result() -> void:
 		tempo_card.update_plan(int(tempo), guidance, coaching, copy[0], copy[1])
 		coached_action.text = copy[2]
 		coached_action.disabled = engine == null or not bool(coaching.get("ok", false))
+		if not complete and not take_interruption.is_empty():
+			coaching.action = 7
+			coached_action.text = "Check kit & sound"
 		result_detail.text = "A full phrase, at your own pace." if complete else "Your records are unchanged. Start again when you are ready."
 	var comparable: Dictionary = model.best(lesson_index, take_settings)
 	result_best.text = ("New personal best. " if complete and saved and points_value > score_before and score_before >= 0 else "") + ("Best with these settings: %d points." % int(comparable.points) if not comparable.is_empty() else "Complete a full take to save your first record.")
-	if model.error != "":
+	if model.pending_attempts.has(take_id):
+		result_best.text = "This result is waiting to save. Keep Drumx open; your records update after saving succeeds."
+	elif model.error != "":
 		result_best.text = model.error
+	if not complete and not take_interruption.is_empty(): result_detail.text = take_interruption
 	update_footer()
 
 func show_settings() -> void:
+	if page != "settings":
+		settings_return_page = "prepare" if page == "stage" else page
+		settings_return_index = learning_path_index if page == "learn" else lesson_index
 	clear_page("settings")
 	settings_panel = SettingsPanel.new()
 	settings_panel.controller = self
@@ -784,28 +904,49 @@ func show_settings() -> void:
 func refresh_sources() -> void:
 	if source_option == null:
 		return
-	source_option.clear()
-	source_option.add_item("Keyboard / no MIDI input")
-	source_ids = [""]
+	var available: Array = []
 	if engine != null:
-		for source in engine.sources():
-			source_option.add_item(str(source.name))
-			source_ids.append(str(source.id))
-	var selected := source_ids.find(source_id)
-	if selected < 0:
-		select_source(0)
-		selected = 0
-	source_option.select(selected)
+		available = engine.sources()
+		snapshot = engine.snapshot()
+		_sync_input_state(snapshot)
+	source_option.clear()
+	source_option.add_item("Keyboard preview / no MIDI input")
+	source_ids = [""]
+	var missing := bool(snapshot.get("source_lost", false)) or input_choice_required or (source_id != "" and not available.any(func(item): return str(item.id) == source_id))
+	if missing:
+		source_option.add_item("Disconnected · " + str(source_names.get(source_id, "MIDI kit")))
+		source_option.set_item_disabled(1, true)
+		source_ids.append(null)
+	for source in available:
+		source_names[str(source.id)] = str(source.name)
+		source_option.add_item(str(source.name))
+		source_ids.append(str(source.id))
+	source_option.select(1 if missing else maxi(0, source_ids.find(source_id)))
 
 func select_source(index: int) -> void:
-	if engine == null:
-		return
-	if engine.connect_source(source_ids[index]):
-		source_id = str(source_ids[index])
-	else:
-		source_id = ""
+	if engine == null or index < 0 or index >= source_ids.size() or not source_ids[index] is String: return
+	var chosen := str(source_ids[index])
+	input_choice_required = not engine.connect_source(chosen)
+	if input_choice_required: source_id = chosen
+	snapshot = engine.snapshot()
+	_sync_input_state(snapshot)
 	checked.clear()
+	pulses.clear()
 	refresh_mapping()
+	refresh_sources()
+	update_footer()
+
+func _sync_input_state(state: Dictionary) -> void:
+	# A failed explicit MIDI selection also needs an explicit recovery choice;
+	# the UI must not interpret the backend's empty source as keyboard consent.
+	if input_choice_required:
+		state.source_lost = true
+		state.lost_source_id = source_id
+	var selected := str(state.get("lost_source_id", source_id)) if bool(state.get("source_lost", false)) else str(state.get("source_id", ""))
+	if selected != source_id:
+		source_id = selected
+		checked.clear()
+		pulses.clear()
 
 func begin_learning() -> void:
 	if engine != null and engine.learn_pad(selected_pad):
@@ -824,6 +965,7 @@ func refresh_mapping() -> void:
 	if engine != null:
 		mappings = engine.get_mapping()
 		snapshot = engine.snapshot()
+		_sync_input_state(snapshot)
 	if mapping_label != null:
 		mapping_label.text = "%s  /  MIDI notes %s" % [PAD_NAMES[selected_pad], ", ".join(mappings[selected_pad].map(func(value): return str(value))) ]
 	if canvas != null and page == "settings":
@@ -833,6 +975,14 @@ func refresh_mapping() -> void:
 		canvas.queue_redraw()
 	if settings_panel != null: settings_panel.refresh_state()
 
+func retry_progress_save() -> bool:
+	if not progress_owned: return false
+	var saved := model.retry_pending(true) if model.blocked or model.pending_save_count() > 0 else model.persist()
+	if settings_panel != null: settings_panel.refresh_state()
+	if page == "result": update_result()
+	update_footer()
+	return saved
+
 func save_settings() -> void:
 	model.save.settings = {"volume": volume, "monitoring": monitoring, "mapping": mappings}
 	model.persist()
@@ -841,10 +991,13 @@ func save_settings() -> void:
 func _process(_delta: float) -> void:
 	if smoke or engine == null or root_stack == null:
 		return
+	if page == "stage" and source_id == "" and get_window().mode == Window.MODE_MINIMIZED:
+		_keyboard_focus_lost()
 	var now: float = engine.get_host_time()
 	if now >= sources_refresh_at:
 		sources_refresh_at = now + 1.0
-		engine.sources() # Native enumeration also detects loss of the selected port.
+		for available_source in engine.sources(): # Enumeration also detects port loss.
+			source_names[str(available_source.id)] = str(available_source.name)
 		if page == "settings": refresh_sources()
 	var hits: Array = engine.poll_hits()
 	for hit in hits:
@@ -855,7 +1008,7 @@ func _process(_delta: float) -> void:
 		if pulses.size() > 48:
 			pulses.pop_front()
 		var pad := int(hit.pad)
-		if pad >= 0 and (source_id == "" or str(hit.get("source_id", "")) == source_id) and pad not in checked:
+		if pad >= 0 and source_id != "" and int(hit.get("note", -1)) >= 0 and str(hit.get("source_id", "")) == source_id and not bool(snapshot.get("source_lost", false)) and pad not in checked:
 			checked.append(pad)
 		if int(hit.get("judgment", 0)) in [1, 2, 3] and pad >= 0:
 			recent_offsets[pad].append({"offset": float(hit.offset_ms), "time": now})
@@ -869,15 +1022,17 @@ func _process(_delta: float) -> void:
 		if page == "settings":
 			kit_signal.text = "%s · velocity %d · %s" % ["MIDI %d" % int(hit.note) if int(hit.note) >= 0 else "Keyboard preview", int(hit.velocity), PAD_NAMES[pad] if pad >= 0 else "unmapped"]
 	pulses = pulses.filter(func(pulse): return now - float(pulse.host_time) < 0.42)
+	var previous_source := source_id
+	var previously_lost := bool(snapshot.get("source_lost", false))
 	snapshot = engine.snapshot()
+	_sync_input_state(snapshot)
+	_note_transport_interruption(snapshot)
 	if bool(snapshot.get("naturally_completed", false)) and take_id != "":
 		var grade_fingerprint := JSON.stringify([snapshot.get("on_time"), snapshot.get("matched"), snapshot.get("missed"), snapshot.get("extra"), snapshot.get("best_streak")])
 		if grade_fingerprint != saved_fingerprint and now >= save_retry_at:
 			save_retry_at = now + 1.0
 			if model.record(take_id, take_lesson_index, snapshot, take_settings): saved_fingerprint = grade_fingerprint
-	if str(snapshot.get("source_id", "")) != source_id:
-		source_id = str(snapshot.get("source_id", ""))
-		checked.clear()
+	if previous_source != source_id or previously_lost != bool(snapshot.get("source_lost", false)):
 		if page == "settings": refresh_sources()
 	if canvas != null and page in ["stage", "settings"]:
 		canvas.current_host = now
@@ -890,7 +1045,7 @@ func _process(_delta: float) -> void:
 			canvas.active = bool(snapshot.get("running", false))
 			canvas.completed = bool(snapshot.get("naturally_completed", false))
 		elif page == "settings":
-			canvas.checked = checked
+			canvas.checked = checked if source_id != "" and not bool(snapshot.get("source_lost", false)) else []
 			canvas.learn_pad = int(snapshot.get("pending_pad", -1))
 		canvas.queue_redraw()
 	if page == "stage":
@@ -901,6 +1056,12 @@ func _process(_delta: float) -> void:
 			show_result()
 	elif page == "result":
 		update_result()
+	if page != "stage" and model.pending_save_count() > 0 and now >= save_retry_at:
+		save_retry_at = now + 1.0
+		model.retry_pending()
+		if page == "result": update_result()
+		if settings_panel != null: settings_panel.refresh_state()
+	if quit_overlay != null and model.pending_save_count() == 0: quit_status.text = "All results are now saved. You can quit safely."
 	update_footer()
 
 static func render_elapsed(state: Dictionary, now: float) -> float:
@@ -925,7 +1086,8 @@ func timing_feedback(now: float) -> String:
 	return "   ·   ".join(messages) if not messages.is_empty() else "Listen to the click. Keep the spaces even."
 
 func _input(event: InputEvent) -> void:
-	if page != "stage" or engine == null or not event is InputEventKey or not event.pressed or event.echo:
+	if quit_overlay != null: return
+	if page != "stage" or engine == null or source_id != "" or input_choice_required or bool(snapshot.get("source_lost", false)) or not event is InputEventKey or not event.pressed or event.echo:
 		return
 	var pad: int = int({KEY_A: 0, KEY_S: 1, KEY_SPACE: 2}.get(event.physical_keycode, -1))
 	if pad >= 0:
@@ -933,6 +1095,11 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	if quit_overlay != null:
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			close_pending_quit()
+			get_viewport().set_input_as_handled()
+		return
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	if event.keycode == KEY_ESCAPE:
@@ -942,22 +1109,92 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if check_overlay != null: return
-	if get_viewport().gui_get_focus_owner() is LineEdit or get_viewport().gui_get_focus_owner() is TextEdit:
+	var focused := get_viewport().gui_get_focus_owner()
+	if focused is LineEdit or focused is TextEdit:
+		return
+	# A focused button owns activation even when disabled. Its rejected Enter or
+	# Space must never fall through into transport or a keyboard drum strike.
+	if focused is BaseButton and event.keycode in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
 		return
 	if event.keycode == KEY_ENTER and page in ["prepare", "result", "pause"]:
 		if page == "result" and coached_action != null: accept_coaching()
 		else: start_take()
 		get_viewport().set_input_as_handled()
 		return
-	if engine != null and page in ["prepare", "settings"]:
+	if engine != null and source_id == "" and not input_choice_required and not bool(snapshot.get("source_lost", false)) and page in ["prepare", "settings"]:
 		var pad: int = int({KEY_A: 0, KEY_S: 1, KEY_SPACE: 2}.get(event.physical_keycode, -1))
 		if pad >= 0:
 			engine.keyboard_hit(pad, 48 if event.shift_pressed else 108)
 			get_viewport().set_input_as_handled()
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST and engine != null:
-		engine.stop()
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		request_quit()
+
+
+func request_quit() -> void:
+	if quit_overlay != null: return
+	if page == "stage": stop_take()
+	elif engine != null: engine.stop()
+	if model.retry_pending() and model.pending_save_count() == 0:
+		get_tree().quit()
+		return
+	show_pending_quit()
+
+func show_pending_quit() -> void:
+	if quit_overlay != null: return
+	if check_overlay != null: close_learning_check()
+	quit_return_focus = get_viewport().gui_get_focus_owner()
+	quit_focus.clear()
+	for control in find_children("*", "Control", true, false):
+		if control.focus_mode != Control.FOCUS_NONE:
+			quit_focus.append([control, control.focus_mode])
+			control.focus_mode = Control.FOCUS_NONE
+	quit_overlay = ColorRect.new()
+	quit_overlay.color = Color(0.015, 0.023, 0.026, 0.94)
+	quit_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(quit_overlay)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	quit_overlay.add_child(center)
+	var panel := PanelContainer.new()
+	var background := StyleBoxFlat.new()
+	background.bg_color = Color("11191b")
+	background.border_color = Color(PAPER, 0.12)
+	background.set_border_width_all(1)
+	background.set_corner_radius_all(18)
+	for side in ["left", "right", "top", "bottom"]: background.set("content_margin_" + side, 32)
+	panel.add_theme_stylebox_override("panel", background)
+	center.add_child(panel)
+	var stack := VBoxContainer.new()
+	stack.custom_minimum_size.x = 672
+	stack.add_theme_constant_override("separation", 18)
+	panel.add_child(stack)
+	stack.add_child(label("KEEP YOUR PROGRESS", 11, LIME))
+	stack.add_child(label("Before you go.", 30, PAPER, true))
+	quit_status = label(model.pending_save_message(), 16, PAPER, true)
+	stack.add_child(quit_status)
+	stack.add_child(label("Retry saving before you go. Quitting now will lose these unsaved results. Your earlier saved progress stays intact.", 14, MUTED, true))
+	var actions := row()
+	stack.add_child(actions)
+	var retry := button("Retry save & quit", func():
+		if model.retry_pending(true): get_tree().quit()
+		else: quit_status.text = model.pending_save_message() + " " + model.error, true)
+	actions.add_child(retry)
+	actions.add_child(button("Keep playing", close_pending_quit))
+	actions.add_child(button("Quit without saving", func(): get_tree().quit()))
+	if not smoke: retry.call_deferred("grab_focus")
+
+func close_pending_quit() -> void:
+	if quit_overlay == null: return
+	quit_overlay.queue_free()
+	quit_overlay = null
+	quit_status = null
+	for item in quit_focus:
+		if is_instance_valid(item[0]): item[0].focus_mode = item[1]
+	quit_focus.clear()
+	if is_instance_valid(quit_return_focus) and quit_return_focus.is_visible_in_tree(): quit_return_focus.grab_focus()
+	quit_return_focus = null
 
 
 var smoke_checks := 0
@@ -1092,8 +1329,15 @@ func smoke_test() -> void:
 		verify(sample_result and bool(engine.snapshot().get("samples_ready", false)), "native decodes all24 FLAC without audio output")
 		var mapped: bool = engine.set_mapping(mappings)
 		verify(mapped, "native accepts reloaded normalized aliases")
+	var recovery_checks := RecoveryContract.run_checks(engine)
+	smoke_checks += int(recovery_checks.checks)
+	for failure in recovery_checks.failures: verify(false, "Recovery: " + str(failure))
 	setup_theme()
 	build_shell()
+	var settings_checks := await SettingsContract.run_checks(self)
+	smoke_checks += int(settings_checks.checks)
+	for failure in settings_checks.failures: verify(false, "Settings: " + str(failure))
+	await controller_recovery_checks()
 	show_main()
 	await get_tree().process_frame
 	if engine != null:
@@ -1268,3 +1512,145 @@ func smoke_test() -> void:
 	else:
 		print("DRUMX_SMOKE_OK %d shared frontend/course/core/asset checks; native=%s" % [smoke_checks, engine != null])
 		get_tree().quit(0)
+
+
+# Synthetic input state exercises controller recovery without device access,
+# input injection, filesystem writes, or a visible window.
+class RecoveryInputFixture extends RefCounted:
+	var state := {"source_id": "fixture-kit", "source_lost": false, "lost_source_id": "", "audio_ready": true, "audio_interrupted": false, "running": false, "completed": false, "naturally_completed": false, "pending_pad": -1, "error": ""}
+	var available: Array = [{"id": "fixture-kit", "name": "Fixture kit"}]
+	var connects := 0
+	var starts := 0
+	var stopped := 0
+	var key_hits := 0
+	func snapshot() -> Dictionary: return state.duplicate(true)
+	func sources() -> Array: return available.duplicate(true)
+	func cancel_learning() -> void: state.pending_pad = -1
+	func get_mapping() -> Array: return [[42, 44, 46], [38, 40], [35, 36]]
+	func stop() -> void:
+		stopped += 1
+		state.running = false
+	func connect_source(id: String) -> bool:
+		connects += 1
+		if not id.is_empty() and not available.any(func(item): return item.id == id): return false
+		state.source_id = id
+		state.source_lost = false
+		state.lost_source_id = ""
+		return true
+	func load_chart(_tempo: float, _bars: int, _chart: Array) -> bool: return true
+	func start(_beats: int) -> float:
+		starts += 1
+		return -1
+	func keyboard_hit(_pad: int, _velocity: int) -> void: key_hits += 1
+
+func controller_recovery_checks() -> void:
+	var original_engine := engine
+	var original_model = model
+	var saved_state := {}
+	for property in ["page", "lesson_index", "source_id", "source_ids", "source_names", "snapshot", "input_choice_required", "settings_return_page", "settings_return_index", "learning_path_index", "checked", "pulses", "take_interruption", "pause_reason", "preserve_error", "take_id", "take_settings", "stage_done"]:
+		var value: Variant = get(property)
+		saved_state[property] = value.duplicate(true) if value is Array or value is Dictionary else value
+	var fixture := RecoveryInputFixture.new()
+	engine = fixture
+	model = DataModel.new()
+	model.course = original_model.course
+	model.blocked = true
+	lesson_index = 1
+	take_id = ""
+	source_id = "fixture-kit"
+	snapshot = fixture.snapshot()
+	input_choice_required = false
+	preserve_error = ""
+	show_learn(11)
+	var inspected_path: Control = content.get_child(0)
+	inspected_path.selected.emit(5)
+	show_settings()
+	verify(settings_return_page == "learn" and settings_return_index == 5 and back.text == "Return to path", "Settings remembers inspected path node without selecting a new lesson")
+	_header_back()
+	verify(page == "learn" and learning_path_index == 5 and lesson_index == 1, "Visible Settings return restores path inspection")
+	show_settings()
+	var escape := InputEventKey.new()
+	escape.pressed = true
+	escape.keycode = KEY_ESCAPE
+	_unhandled_key_input(escape)
+	verify(page == "main", "Escape from Settings still opens the main menu")
+	fixture.state.source_id = ""
+	fixture.state.source_lost = true
+	fixture.state.lost_source_id = "fixture-kit"
+	fixture.available = []
+	show_settings()
+	verify(source_id == "fixture-kit" and source_option.selected == 1 and source_option.is_item_disabled(1) and fixture.connects == 0, "Missing input stays explicitly disconnected without keyboard fallback")
+	verify(settings_panel._learn_button.disabled and settings_panel.kit_canvas.checked.is_empty(), "Disconnected input cannot learn or retain MIDI readiness")
+	fixture.available = [{"id": "fixture-kit", "name": "Fixture kit"}]
+	refresh_sources()
+	verify(source_option.selected == 1 and source_option.is_item_disabled(1) and fixture.connects == 0, "Reappearing MIDI input requires an explicit reconnect")
+	select_source(source_ids.find("fixture-kit"))
+	verify(not bool(snapshot.source_lost) and source_id == "fixture-kit" and fixture.connects == 1, "Explicit reconnect clears loss without changing the chosen input")
+	select_source(0)
+	verify(source_id.is_empty() and not bool(snapshot.source_lost), "Explicit keyboard selection is the only fallback")
+	fixture.state.audio_ready = false
+	fixture.state.audio_interrupted = true
+	build_prepare()
+	start_take()
+	verify(page == "settings" and settings_panel.selected_section == 1 and fixture.starts == 0, "Interrupted audio blocks transport and exposes Retry audio")
+	fixture.state.audio_ready = true
+	fixture.state.audio_interrupted = false
+	page = "stage"
+	fixture.state.running = true
+	_keyboard_focus_lost()
+	verify(page == "pause" and not fixture.state.running and fixture.starts == 0 and pause_reason.contains("lost focus"), "Keyboard focus loss pauses without automatic restart")
+	page = "stage"
+	source_id = "fixture-kit"
+	fixture.state.source_id = source_id
+	fixture.state.running = true
+	_keyboard_focus_lost()
+	verify(page == "stage" and fixture.state.running, "MIDI practice does not stop merely because another app takes focus")
+	_note_transport_interruption({"source_lost": true, "naturally_completed": false})
+	verify(take_interruption.contains("not added"), "Device interruption is explicitly an unfinished take")
+	take_interruption = ""
+	_note_transport_interruption({"source_lost": true, "naturally_completed": true})
+	verify(take_interruption.is_empty(), "Loss detected after natural completion does not relabel the finished take")
+	fixture.state.running = false
+	source_id = ""
+	fixture.state.source_id = ""
+	build_prepare()
+	var inactive_action := Button.new()
+	inactive_action.text = "Unavailable"
+	inactive_action.disabled = true
+	content.add_child(inactive_action)
+	inactive_action.grab_focus()
+	await get_tree().process_frame
+	verify(inactive_action.has_focus(), "Disabled focused action fixture retains keyboard focus")
+	var enter := InputEventKey.new()
+	enter.pressed = true
+	enter.keycode = KEY_ENTER
+	_unhandled_key_input(enter)
+	var space := InputEventKey.new()
+	space.pressed = true
+	space.keycode = KEY_SPACE
+	space.physical_keycode = KEY_SPACE
+	_unhandled_key_input(space)
+	verify(page == "prepare" and fixture.starts == 0 and fixture.key_hits == 0, "Rejected button activation does not start a take or play a keyboard drum")
+	model.pending_attempts = {"waiting": {}}
+	update_footer()
+	verify(footer.text == model.pending_save_message(), "Unsaved result notice outranks generic footer state")
+	show_pending_quit()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	verify(quit_overlay != null and not quit_focus.is_empty() and quit_focus.all(func(item): return item[0].focus_mode == Control.FOCUS_NONE), "Pending-save exit isolates focus from underlying actions")
+	var quit_panel: Control = quit_overlay.get_child(0).get_child(0)
+	verify(get_global_rect().encloses(quit_panel.get_global_rect()), "Pending-save exit fits the minimum supported window")
+	_unhandled_key_input(escape)
+	verify(quit_overlay == null and quit_focus.is_empty() and model.pending_save_count() == 1, "Escape keeps unsaved results and restores the underlying session")
+	var was_owned := progress_owned
+	progress_owned = false
+	preserve_error = "Fixture archive already in use."
+	start_take()
+	verify(page == "progress_locked" and fixture.starts == 0 and not back.visible and not settings_button.visible, "A second archive user cannot start or mutate a practice session")
+	_unhandled_key_input(escape)
+	verify(page == "progress_locked", "Escape cannot bypass archive ownership")
+	progress_owned = was_owned
+
+	model = original_model
+	engine = original_engine
+	for property in saved_state: set(property, saved_state[property])

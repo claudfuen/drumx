@@ -12,6 +12,7 @@
 namespace godot {
 void DrumxEngine::_bind_methods() {
   ClassDB::bind_method(D_METHOD("configure_window", "native_handle"), &DrumxEngine::configure_window);
+  ClassDB::bind_method(D_METHOD("acquire_progress_lock", "absolute_archive_path"), &DrumxEngine::acquire_progress_lock);
   ClassDB::bind_method(D_METHOD("pulse_tempo_plan"), &DrumxEngine::pulse_tempo_plan);
   ClassDB::bind_method(D_METHOD("evaluate_pulse_tempo", "attempts", "current"), &DrumxEngine::evaluate_pulse_tempo);
   ClassDB::bind_method(D_METHOD("get_host_time"), &DrumxEngine::get_host_time);
@@ -39,6 +40,10 @@ bool DrumxEngine::configure_window(int64_t native_handle) {
   (void)native_handle;
   return false;
 #endif
+}
+bool DrumxEngine::acquire_progress_lock(const String &absolute_archive_path) {
+  const CharString bytes = absolute_archive_path.utf8();
+  return progress_lock.acquire(std::string(bytes.get_data(), size_t(bytes.length())));
 }
 
 namespace {
@@ -241,6 +246,10 @@ Dictionary DrumxEngine::snapshot() {
   const auto state = backend.snapshot(); const auto &s = state.score; const auto &m = s.total;
   Dictionary d;
   d["running"]=state.running; d["completed"]=state.completed; d["naturally_completed"]=state.naturally_completed;
+  d["progress_owned"]=progress_lock.owned();
+  // Native paths and device strings are UTF-8; String(const char*) uses Latin-1.
+  d["progress_archive_path"]=String::utf8(progress_lock.archive_path().c_str());
+  d["progress_lock_error"]=String::utf8(progress_lock.error().c_str());
   d["practice_start"]=state.practice_start; d["elapsed_seconds"]=s.elapsed_seconds;
   d["duration_seconds"]=s.duration_seconds; d["bpm"]=s.bpm;
   d["expected"]=m.expected; d["matched"]=m.matched; d["missed"]=m.missed; d["extra"]=m.extra;
@@ -258,8 +267,10 @@ Dictionary DrumxEngine::snapshot() {
   }
   d["bias"]=biases;
   d["audio_ready"]=state.audio_ready; d["samples_ready"]=state.samples_ready;
-  d["source_id"]=String(state.source_id.c_str()); d["pending_pad"]=state.pending_pad;
-  d["error"]=String(state.error.c_str()); d["dropped_hits"]=state.dropped_hits; d["dropped_audio"]=state.dropped_audio;
+  d["audio_interrupted"]=state.audio_interrupted;
+  d["source_id"]=String::utf8(state.source_id.c_str()); d["pending_pad"]=state.pending_pad;
+  d["source_lost"]=state.source_lost; d["lost_source_id"]=String::utf8(state.lost_source_id.c_str());
+  d["error"]=String::utf8(state.error.c_str()); d["dropped_hits"]=state.dropped_hits; d["dropped_audio"]=state.dropped_audio;
   return d;
 }
 Array DrumxEngine::get_events() {
@@ -274,7 +285,7 @@ Array DrumxEngine::poll_hits() {
   Array result;
   for (const auto &hit : backend.poll_hits()) {
     Dictionary d; d["pad"]=hit.pad; d["note"]=hit.note; d["velocity"]=hit.velocity; d["host_time"]=hit.host_time;
-    d["source_id"]=String(hit.source_id.c_str()); d["judgment"]=hit.result.judgment;
+    d["source_id"]=String::utf8(hit.source_id.c_str()); d["judgment"]=hit.result.judgment;
     d["event_id"]=hit.result.judgment == 0 ? -1 : hit.result.event_id;
     d["offset_ms"]=hit.result.offset_ms; d["mapping_changed"]=hit.mapping_changed; result.push_back(d);
   }
@@ -282,7 +293,7 @@ Array DrumxEngine::poll_hits() {
 }
 Array DrumxEngine::sources() {
   Array result;
-  for (const auto &source : backend.sources()) { Dictionary d; d["id"]=String(source.id.c_str()); d["name"]=String(source.name.c_str()); result.push_back(d); }
+  for (const auto &source : backend.sources()) { Dictionary d; d["id"]=String::utf8(source.id.c_str()); d["name"]=String::utf8(source.name.c_str()); result.push_back(d); }
   return result;
 }
 bool DrumxEngine::connect_source(const String &id) { return backend.connect_source(id.utf8().get_data()); }

@@ -8,7 +8,9 @@ private enum DrumxControlInk {
   static let muted = NSColor(calibratedRed: 0.57, green: 0.65, blue: 0.64, alpha: 1)
 
   static func focused(_ control: NSControl) -> Bool {
-    control.window?.firstResponder === control
+    if control.window?.firstResponder === control { return true }
+    guard let field = control as? NSTextField, let editor = field.currentEditor() else { return false }
+    return control.window?.firstResponder === editor
   }
 
   static func focus(in rect: NSRect, control: NSControl, radius: CGFloat = 7) {
@@ -72,11 +74,11 @@ private final class DrumxSliderCell: NSSliderCell {
   override func drawKnob(_ knobRect: NSRect) {
     guard sliderType == .linear else { super.drawKnob(knobRect); return }
     let hovered = (controlView as? DrumxSlider)?.isHovered == true
-    let diameter: CGFloat = 14
+    let diameter: CGFloat = isHighlighted && isEnabled ? 17 : 16
     let knob = NSRect(x: knobRect.midX - diameter / 2, y: knobRect.midY - diameter / 2,
                       width: diameter, height: diameter)
-    if hovered && isEnabled {
-      DrumxControlInk.lime.withAlphaComponent(0.11).setFill()
+    if (hovered || isHighlighted) && isEnabled {
+      DrumxControlInk.lime.withAlphaComponent(isHighlighted ? 0.17 : 0.10).setFill()
       NSBezierPath(ovalIn: knob.insetBy(dx: -4, dy: -4)).fill()
     }
     (isEnabled ? DrumxControlInk.lime : DrumxControlInk.muted.withAlphaComponent(0.4)).setFill()
@@ -95,6 +97,28 @@ final class DrumxSlider: NSSlider {
   }
   private lazy var hover = DrumxControlHover(self)
   fileprivate var isHovered: Bool { hover.isInside }
+
+  private weak var valueLabel: NSTextField?
+  private var valueFormatter: ((Double) -> String)?
+
+  /// Display units without replacing AppKit's tracking or sending extra actions.
+  func attachValueLabel(_ label: NSTextField, formatter: @escaping (Double) -> String) {
+    valueLabel = label; valueFormatter = formatter; refreshValueDescription()
+  }
+  private func refreshValueDescription() {
+    guard let valueFormatter else { return }
+    let value = valueFormatter(doubleValue)
+    valueLabel?.stringValue = value
+    setAccessibilityValueDescription(value)
+  }
+  override var doubleValue: Double {
+    get { super.doubleValue }
+    set { super.doubleValue = newValue; refreshValueDescription() }
+  }
+  override func sendAction(_ action: Selector?, to target: Any?) -> Bool {
+    refreshValueDescription()
+    return super.sendAction(action, to: target)
+  }
 
   override init(frame: NSRect) { super.init(frame: frame); focusRingType = .none }
   required init?(coder: NSCoder) { super.init(coder: coder); focusRingType = .none }
@@ -218,5 +242,45 @@ final class DrumxPopUpButton: NSPopUpButton {
   override func resignFirstResponder() -> Bool { let accepted = super.resignFirstResponder(); needsDisplay = true; return accepted }
   override func resetCursorRects() {
     if isEnabled { addCursorRect(bounds, cursor: .pointingHand) }
+  }
+}
+
+/// A padded editor using the same surface and focus treatment as the other
+/// controls. AppKit still owns selection, editing, keyboard commands and actions.
+final class DrumxTextFieldCell: NSTextFieldCell {
+  override init(textCell string: String) {
+    super.init(textCell: string)
+    isBezeled = false; isBordered = false; drawsBackground = false
+    isEditable = true; isSelectable = true; usesSingleLineMode = true
+    font = .monospacedSystemFont(ofSize: 14, weight: .medium)
+    textColor = DrumxControlInk.paper; alignment = .right
+  }
+  required init(coder: NSCoder) { super.init(coder: coder) }
+
+  private func contentRect(_ frame: NSRect) -> NSRect {
+    let height = ceil((font?.ascender ?? 13) - (font?.descender ?? -3)) + 2
+    return NSRect(x: frame.minX + 12, y: frame.midY - height / 2,
+      width: max(0, frame.width - 24), height: height)
+  }
+  override func draw(withFrame frame: NSRect, in controlView: NSView) {
+    let surface = NSBezierPath(roundedRect: frame.insetBy(dx: 1, dy: 1), xRadius: 8, yRadius: 8)
+    DrumxControlInk.surface.withAlphaComponent(isEnabled ? 1 : 0.45).setFill(); surface.fill()
+    DrumxControlInk.paper.withAlphaComponent(isEnabled ? 0.18 : 0.07).setStroke(); surface.stroke()
+    super.drawInterior(withFrame: contentRect(frame), in: controlView)
+    if let control = controlView as? NSControl { DrumxControlInk.focus(in: frame, control: control, radius: 8) }
+  }
+  override func edit(withFrame rect: NSRect, in controlView: NSView, editor textObj: NSText,
+                     delegate: Any?, event: NSEvent?) {
+    super.edit(withFrame: contentRect(rect), in: controlView, editor: textObj, delegate: delegate, event: event)
+    controlView.needsDisplay = true
+  }
+  override func select(withFrame rect: NSRect, in controlView: NSView, editor textObj: NSText,
+                       delegate: Any?, start selStart: Int, length selLength: Int) {
+    super.select(withFrame: contentRect(rect), in: controlView, editor: textObj,
+      delegate: delegate, start: selStart, length: selLength)
+    controlView.needsDisplay = true
+  }
+  override func endEditing(_ textObj: NSText) {
+    super.endEditing(textObj); controlView?.needsDisplay = true
   }
 }

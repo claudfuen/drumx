@@ -9,6 +9,9 @@
 #endif
 
 namespace drumx {
+namespace {
+constexpr const char *source_lost_message = "Your MIDI input disconnected. Reconnect it in Settings, or explicitly choose Keyboard to continue.";
+}
 double host_time() {
 #if defined(__APPLE__)
   static const double scale = [] { mach_timebase_info_data_t t{}; mach_timebase_info(&t); return double(t.numer) / double(t.denom) / 1e9; }();
@@ -48,6 +51,8 @@ bool Backend::load_chart(double tempo, int count, const std::vector<DXChartEvent
 double Backend::start(int count_in_beats) {
   std::lock_guard<std::mutex> lock(mutex);
   if (state.running || count_in_beats < 0 || count_in_beats > 16 || state.pending_pad >= 0) return -1;
+  if (state.source_lost) { state.error = source_lost_message; return -1; }
+  if (audio->interrupted()) { state.error = audio->error(); return -1; }
   if (midi && !audio->ready()) { state.error = "Native audio output is not ready. Check the system output and reload drum sounds."; return -1; }
   if (!dx_core_load_chart(core, bpm, bars * 4.0, chart.data(), int(chart.size()))) return -1;
   const double first_click = host_time() + .15;
@@ -68,6 +73,9 @@ void Backend::stop() { std::lock_guard<std::mutex> lock(mutex); stop_locked(host
 void Backend::advance(double now) {
   std::lock_guard<std::mutex> lock(mutex);
   if (!state.running) return;
+  if (audio->interrupted()) {
+    stop_locked(now); state.naturally_completed = false; state.error = audio->error(); return;
+  }
   dx_core_advance(core, now - state.practice_start);
   if (now - state.practice_start > dx_core_duration(core) + .15) stop_locked(now);
 }
@@ -75,6 +83,8 @@ State Backend::snapshot() {
   std::lock_guard<std::mutex> lock(mutex);
   dx_core_snapshot(core, &state.score);
   state.audio_ready = audio->ready(); state.samples_ready = audio->samples_ready();
+  state.audio_interrupted = audio->interrupted();
+  if (state.audio_interrupted && !state.source_lost) state.error = audio->error();
   state.dropped_audio = audio->dropped();
   return state;
 }
@@ -90,24 +100,48 @@ std::vector<Hit> Backend::poll_hits() {
 }
 std::vector<Source> Backend::sources() {
   auto result = midi ? midi->sources() : std::vector<Source>{};
-  std::string selected;
-  { std::lock_guard<std::mutex> lock(mutex); selected = state.source_id; }
-  if (!selected.empty() && std::none_of(result.begin(), result.end(), [&](const Source &s) { return s.id == selected; })) connect_source("");
+  bool disconnected = false;
+  {
+    std::lock_guard<std::mutex> lock(mutex);
+    if (!state.source_id.empty() && std::none_of(result.begin(), result.end(), [&](const Source &s) { return s.id == state.source_id; })) {
+      generation.fetch_add(1);
+      if (state.running) {
+        stop_locked(host_time());
+        // Detection may arrive at the phrase boundary. An interrupted transport
+        // must never acquire natural-completion evidence from that delay.
+        state.naturally_completed = false;
+      }
+      state.source_lost = true; state.lost_source_id = state.source_id;
+      state.source_id.clear(); state.pending_pad = -1; hits.clear();
+      state.error = source_lost_message; disconnected = true;
+    }
+  }
+  if (disconnected && midi) midi->disconnect();
   return result;
 }
 bool Backend::connect_source(const std::string &id) {
   const auto epoch = generation.fetch_add(1) + 1;
   {
     std::lock_guard<std::mutex> lock(mutex);
-    stop_locked(host_time()); state.pending_pad = -1; state.source_id.clear(); state.error.clear(); hits.clear();
+    stop_locked(host_time()); state.pending_pad = -1; state.source_id.clear(); hits.clear();
+    if (!state.source_lost) state.error.clear();
   }
   if (midi) midi->disconnect();
-  if (id.empty()) return true;
+  if (id.empty()) {
+    std::lock_guard<std::mutex> lock(mutex);
+    state.source_lost = false; state.lost_source_id.clear(); state.error.clear();
+    return true;
+  }
   // Publish identity before starting delivery; generation rejects previous connections.
   { std::lock_guard<std::mutex> lock(mutex); state.source_id = id; }
   const bool ok = midi && midi->connect(id, epoch);
-  if (!ok) { std::lock_guard<std::mutex> lock(mutex); state.source_id.clear(); state.error = "MIDI connection failed. Refresh inputs and reconnect the module."; }
-  if (ok) { std::lock_guard<std::mutex> lock(mutex); state.error.clear(); }
+  if (!ok) {
+    std::lock_guard<std::mutex> lock(mutex);
+    state.source_id.clear(); state.source_lost = true;
+    if (state.lost_source_id.empty()) state.lost_source_id = id;
+    state.error = "MIDI connection failed. Reconnect the module in Settings, or explicitly choose Keyboard to continue.";
+  }
+  if (ok) { std::lock_guard<std::mutex> lock(mutex); state.source_lost = false; state.lost_source_id.clear(); state.error.clear(); }
   return ok;
 }
 bool Backend::set_mapping(const std::array<std::vector<int>, 3> &mapping) {
@@ -118,7 +152,7 @@ bool Backend::set_mapping(const std::array<std::vector<int>, 3> &mapping) {
   }
   std::lock_guard<std::mutex> lock(mutex);
   if (state.running) return false;
-  maps = mapping; state.pending_pad = -1; state.error.clear(); return true;
+  maps = mapping; state.pending_pad = -1; if (!state.source_lost) state.error.clear(); return true;
 }
 std::array<std::vector<int>,3> Backend::mapping() { std::lock_guard<std::mutex> lock(mutex); return maps; }
 bool Backend::learn_pad(int pad) {
@@ -131,14 +165,14 @@ bool Backend::load_samples(const std::string &path, bool open_device) {
   { std::lock_guard<std::mutex> lock(mutex); if (state.running) return false; }
   const bool ok = audio->load(path, open_device);
   if (!ok) { std::lock_guard<std::mutex> lock(mutex); state.error = audio->error(); }
-  else { std::lock_guard<std::mutex> lock(mutex); state.error.clear(); }
+  else { std::lock_guard<std::mutex> lock(mutex); if (!state.source_lost) state.error.clear(); }
   return ok;
 }
 bool Backend::load_sample_data(const std::vector<std::vector<uint8_t>> &files, bool open_device) {
   { std::lock_guard<std::mutex> lock(mutex); if (state.running) return false; }
   const bool ok = audio->load_memory(files, open_device);
   if (!ok) { std::lock_guard<std::mutex> lock(mutex); state.error = audio->error(); }
-  else { std::lock_guard<std::mutex> lock(mutex); state.error.clear(); }
+  else { std::lock_guard<std::mutex> lock(mutex); if (!state.source_lost) state.error.clear(); }
   return ok;
 }
 void Backend::set_monitoring(bool enabled) { audio->monitoring(enabled); }
@@ -180,7 +214,7 @@ void Backend::receive(int note, int pad, int velocity, double captured, bool) {
   audio->hit(pad, velocity);
   const double song = captured - state.practice_start;
   // Keyboard preview remains available, but a MIDI take cannot gain keyboard scores.
-  if (state.source_id.empty() && (state.running || state.completed) && state.practice_start > 0 && song >= -.125 &&
+  if (!state.source_lost && state.source_id.empty() && (state.running || state.completed) && state.practice_start > 0 && song >= -.125 &&
       song <= dx_core_duration(core) + .125 && (state.running || captured <= state.stop_time))
     hit.result = dx_core_input(core, pad, song, velocity / 127.0);
   if (hits.size() == 256) { hits.pop_front(); ++state.dropped_hits; }
