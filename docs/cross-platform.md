@@ -2,7 +2,7 @@
 
 The portable baseline now builds the existing C++ scoring core through CMake and runs its contracts through CTest. A GitHub Actions matrix targets macOS and Windows in Debug and Release, with an additional macOS sanitizer job. This brings compiler and scoring differences into the feedback loop while the Mac experience continues to develop.
 
-**This is a core portability baseline, not a Windows drum trainer.** The AppKit interface, CoreMIDI input, AVAudioEngine scheduling, Swift course models, and local progress store remain Mac implementations. There is no Windows MIDI/audio adapter, Godot native bridge, or exported Windows application in this change. M1 and the production-engine decision remain open.
+The core baseline is now accompanied by an [experimental native bridge](../apps/game/native/README.md): CoreMIDI and WinMM capture, shared sample playback, and a Godot extension. The bridge builds and passes its Mac checks; Windows application execution is still pending. The original AppKit interface, Swift course models, and local progress store remain the working Mac implementation. The first shared interface failed visual review, so visual parity and the production-engine decision remain open.
 
 ## Build and test
 
@@ -41,7 +41,7 @@ Local validation on September 12, 2026 used Apple Silicon macOS, Apple Clang 21.
 
 The [first hosted run](https://github.com/claudfuen/drumx/actions/runs/34710014677), at commit `5905c3c`, passed all five jobs: macOS Debug/Release, Windows Debug/Release, and macOS sanitizers. Both CTest contracts ran successfully in each job. This is execution evidence for the core and C consumer on hosted Windows runners. No Windows interface, MIDI input, audio output, or physical kit was exercised.
 
-Godot **4.7.2 stable**, released August 18, 2026, was verified against the [official release archive](https://godotengine.org/download/archive/4.7.2-stable/). The official Mac editor was downloaded into ignored `.build/godot-4.7.2`, checked against the release SHA-512 list, and reported `4.7.2.stable.official.ed1daf0bf`. No engine is selected for production. The replay scene and Windows export are deferred; no export-template package or scene implementation is included.
+Godot **4.7.2 stable**, released August 18, 2026, was verified against the [official release archive](https://godotengine.org/download/archive/4.7.2-stable/). The official Mac editor was downloaded into ignored `.build/godot-4.7.2`, checked against the release checksum list, and reported `4.7.2.stable.official.ed1daf0bf`. Its native bridge passed 46 backend checks and CoreMIDI software loopback locally. The experimental shared presentation is being corrected against the existing Mac app before it can become a player-facing build. No engine is accepted for production yet.
 
 ## The next bounded renderer experiment
 

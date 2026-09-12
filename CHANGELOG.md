@@ -4,6 +4,13 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Native foundations for a shared desktop app
+
+- Add an experimental Godot native bridge around the existing scorer, with CoreMIDI and WinMM capture, native sample playback, a metronome independent of rendering, bounded observations, and explicit connection generations.
+- Keep the same 24 recorded samples, velocity layers, and original capture-time scoring. Include pinned dependency licenses and document timestamp resolution, audio-clock assumptions, and unmeasured physical latency.
+- Verify the Mac native build with 46 backend checks and a real CoreMIDI software-loopback test. Windows application execution remains pending.
+- Retain the committed Mac interface as the visual baseline. The first shared presentation failed review; a native build passing its checks does not establish visual parity or authorize public release.
+
 ### Settle into practice and play from the kit
 
 - Make the main menu and lesson path respond to the available window size, with one featured lesson, a connected 12-step path, and personal-best stars.

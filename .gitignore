@@ -1,2 +1,5 @@
 /.build/
 .DS_Store
+/apps/game/.godot/
+/apps/game/bin/
+__pycache__/

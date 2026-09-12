@@ -79,7 +79,7 @@ Five stars mean a complete take with every target within the current ±50 ms tim
 
 Stars on **Learn** show your best saved result for that lesson version across any tempo, phrase length, or assistance. The review's personal best and comparison strip use matching practice conditions.
 
-**Cross-platform work runs alongside the Mac app:** the C++ scoring core and C API consumer passed Debug/Release checks on macOS and Windows, plus Mac sanitizers, in the [first hosted CI run](https://github.com/claudfuen/drumx/actions/runs/34710014677). This verifies the core build and contracts; Windows graphics, MIDI, and audio remain to be implemented. [Platform contracts and early risks](docs/cross-platform.md)
+**Cross-platform work runs alongside the Mac app:** the C++ scoring core and C API consumer passed Debug/Release checks on macOS and Windows, plus Mac sanitizers, in the [first hosted CI run](https://github.com/claudfuen/drumx/actions/runs/34710014677). An [experimental native MIDI/audio bridge](apps/game/native/README.md) also builds and passes its Mac checks. The first shared interface failed visual review; the working Mac app remains the presentation baseline. Windows app execution, visual parity at matching display sizes, and physical-kit testing are open gates. [Platform contracts and early risks](docs/cross-platform.md)
 
 ## Quick start
 
