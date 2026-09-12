@@ -22,7 +22,7 @@ The prototype established the shared timing line, stable kit layout, capture fee
 
 The active milestone is a player outcome: **a new drummer can connect their kit, learn a small foundation unit, try it with less help, and return knowing what to practise next.** Welcome, course selection, teaching, practice, review, and local progress are now connected. The next evidence comes from using the whole course with a beginner and a physical kit.
 
-**Active slice: coached pulse, with a visual-quality gate.** Find the pulse now chooses a 60 BPM opening, suggests 66 and 72 BPM from completed takes, and separates its 72 BPM checkpoint from optional faster challenges and recall. Coached and free-practice choices save independently. The native Mac and experimental shared apps use the same [tempo policy](docs/guided-tempo.md). The next gate is a complete kit-connected playtest plus visual inspection of preparation, gameplay, review, and resizing on both systems. The other 11 lessons retain their existing practice and unlock rules. The [coached-pulse playtest](docs/coached-pulse-playtest.md) defines the next review and its exit criteria.
+**Latest playable slice: coached pulse.** Find the pulse now chooses a 60 BPM opening, suggests 66 and 72 BPM from completed takes, and separates its 72 BPM checkpoint from optional faster challenges and recall. Coached and free-practice choices save independently. The native Mac and experimental shared apps use the same [tempo policy](docs/guided-tempo.md). The other 11 lessons retain their existing practice and unlock rules. The [coached-pulse playtest](docs/coached-pulse-playtest.md) defines the next review and its exit criteria.
 
 **Active quality gate: [a premium 30-minute practice session](docs/premium-quality-gate.md).** The current pass covers every existing screen, control state, navigation route, resize, feedback mode, and recovery path. It closes with zero blocking or major issues, an observed complete session, rendered Mac/Windows comparisons, and verified paired packages. **Status: open.** Interactive visual review, frame-pacing measurement, and physical-kit testing remain required.
 
@@ -90,12 +90,12 @@ Stars on **Learn** show your best saved result for that lesson version, with its
 
 ## Experimental desktop test builds
 
-The shared port is under regression review. The native Mac app above remains the primary experience. These coached-pulse packages come from commit `21e709f`; both exported executables passed 7,900 checks on their target operating systems in the [verified paired run](https://github.com/claudfuen/drumx/actions/runs/34715829432). The same run passed 57 native Swift coaching checks and compiled the native Mac app.
+The shared port is under regression review. The native Mac app above remains the primary experience. These polish-test packages come from commit `1ce2060`; both exported executables passed 8,027 checks on their target operating systems in the [verified paired run](https://github.com/claudfuen/drumx/actions/runs/34718163923). The same run passed 446 native history checks, 57 coaching checks, 20 control checks, and native Mac app compilation. Both platforms also passed the native recovery and archive-ownership contracts.
 
 | Platform | Test package |
 | --- | --- |
-| Apple Silicon Mac | [Download Mac ARM64 artifact](https://github.com/claudfuen/drumx/actions/runs/34715829432/artifacts/10304249452) |
-| Windows 64-bit | [Download Windows x64 artifact](https://github.com/claudfuen/drumx/actions/runs/34715829432/artifacts/10304449042) |
+| Apple Silicon Mac | [Download Mac ARM64 artifact](https://github.com/claudfuen/drumx/actions/runs/34718163923/artifacts/10305087854) |
+| Windows 64-bit | [Download Windows x64 artifact](https://github.com/claudfuen/drumx/actions/runs/34718163923/artifacts/10305731054) |
 
 GitHub requires sign-in for artifacts and retains these for 14 days. Open the downloaded artifact ZIP, then extract the enclosed Drumx ZIP completely. Public releases remain on hold while visual parity and physical-kit testing are incomplete. The port uses a separate progress store and still lacks some native Mac features. Read the [inspection guide and known gaps](docs/desktop-preview.md) before testing.
 

@@ -4,6 +4,12 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Verify and link the premium-polish desktop pair
+
+- Both source and exported applications pass 8,027 checks at `1ce2060` in [paired CI](https://github.com/claudfuen/drumx/actions/runs/34718163923). Verify clean matching commits, archive checksums, sample/font provenance, backend recovery, and archive ownership on Mac and Windows.
+- Pass 446 native history, 57 tempo adapter, and 20 settings-control checks in hosted Mac CI, plus native Mac compilation. Update README download links and the premium gate evidence ledger.
+- Keep the gate open for whole-app visual/resize acceptance, sustained frame pacing, physical-kit/audio sessions, and learner observation. These remain test artifacts; public releases are still held.
+
 ### Open input recovery directly from review
 
 - Send the coached review's **Check kit & sound** action directly to Settings even when its captured MIDI setup has changed, while preserving the return to review.
