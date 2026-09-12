@@ -1,0 +1,26 @@
+.github/workflows/portable-core.yml
+  s_f983bef49b9fee::t_c80785ba8bcad1 1-40
+spikes/portable-core/c_api_check.c
+  s_f983bef49b9fee::t_c80785ba8bcad1 1-21
+CMakeLists.txt
+  s_f983bef49b9fee::t_c80785ba8bcad1 1-41
+docs/cross-platform.md
+  s_f983bef49b9fee::t_6aea63b857c20e 40
+  s_f983bef49b9fee::t_47051e08c89815 1-39,41-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5905c3c20e5c617213c4674fa4cca7feb314ca6c",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
