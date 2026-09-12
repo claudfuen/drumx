@@ -1,0 +1,69 @@
+apps/game/scripts/settings_panel.gd
+  s_f983bef49b9fee::t_ac1508c34c72a4 1-4,9-133,135-191,193-219,221-352,354-529,532,538-587
+  s_f983bef49b9fee::t_b8af16a288dd1a 5-8,134,192,220,353,530-531,533-537
+.github/workflows/desktop-preview.yml
+  s_f983bef49b9fee::t_f368bc52cb5908 87-91,118
+  s_f983bef49b9fee::t_b072f9d4b25038 1,103,123-124,134,137-150
+  s_f983bef49b9fee::t_abbb53183cd033 2-8,11,14-17,19-23,26,29-32,34-68,71-77,85-86,92-102,104-117,119-122,125-133,135-136
+  s_f983bef49b9fee::t_7433523b9ce3c1 9-10,18,24-25,33
+  s_f983bef49b9fee::t_dc9f343a4c2d5e 12-13,27-28,69-70,78-84
+apps/game/scripts/main.gd
+  s_f983bef49b9fee::t_05ac7d2815842a 1-529,539-810,818-849
+scripts/verify-game-content.py
+  s_f983bef49b9fee::t_dc9f343a4c2d5e 4,12-38,71-76,87,93-95
+  s_f983bef49b9fee::t_e6eb942548b162 1-3,5-11,39-70,77-86,88-92
+apps/game/scripts/score_hud.gd
+  s_f983bef49b9fee::t_ef13974d4907c2 1-55
+docs/desktop-preview.md
+  s_f983bef49b9fee::t_b072f9d4b25038 1-15,17-18,20-24,26-28,30-62,64-72,74-77
+  s_f983bef49b9fee::t_ae4d9cc9726880 73
+scripts/publish-game-preview.py
+  s_f983bef49b9fee::t_50c4e36f9ae9c7 91-96,105,109-110
+  s_f983bef49b9fee::t_e371a323e6c3ba 113-117
+  s_f983bef49b9fee::t_f368bc52cb5908 97-99
+  s_f983bef49b9fee::t_abbb53183cd033 1-90,103,106-107,111,119-123
+  s_f983bef49b9fee::t_e8e4229d213664 100-102,104,108,112,118
+apps/game/scripts/practice_stage.gd
+  s_f983bef49b9fee::t_5dcabdfa8d90ee 1-116,122-270,272-418
+  s_f983bef49b9fee::t_ec3af476d3840b 117-121
+  s_f983bef49b9fee::t_6e376eb8686606 271
+apps/game/tools/export-visual-baseline.swift
+  s_f983bef49b9fee::t_054e93ba5f283c 1-44
+scripts/fetch-godot.py
+  s_f983bef49b9fee::t_32672f0ffd5763 1-96
+apps/game/export_presets.cfg
+  s_f983bef49b9fee::t_d0fa02562916d9 19
+  s_f983bef49b9fee::t_32672f0ffd5763 1-18,20-30,32-61
+  s_f983bef49b9fee::t_1c278c4b6001f3 31
+scripts/package-game.py
+  s_f983bef49b9fee::t_abbb53183cd033 16,21-23,107-108,135-136
+  s_f983bef49b9fee::t_8abf0d11cf5b74 1-12,14-15,17-19,27-29,37-56,73-93,95-106,109-119,130-134,137-140,143-145,147-156,158-178
+  s_f983bef49b9fee::t_dc9f343a4c2d5e 24-26,57-72,94,141-142,146,157
+  s_f983bef49b9fee::t_0ee6dfd4f3bb5f 30-36
+  s_f983bef49b9fee::t_d0fa02562916d9 120-129
+  s_f983bef49b9fee::t_e371a323e6c3ba 13,20
+apps/game/tools/visual_parity_checks.gd
+  s_f983bef49b9fee::t_ab76f2c89c261a 1-16,18-25
+scripts/tests/test_game_package_content.py
+  s_f983bef49b9fee::t_813e2f0da57fcc 1-111
+apps/game/native/drumx_engine.cpp
+  s_f983bef49b9fee::t_7339b84cf09774 54-63
+scripts/tests/test_publish_game_preview.py
+  s_f983bef49b9fee::t_0ee6dfd4f3bb5f 1-80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "198917bfbd6622df7fc00e31be265be081313a34",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
