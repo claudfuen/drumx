@@ -1,0 +1,65 @@
+native/macos/tests/DrumxMenuInputChecks.swift
+  s_f983bef49b9fee::t_5b68dae36fbc5d 1-85
+native/macos/DrumxCourseViews.swift
+  s_f983bef49b9fee::t_6af64f3b469457 8-10,13,16-17,19-23,27-34,38-39,43,48,54-60,62-63,65-78,83-85,87,89-105,107-108,112-113,117-119,121-132,134-136,141-151,153-157,160,162-218,221-233,235-237,240-267,270-279
+docs/cross-platform.md
+  s_f983bef49b9fee::t_156b3369c18b0d 38,40-42
+native/macos/DrumxSettingsViews.swift
+  s_f983bef49b9fee::t_bacb2a6f74e5d3 1-174
+native/macos/tests/DrumxPracticePlanChecks.swift
+  s_f983bef49b9fee::t_bfd23cf773b858 1-132
+native/macos/tests/DrumxProgressChecks.swift
+  s_f983bef49b9fee::t_bfd23cf773b858 19-20,95-96,116-117,125,135,291-298
+README.md
+  s_f983bef49b9fee::t_156b3369c18b0d 9,59,61,71,80-82,98-99,103,119-121,152
+native/macos/DrumxProgress.swift
+  s_f983bef49b9fee::t_211cfdc2853f08 4,12-13,15-17,24,31
+docs/first-kit-session.md
+  s_f983bef49b9fee::t_1bcb0c411d4ae9 1-43,46-47,50
+  s_f983bef49b9fee::t_5b68dae36fbc5d 48-49
+  s_f983bef49b9fee::t_48dca29ab35f6d 44-45
+docs/native-lab.md
+  s_f983bef49b9fee::t_be77a45a538bf4 196-197,199,212,214
+  s_f983bef49b9fee::t_0556142bef8497 19-20,24,31,51,59,69,81,96-101,108,110,113,117,129,146,180-182
+native/macos/DrumxJourneyController.swift
+  s_f983bef49b9fee::t_bacb2a6f74e5d3 28-29,34,41,103-107,116,134,137,187,189,235,279,287-292
+  s_f983bef49b9fee::t_844f2641c43c3d 154
+native/macos/DrumxKitSetup.swift
+  s_f983bef49b9fee::t_48dca29ab35f6d 38,62,82,91-94,96,103,112-117,135
+  s_f983bef49b9fee::t_1bcb0c411d4ae9 1-37,39-61,63-81,83-90,95,97-102,104-111,118-134,136-167
+docs/menu-architecture.md
+  s_f983bef49b9fee::t_006e17f3e67ce1 13-15,21-23,35-36,45,47,50-52,80
+docs/first-practice-loop.md
+  s_f983bef49b9fee::t_bfd23cf773b858 1-34
+native/macos/DrumxKitController.swift
+  s_f983bef49b9fee::t_bacb2a6f74e5d3 1-118
+scripts/test-native.sh
+  s_f983bef49b9fee::t_5b68dae36fbc5d 46
+native/macos/DrumxMenuInput.swift
+  s_f983bef49b9fee::t_5b68dae36fbc5d 1-75
+native/macos/tests/DrumxKitSetupChecks.swift
+  s_f983bef49b9fee::t_1bcb0c411d4ae9 1-80,89-112,115-138
+  s_f983bef49b9fee::t_48dca29ab35f6d 81-88,113-114
+docs/learning-milestones.md
+  s_f983bef49b9fee::t_006e17f3e67ce1 7,55,61-62,89-91,93,130,134
+CHANGELOG.md
+  s_f983bef49b9fee::t_844f2641c43c3d 7-14,18
+native/macos/DrumxPracticePlan.swift
+  s_f983bef49b9fee::t_211cfdc2853f08 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d8dc2934dd7b4da88cf28804927983db6e1e296c",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
