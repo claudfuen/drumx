@@ -1,0 +1,33 @@
+apps/game/native/drumx_engine.h
+  s_f983bef49b9fee::t_5819ee0fa37810 14
+apps/game/native/drumx_engine.cpp
+  s_f983bef49b9fee::t_5819ee0fa37810 5-7,11,30-36
+apps/game/scripts/drum_notation.gd
+  s_f983bef49b9fee::t_13927cf2cb2a86 1-70,73-264
+  s_f983bef49b9fee::t_5a30748b344f98 71-72
+apps/game/scripts/learning_path.gd
+  s_f983bef49b9fee::t_643a74035fa97c 1-239,241-314,316-351
+  s_f983bef49b9fee::t_fe4b6ad7a002f9 240,315
+apps/game/native/CMakeLists.txt
+  s_f983bef49b9fee::t_5819ee0fa37810 6-10,37-40
+apps/game/native/window_appearance_macos.mm
+  s_f983bef49b9fee::t_5819ee0fa37810 1-20
+apps/game/native/window_appearance.h
+  s_f983bef49b9fee::t_5819ee0fa37810 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f1595264db29c1b4f49540767c3d064d08bc366",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
