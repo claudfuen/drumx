@@ -90,8 +90,8 @@ def verify(exported_course=None, exported_baseline=None):
     assert originals == copies, "The exported sample bank has missing or extra files"
     for relative in sorted(originals):
         assert (source / relative).read_bytes() == (destination / relative).read_bytes(), f"Sample bank drift: {relative}"
-    assert len(list(source.rglob("*.flac"))) == 24
-    print(f"Shared content: {len(lessons)} lessons in {len(chapters)} chapters, {event_count} authored targets, 24 identical FLAC recordings, pinned Inter font/license, and complete provenance.")
+    assert len(list(source.rglob("*.flac"))) == 80
+    print(f"Shared content: {len(lessons)} lessons in {len(chapters)} chapters, {event_count} authored targets, 80 identical FLAC recordings, pinned Inter font/license, and complete provenance.")
 
 
 if __name__ == "__main__":

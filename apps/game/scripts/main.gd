@@ -1468,7 +1468,7 @@ func smoke_test() -> void:
 	smoke_checks += int(notation_result.checks)
 	verify(notation_result.failures == 0, "native notation event/voice contracts")
 	var manifest = JSON.parse_string(FileAccess.get_file_as_string("res://assets/BigRusty/manifest.json"))
-	if verify(manifest is Array and manifest.size() == 24, "sample manifest count"):
+	if verify(manifest is Array and manifest.size() == 80, "full-kit sample manifest count"):
 		for entry in manifest:
 			var bytes := FileAccess.get_file_as_bytes("res://assets/" + str(entry.file))
 			verify(bytes.size() > 4 and bytes.slice(0, 4).get_string_from_ascii() == "fLaC", "original bundled FLAC bytes")
@@ -1482,7 +1482,7 @@ func smoke_test() -> void:
 		smoke_checks += int(tempo_checks.checks)
 		verify(tempo_checks.failures.is_empty(), "shared tempo binding contracts")
 		var sample_result: bool = engine.load_sample_bank("res://assets/BigRusty", false)
-		verify(sample_result and bool(engine.snapshot().get("samples_ready", false)), "native decodes all24 FLAC without audio output")
+		verify(sample_result and bool(engine.snapshot().get("samples_ready", false)), "native decodes all 80 FLAC without audio output")
 		var mapped: bool = engine.set_mapping(mappings)
 		verify(mapped, "native accepts reloaded normalized aliases")
 	var readiness_checks := ReadinessContract.run_checks()

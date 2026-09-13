@@ -1,4 +1,5 @@
 #include "drumx_engine.h"
+#include "sample_catalog.h"
 #include "drumx_tempo.h"
 #include <godot_cpp/classes/file_access.hpp>
 #include <godot_cpp/core/class_db.hpp>
@@ -328,10 +329,13 @@ bool DrumxEngine::learn_pad(int pad) { return backend.learn_pad(pad); }
 void DrumxEngine::cancel_learning() { backend.cancel_learning(); }
 bool DrumxEngine::load_sample_bank(const String &directory, bool open_device) {
   std::vector<std::vector<uint8_t>> files;
-  for (const char *pad : {"hihat", "snare", "kick"}) for (int layer=1;layer<=4;++layer) for (int rr=1;rr<=2;++rr) {
-    const String path = directory.path_join(String(pad)).path_join(String(("v" + std::to_string(layer) + "_rr" + std::to_string(rr) + ".flac").c_str()));
+  files.reserve(drumx::sample_count);
+  for (size_t i = 0; i < drumx::sample_count; ++i) {
+    const String path = directory.path_join(String(drumx::sample_relative_path(i).c_str()));
     const auto bytes = FileAccess::get_file_as_bytes(path);
-    if (bytes.is_empty()) return false;
+    // Pass a missing entry to the backend too, so failed PCK reads publish the
+    // same recoverable load error as failed native filesystem reads.
+    if (bytes.is_empty()) { files.emplace_back(); continue; }
     files.emplace_back(bytes.ptr(), bytes.ptr() + bytes.size());
   }
   return backend.load_sample_data(files, open_device);

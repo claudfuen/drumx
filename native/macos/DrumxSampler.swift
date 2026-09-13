@@ -18,6 +18,31 @@ struct DrumxSampleLayer: Equatable {
     let sampleIndices: [Int]
 }
 
+/// Audio articulation IDs extend the lesson's three scoring pads. A learned
+/// mapping wins over the standard full-kit notes, preserving custom kits.
+enum DrumxSampleRouting {
+    static let padCount = 10
+
+    static func pad(note: Int, mappedPad: Int) -> Int? {
+        guard (0..<128).contains(note) else { return nil }
+        if (0..<padCount).contains(mappedPad) {
+            if mappedPad == 0 && note == 46 { return 8 }
+            if mappedPad == 0 && note == 44 { return 9 }
+            return mappedPad
+        }
+        switch note {
+        case 48, 50: return 3
+        case 45, 47: return 4
+        case 41, 43: return 5
+        case 49, 57: return 6
+        case 51, 59: return 7
+        case 46: return 8
+        case 44: return 9
+        default: return nil
+        }
+    }
+}
+
 enum DrumxSamplerError: LocalizedError {
     case invalid(String)
     var errorDescription: String? {
@@ -275,6 +300,7 @@ final class DrumxSampler {
     private var players: [AVAudioPlayerNode] = []
     private var playerStarted = Array(repeating: false, count: voiceLimit)
     private var voiceEnds = Array(repeating: 0.0, count: voiceLimit)
+    private var voicePads = Array(repeating: -1, count: voiceLimit)
     private var nextVoice = 0
     private var enabled = false
     private var volume: Float = 0.7
@@ -509,7 +535,8 @@ final class DrumxSampler {
             let resolvedPad: Int
             if let note, let generation {
                 guard generation == self.midiGeneration, (0..<128).contains(note) else { return }
-                resolvedPad = self.noteToPad[note]
+                guard let articulation = DrumxSampleRouting.pad(note: note, mappedPad: self.noteToPad[note]) else { return }
+                resolvedPad = articulation
             } else if let pad { resolvedPad = pad }
             else { return }
             self.schedule(pad: resolvedPad, velocity: velocity, now: now)
@@ -519,6 +546,16 @@ final class DrumxSampler {
     private func schedule(pad: Int, velocity: Int, now: Double) {
         guard let bank, engine != nil,
               let selected = selector?.select(pad: pad, velocity: velocity) else { return }
+        // A new hat strike closes the previous open-hat tail. Other cymbals
+        // remain independent and can ring over the next kick/snare/tom hit.
+        if pad == 0 || pad == 8 || pad == 9 {
+            for index in players.indices where voicePads[index] == 8 && voiceEnds[index] > now {
+                players[index].stop()
+                playerStarted[index] = false
+                voiceEnds[index] = 0
+                voicePads[index] = -1
+            }
+        }
         var chosen = -1
         for offset in 0..<players.count {
             let index = (nextVoice + offset) % players.count
@@ -536,6 +573,7 @@ final class DrumxSampler {
         player.scheduleBuffer(buffer, at: nil, options: options, completionHandler: nil)
         if !playerStarted[chosen] { player.play(); playerStarted[chosen] = true }
         voiceEnds[chosen] = now + Double(buffer.frameLength) / bank.format.sampleRate + 0.010
+        voicePads[chosen] = pad
         nextVoice = (chosen + 1) % players.count
         scheduledHits &+= 1
         lastSampleFile = bank.selector.entries[selected].file
@@ -558,6 +596,7 @@ final class DrumxSampler {
         players.forEach { $0.stop() }
         playerStarted = Array(repeating: false, count: Self.voiceLimit)
         voiceEnds = Array(repeating: 0, count: Self.voiceLimit)
+        voicePads = Array(repeating: -1, count: Self.voiceLimit)
         // Empty playing nodes produce silence. Keep their timelines warm across
         // learn/reconnect controls so the next chord does not start cold voices.
         if restart {

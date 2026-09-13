@@ -49,8 +49,8 @@ def validate_assets() -> str:
     originals = ROOT / "native/assets/BigRusty"
     staged = PROJECT / "assets/BigRusty"
     sample_paths = sorted(originals.rglob("*.flac"))
-    if len(sample_paths) != 24:
-        raise RuntimeError("Expected exactly 24 original sample files.")
+    if len(sample_paths) != 80:
+        raise RuntimeError("Expected exactly 80 original sample files for the full kit.")
     for source in [*sample_paths, *(originals / n for n in ["manifest.json", "LICENSE", "provenance.json"])]:
         target = staged / source.relative_to(originals)
         if not target.is_file() or fetch.sha256(source) != fetch.sha256(target):
@@ -214,7 +214,7 @@ def main() -> None:
                 "sample_manifest_sha256": sample_hash, "native_extension_sha256": fetch.sha256(exported_library[0]),
                 "font_provenance_sha256": font_hash,
                 "project_license_sha256": project_license_hashes,
-                "verified": ["24 original samples and provenance", "pinned Inter font and OFL license", "source headless smoke", "packaged headless smoke", "source and packaged app build identity"],
+                "verified": ["80 original full-kit samples and provenance", "pinned Inter font and OFL license", "source headless smoke", "packaged headless smoke", "source and packaged app build identity"],
                 "not_verified": ["full visual parity", "physical MIDI kit", "audible output latency", "Windows graphics on a physical PC"],
                 "signing": signing, "signing_details": signing_details}
     (package / "build-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")

@@ -63,6 +63,8 @@ public:
 private:
   friend struct BackendTestAccess;
   AudioDeviceStatus &device_status();
+  // The private friend check renders the same mixer without opening hardware.
+  void render(float *output, uint32_t frames);
   struct Impl; std::unique_ptr<Impl> p;
 };
 class Backend;

@@ -4,6 +4,13 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Complete kit monitoring and separate recorded song drums
+
+- Expand the pinned CC0 Big Rusty bank from 24 to 80 unchanged recordings. Add distinct high, mid, and floor toms, crash, ride, open hi-hat, and pedal hi-hat, each with four dynamic layers and two recorded takes. Verify every source hash and preserve the original starter samples.
+- Load the full kit in both native audio engines. Monitor standard additional MIDI pads without changing the three-pad lesson scoring contract. Preserve learned aliases, stop open-hat tails on closure, and retain bounded voice pools.
+- Add practice/reference stem mixing and tests. Separate recorded drums can be silent throughout practice while backing audio and the scoring timeline continue. Full mixes remain audible when their drums cannot be separated. Record the distinction from YARG's continuous hit/miss-gated recording in `docs/song-audio.md`.
+- Pass 14 asset validation regressions, 218 native mixer checks under sanitizers, 44 real AVAudioEngine stem transport checks, full-kit Swift decode/MIDI checks, and 10,880 checks in the exported Mac shared app. Build the native Mac app. Physical kit balance and end-to-end latency remain to be auditioned.
+
 ### Clarify menu hierarchy and install the native app
 
 - Group Continue with its progress, separate Settings from play choices, and make the selected lesson's availability or checkpoint state explicit. Keep native and shared menu presentation aligned for supported routes.

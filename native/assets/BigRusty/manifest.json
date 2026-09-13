@@ -166,5 +166,397 @@
     "velocityMax": 127,
     "roundRobin": 2,
     "file": "BigRusty/kick/v4_rr2.flac"
+  },
+  {
+    "pad": 3,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_high/v1_rr1.flac"
+  },
+  {
+    "pad": 3,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_high/v1_rr2.flac"
+  },
+  {
+    "pad": 3,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_high/v2_rr1.flac"
+  },
+  {
+    "pad": 3,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_high/v2_rr2.flac"
+  },
+  {
+    "pad": 3,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_high/v3_rr1.flac"
+  },
+  {
+    "pad": 3,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_high/v3_rr2.flac"
+  },
+  {
+    "pad": 3,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_high/v4_rr1.flac"
+  },
+  {
+    "pad": 3,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_high/v4_rr2.flac"
+  },
+  {
+    "pad": 4,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_mid/v1_rr1.flac"
+  },
+  {
+    "pad": 4,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_mid/v1_rr2.flac"
+  },
+  {
+    "pad": 4,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_mid/v2_rr1.flac"
+  },
+  {
+    "pad": 4,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_mid/v2_rr2.flac"
+  },
+  {
+    "pad": 4,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_mid/v3_rr1.flac"
+  },
+  {
+    "pad": 4,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_mid/v3_rr2.flac"
+  },
+  {
+    "pad": 4,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_mid/v4_rr1.flac"
+  },
+  {
+    "pad": 4,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_mid/v4_rr2.flac"
+  },
+  {
+    "pad": 5,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_floor/v1_rr1.flac"
+  },
+  {
+    "pad": 5,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_floor/v1_rr2.flac"
+  },
+  {
+    "pad": 5,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_floor/v2_rr1.flac"
+  },
+  {
+    "pad": 5,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_floor/v2_rr2.flac"
+  },
+  {
+    "pad": 5,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_floor/v3_rr1.flac"
+  },
+  {
+    "pad": 5,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_floor/v3_rr2.flac"
+  },
+  {
+    "pad": 5,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 1,
+    "file": "BigRusty/tom_floor/v4_rr1.flac"
+  },
+  {
+    "pad": 5,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 2,
+    "file": "BigRusty/tom_floor/v4_rr2.flac"
+  },
+  {
+    "pad": 6,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 1,
+    "file": "BigRusty/crash/v1_rr1.flac"
+  },
+  {
+    "pad": 6,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 2,
+    "file": "BigRusty/crash/v1_rr2.flac"
+  },
+  {
+    "pad": 6,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 1,
+    "file": "BigRusty/crash/v2_rr1.flac"
+  },
+  {
+    "pad": 6,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 2,
+    "file": "BigRusty/crash/v2_rr2.flac"
+  },
+  {
+    "pad": 6,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 1,
+    "file": "BigRusty/crash/v3_rr1.flac"
+  },
+  {
+    "pad": 6,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 2,
+    "file": "BigRusty/crash/v3_rr2.flac"
+  },
+  {
+    "pad": 6,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 1,
+    "file": "BigRusty/crash/v4_rr1.flac"
+  },
+  {
+    "pad": 6,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 2,
+    "file": "BigRusty/crash/v4_rr2.flac"
+  },
+  {
+    "pad": 7,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 1,
+    "file": "BigRusty/ride/v1_rr1.flac"
+  },
+  {
+    "pad": 7,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 2,
+    "file": "BigRusty/ride/v1_rr2.flac"
+  },
+  {
+    "pad": 7,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 1,
+    "file": "BigRusty/ride/v2_rr1.flac"
+  },
+  {
+    "pad": 7,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 2,
+    "file": "BigRusty/ride/v2_rr2.flac"
+  },
+  {
+    "pad": 7,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 1,
+    "file": "BigRusty/ride/v3_rr1.flac"
+  },
+  {
+    "pad": 7,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 2,
+    "file": "BigRusty/ride/v3_rr2.flac"
+  },
+  {
+    "pad": 7,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 1,
+    "file": "BigRusty/ride/v4_rr1.flac"
+  },
+  {
+    "pad": 7,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 2,
+    "file": "BigRusty/ride/v4_rr2.flac"
+  },
+  {
+    "pad": 8,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 1,
+    "file": "BigRusty/hihat_open/v1_rr1.flac"
+  },
+  {
+    "pad": 8,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 2,
+    "file": "BigRusty/hihat_open/v1_rr2.flac"
+  },
+  {
+    "pad": 8,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 1,
+    "file": "BigRusty/hihat_open/v2_rr1.flac"
+  },
+  {
+    "pad": 8,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 2,
+    "file": "BigRusty/hihat_open/v2_rr2.flac"
+  },
+  {
+    "pad": 8,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 1,
+    "file": "BigRusty/hihat_open/v3_rr1.flac"
+  },
+  {
+    "pad": 8,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 2,
+    "file": "BigRusty/hihat_open/v3_rr2.flac"
+  },
+  {
+    "pad": 8,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 1,
+    "file": "BigRusty/hihat_open/v4_rr1.flac"
+  },
+  {
+    "pad": 8,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 2,
+    "file": "BigRusty/hihat_open/v4_rr2.flac"
+  },
+  {
+    "pad": 9,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 1,
+    "file": "BigRusty/hihat_pedal/v1_rr1.flac"
+  },
+  {
+    "pad": 9,
+    "velocityMin": 1,
+    "velocityMax": 31,
+    "roundRobin": 2,
+    "file": "BigRusty/hihat_pedal/v1_rr2.flac"
+  },
+  {
+    "pad": 9,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 1,
+    "file": "BigRusty/hihat_pedal/v2_rr1.flac"
+  },
+  {
+    "pad": 9,
+    "velocityMin": 32,
+    "velocityMax": 63,
+    "roundRobin": 2,
+    "file": "BigRusty/hihat_pedal/v2_rr2.flac"
+  },
+  {
+    "pad": 9,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 1,
+    "file": "BigRusty/hihat_pedal/v3_rr1.flac"
+  },
+  {
+    "pad": 9,
+    "velocityMin": 64,
+    "velocityMax": 95,
+    "roundRobin": 2,
+    "file": "BigRusty/hihat_pedal/v3_rr2.flac"
+  },
+  {
+    "pad": 9,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 1,
+    "file": "BigRusty/hihat_pedal/v4_rr1.flac"
+  },
+  {
+    "pad": 9,
+    "velocityMin": 96,
+    "velocityMax": 127,
+    "roundRobin": 2,
+    "file": "BigRusty/hihat_pedal/v4_rr2.flac"
   }
 ]

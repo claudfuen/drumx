@@ -15,7 +15,7 @@ stops during silent preroll. It validates engine startup, not audible click
 timing, physical latency, or a connected drum kit. A missing audio device is
 reported separately. Use an actual kit and listening path for calibration.
 
-Passing the BigRusty manifest as argument 1 also checks all 24 decoded recordings,
+Passing the BigRusty manifest as argument 1 also checks all 80 decoded recordings,
 velocity boundaries, distinct round-robin alternatives, disabled monitoring,
 MIDI learn and connection guards, stale-event rejection, overlapping voices and
 the 32-voice cap. Sample scheduling tests set monitor volume to zero. A virtual

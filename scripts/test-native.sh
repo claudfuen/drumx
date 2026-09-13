@@ -1,10 +1,11 @@
 #!/bin/bash
 set -euo pipefail
+python3 -m unittest discover -s "$(dirname "$0")/tests" -p 'test_fetch_samples.py'
 DRUMX_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if [ -d /Applications/Xcode.app/Contents/Developer ]; then
   export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 fi
-DRUMX_BUILD="$DRUMX_ROOT/.build/tests"
+DRUMX_BUILD="${DRUMX_BUILD_DIR:-$DRUMX_ROOT/.build/tests}"
 DRUMX_TARGET="$(uname -m)-apple-macosx15.0"
 python3 "$DRUMX_ROOT/scripts/fetch-samples.py" --check
 mkdir -p "$DRUMX_BUILD"

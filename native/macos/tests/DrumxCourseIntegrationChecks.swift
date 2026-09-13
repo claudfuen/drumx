@@ -178,7 +178,7 @@ private struct DrumxCourseIntegrationChecks {
         }
         let manifest = URL(fileURLWithPath: CommandLine.arguments[1])
         let bank = try DrumxSampleBank.load(manifestURL: manifest, sampleRate: 8_000)
-        check(bank.buffers.count == 24, "curated acoustic bank decodes all velocity layers and alternates")
+        check(bank.buffers.count == 80, "full acoustic kit decodes all velocity layers and alternates")
         check(DrumxCourse.lessons.count == 20, "all twenty authored lessons are exercised")
         let impulses = try impulseBank()
         for lesson in DrumxCourse.lessons {

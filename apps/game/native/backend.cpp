@@ -1,4 +1,5 @@
 #include "backend.h"
+#include "sample_catalog.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -197,10 +198,10 @@ void Backend::midi_hit(int note, int velocity, double captured, uint64_t epoch) 
       if (!already) maps[target].push_back(note);
       pad = target; state.pending_pad = -1; hit.mapping_changed = true;
     } else state.error = "This pad already has 16 MIDI aliases.";
-  } else if (state.pending_pad < 0 && pad >= 0) {
-    audio->hit(pad, velocity);
+  } else if (state.pending_pad < 0) {
+    audio->hit(sample_for_midi(note, pad), velocity);
     const double song = captured - state.practice_start;
-    if ((state.running || state.completed) && state.practice_start > 0 && song >= -.125 &&
+    if (pad >= 0 && (state.running || state.completed) && state.practice_start > 0 && song >= -.125 &&
         song <= dx_core_duration(core) + .125 && (state.running || captured <= state.stop_time))
       hit.result = dx_core_input(core, pad, song, velocity / 127.0);
   }

@@ -117,7 +117,7 @@ struct Checks {
     static func checkSampler(_ manifestURL: URL, io: DrumxIO,
                              source: MIDIEndpointRef, sourceID: Int32) throws {
         let bank = try DrumxSampleBank.load(manifestURL: manifestURL, sampleRate: 44_100)
-        precondition(bank.buffers.count == 24 && bank.selector.layers.count == 12)
+        precondition(bank.buffers.count == 80 && bank.selector.layers.count == 40)
         for buffer in bank.buffers {
             precondition(buffer.frameLength > 0 && buffer.format.channelCount == 2)
             let samples = buffer.floatChannelData![0]
@@ -134,7 +134,7 @@ struct Checks {
             precondition(differs, "Alternates must contain different recordings")
         }
         var selector = bank.selector
-        for pad in 0..<3 {
+        for pad in 0..<DrumxSampleRouting.padCount {
             for velocity in [1, 31, 32, 63, 64, 95, 96, 127] {
                 let first = selector.select(pad: pad, velocity: velocity)!
                 let second = selector.select(pad: pad, velocity: velocity)!
@@ -147,7 +147,7 @@ struct Checks {
         precondition(selector.select(pad: 0, velocity: 0) == nil)
         precondition(selector.select(pad: 0, velocity: 128) == nil)
         precondition(selector.select(pad: 99, velocity: 100) == nil)
-        print("PASS sample bank: 24 non-silent PCM recordings, 12 layers, distinct alternates, all velocity boundaries, deterministic round robin")
+        print("PASS sample bank: 80 non-silent PCM recordings, 40 layers, distinct alternates, all velocity boundaries, deterministic round robin")
         try checkDemoRendering(bank)
 
         let sampler = DrumxSampler()
@@ -194,6 +194,59 @@ struct Checks {
         let off = sampler.diagnostics()
         precondition(!off.monitoring && off.activeVoices == 0 && off.scheduledHits == busy.scheduledHits)
         print("PASS sampler scheduling: silent when disabled, keyboard/MIDI share pool, learn suppression, generation/mapping guards, stale-hit discard, overlap, 32-voice cap and stealing")
+
+        sampler.setEnabled(true)
+        precondition(sampler.diagnostics().monitoring)
+        let fullKitNotes = [(48, "tom_high"), (50, "tom_high"), (45, "tom_mid"),
+            (47, "tom_mid"), (41, "tom_floor"), (43, "tom_floor"), (49, "crash"),
+            (57, "crash"), (51, "ride"), (59, "ride"), (46, "hihat_open"), (44, "hihat_pedal")]
+        for (note, directory) in fullKitNotes {
+            let before = sampler.diagnostics().scheduledHits
+            sampler.receiveMIDI(note: note, velocity: 110, generation: 7)
+            let hit = sampler.diagnostics()
+            precondition(hit.scheduledHits == before + 1 && hit.lastSampleFile!.contains("/\(directory)/"),
+                "A full-kit MIDI strike must schedule its own recorded articulation")
+        }
+        sampler.setMapping([[42, 44, 46], [38, 49], [36]])
+        for (note, directory) in [(44, "hihat_pedal"), (46, "hihat_open"), (49, "snare")] {
+            sampler.receiveMIDI(note: note, velocity: 110, generation: 7)
+            precondition(sampler.diagnostics().lastSampleFile!.contains("/\(directory)/"))
+        }
+        let beforeSuppressed = sampler.diagnostics().scheduledHits
+        sampler.receiveMIDI(note: 40, velocity: 110, generation: 7)
+        sampler.receiveMIDI(note: 53, velocity: 110, generation: 7)
+        sampler.receiveMIDI(note: 48, velocity: 0, generation: 7)
+        sampler.receiveMIDI(note: 48, velocity: 110, generation: 6)
+        sampler.setLearnActive(true)
+        sampler.receiveMIDI(note: 48, velocity: 110, generation: 7)
+        precondition(sampler.diagnostics().scheduledHits == beforeSuppressed,
+            "Unmapped core notes, unsupported articulations, note-off, old sources and MIDI learn remain silent")
+        sampler.setLearnActive(false)
+        sampler.playPad(pad: 8, velocity: 110)
+        precondition(sampler.diagnostics().activeVoices == 1)
+        sampler.playPad(pad: 9, velocity: 110)
+        precondition(sampler.diagnostics().activeVoices == 1,
+            "Pedal closure must stop the previously ringing open hi-hat")
+        sampler.setEnabled(false)
+        precondition(!sampler.diagnostics().monitoring)
+        sampler.setMapping([[42, 44, 46], [38, 40], [35, 36], [48, 50], [45, 47],
+                            [41, 43], [49, 52, 55, 57], [51, 53, 59]])
+        sampler.setEnabled(true)
+        for (note, directory) in [(52, "crash"), (55, "crash"), (53, "ride")] {
+            let before = sampler.diagnostics().scheduledHits
+            sampler.receiveMIDI(note: note, velocity: 110, generation: 7)
+            let hit = sampler.diagnostics()
+            precondition(hit.scheduledHits == before + 1 && hit.lastSampleFile!.contains("/\(directory)/"),
+                "Songs' explicitly mapped cymbal aliases use their scored crash or ride sound")
+        }
+        sampler.setMapping([[42], [38], [36]])
+        let beforeRestored = sampler.diagnostics().scheduledHits
+        sampler.receiveMIDI(note: 53, velocity: 110, generation: 7)
+        precondition(sampler.diagnostics().scheduledHits == beforeRestored,
+            "Restoring lesson mapping removes song-only cymbal aliases")
+        sampler.setEnabled(false)
+        precondition(!sampler.diagnostics().monitoring)
+        print("PASS full kit: tom/cymbal MIDI samples, open/pedal hat articulation, learned mapping priority, suppression and hi-hat closure")
 
         try io.loadSampler(manifestURL: manifestURL)
         io.setMonitorVolume(0)

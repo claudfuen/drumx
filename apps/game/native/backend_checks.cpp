@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
   for(int i=0;i<300;++i) backend.keyboard_hit(0,90);
   check(backend.poll_hits().size()==256 && backend.snapshot().dropped_hits==44,"observation queue bounded with explicit drop count");
   if(argc>1) {
-    check(backend.load_samples(argv[1],false),"all 24 original FLAC decode without audio hardware");
+    check(backend.load_samples(argv[1],false),"all 80 original full-kit FLAC decode without audio hardware");
     check(backend.snapshot().samples_ready && !backend.snapshot().audio_ready,"decoded samples do not imply output ready");
     check(!backend.load_samples("/path/that/does/not/exist",false),"missing bank rejected");
     check(backend.snapshot().samples_ready,"bad reload preserves already decoded bank");
