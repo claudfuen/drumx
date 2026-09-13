@@ -1,0 +1,26 @@
+native/macos/DrumxMainMenuView.swift
+  s_f983bef49b9fee::t_a9c57e61c17348 248-250
+CHANGELOG.md
+  s_f983bef49b9fee::t_25d097ab9e3576 7-11
+native/macos/tests/DrumxSettingsControlChecks.swift
+  s_f983bef49b9fee::t_b1e66c305a5694 132-156,161-162,164-168
+  s_f983bef49b9fee::t_23c1db5868f7bc 157-160,163
+scripts/test-settings-controls.sh
+  s_f983bef49b9fee::t_b1e66c305a5694 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "59310e63561bd74e67569acb2599f2a7a4d856a3",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
