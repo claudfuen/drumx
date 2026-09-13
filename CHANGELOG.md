@@ -4,6 +4,11 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Import Clone Hero and YARG drum song packages
+
+- Read song folders, ZIPs, and SNG packages with MIDI or .chart notes, all authored drum difficulties, tempo maps, pro-drum cymbal/tom markers, metadata, and backing stems. Scan song directories, deduplicate packages, and keep copied media in a private library.
+- Validate with 17 generated-fixture tests and an independent comparison of all 4,067 notes across The Kill's four Harmonix difficulties. A second .chart arrangement verifies 115 tempo markers; downloaded media stays outside Git.
+
 ### Keep the main-menu headline stable when clicked
 
 - Make the native "Find your rhythm" heading static and keep its text-field font synchronized with its responsive typography. Clicking it no longer enters a small-font text-selection state.
