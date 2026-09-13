@@ -54,7 +54,7 @@ The [PAS reference](https://pas.org/rudiments/) supplies conventional rudiment n
 
 The percentages and repetition count are product hypotheses. Guided qualification is not recall; stars are not a general skill level. Compare attempts under their recorded input, mapping, monitoring, calibration, length, and assistance conditions. See [curriculum.md](curriculum.md#pace-and-course-access) for the player-facing policy boundary.
 
-**Gate status: open.** Source and packaged checks can establish implementation integrity; they cannot replace learner observation. Interactive visual inspection is deferred by the current display constraints. Real-kit input/audio testing, measured frame behavior, and the premium gate's full practice journey remain open as well. Record evidence against one candidate build before closing C1; content count alone is insufficient.
+**Gate status: open.** Source and packaged checks can establish implementation integrity; they cannot replace learner observation. Native notation and menu components were rendered offscreen and inspected, and the updated native app was opened locally. Complete rendered-journey comparison remains pending. Real-kit input/audio testing, measured frame behavior, and the premium gate's full practice journey remain open as well. Record evidence against one candidate build before closing C1; content count alone is insufficient.
 
 ## C2: Next phrasing and literacy gate
 
@@ -71,3 +71,7 @@ Implement this boundary before adding exercises that require it:
 C2 should deepen the existing skills before opening a broad song catalog. Triplets, swing, grace-note rudiments, dynamic assessment, full-kit articulations, and accompaniment remain separate capability decisions. Original or appropriately licensed musical material is required; a public repository does not authorize copying lessons or recordings.
 
 Sources checked September 12, 2026. These are original product decisions informed by primary teaching references, not a validated pedagogy or PAS endorsement.
+
+## Candidate evidence
+
+The [first 20-lesson release](https://github.com/claudfuen/drumx/releases/tag/preview-9ddcab48cd71) passed 10,781 shared checks in source and exported executables on each OS in [paired CI](https://github.com/claudfuen/drumx/actions/runs/34728349618). Hosted Mac also passed 194 readiness checks and 99 settings/course controls. The original 12 authored event identities are regression protected. C1 remains open for learner observation and complete visual/physical-device acceptance.

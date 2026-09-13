@@ -4,6 +4,12 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Publish the first automated versioned desktop release
+
+- Publish [preview-9ddcab48cd71](https://github.com/claudfuen/drumx/releases/tag/preview-9ddcab48cd71) automatically after both exported applications pass 10,781 checks and same-commit verification in [CI](https://github.com/claudfuen/drumx/actions/runs/34728349618). The Git tag resolves to the complete verified commit and both permanent download assets have verified hashes.
+- Pass 446 native history, 57 tempo, 194 readiness, 99 settings/course-control checks, native Mac compilation, and 41 Python distribution/signing-contract tests in hosted CI.
+- Download both public ZIPs and pass 48 integrity/license checks against release hashes; execute the downloaded Mac app with all 10,781 checks passing. Include licenses, checksums, and the build manifest in the downloads. Record Mac ad-hoc signing and unsigned Windows honestly; Leap Labs Developer ID credentials and real notarization remain pending.
+
 ### Expand the curriculum and strengthen checkpoints
 
 - Expand from 12 to 20 lessons in five chapters, adding slow doubles, paradiddles, kit applications, and groove/coordination studies. Preserve every original lesson ID, version, and event; name the existing alternating-hands study Single Stroke Roll.

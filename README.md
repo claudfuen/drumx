@@ -41,14 +41,14 @@ Checkpoints use repeated comparable takes at a lesson's prescribed tempo. Each r
 
 ## Downloads
 
-[**GitHub Releases: Mac and Windows builds**](https://github.com/claudfuen/drumx/releases)
+[**Current release: preview-9ddcab48cd71**](https://github.com/claudfuen/drumx/releases/tag/preview-9ddcab48cd71) · [All releases](https://github.com/claudfuen/drumx/releases)
 
-CI builds both platforms from the same commit, executes the exported applications' checks, verifies the pair, and publishes an experimental prerelease with a commit-bound tag, ZIPs, checksums, and a build manifest. Release downloads persist independently of expiring CI logs.
+CI builds both platforms from the same commit, executes the exported applications' checks, verifies the pair, and publishes an experimental prerelease with a commit-bound tag, ZIPs, checksums, and a build manifest. Release downloads persist independently of expiring CI logs. Both exported apps passed **10,781 checks** in the [current verified run](https://github.com/claudfuen/drumx/actions/runs/34728349618).
 
 | Package | Status |
 | --- | --- |
-| **macOS / Apple Silicon** | Experimental shared desktop app; signing status is recorded per release |
-| **Windows / x64** | Experimental shared desktop app; physical MIDI/audio and display testing remain open |
+| [**Download Mac / Apple Silicon**](https://github.com/claudfuen/drumx/releases/download/preview-9ddcab48cd71/Drumx-macos-arm64.zip) | Experimental shared app; ad-hoc signed, not notarized |
+| [**Download Windows / x64**](https://github.com/claudfuen/drumx/releases/download/preview-9ddcab48cd71/Drumx-windows-x86_64.zip) | Experimental shared app; unsigned |
 | **Native macOS app** | Current presentation baseline; build locally below |
 
 Extract the complete package before launching. License files and third-party notices are included. The native Mac and shared apps use separate progress stores; the shared app still has [known feature and presentation gaps](docs/desktop-preview.md). Apple Developer ID signing and notarization require the Leap Labs credentials described in the [signing guide](docs/apple-signing.md).
