@@ -548,7 +548,10 @@ final class LabController: NSObject, NSWindowDelegate {
   enum Page { case welcome, mainMenu, course, prepare, stage, review, settings, pause, songs }
   func showPage(_ page: Page) {
     let previousPage = currentPage
-    if previousPage == .songs && page != .songs { songController.stop() }
+    if previousPage == .songs && page != .songs {
+      songController.stop()
+      io.setMIDIMapping(mappings)
+    }
     currentPage = page
     showingReview = page == .review
     for (view, destination) in [(welcomeView, Page.welcome), (mainMenuView, .mainMenu),
@@ -578,17 +581,18 @@ final class LabController: NSObject, NSWindowDelegate {
     runScoreHUD.isHidden = page != .stage
     results.isHidden = true
     keyboardLegend.stringValue = page == .stage ? "A  hi-hat    S  snare    SPACE  kick    ESC  pause"
-      : page == .songs ? "A  hi-hat    W  crash    S  snare    D / F / G  toms    H  ride    SPACE  kick"
+      : page == .songs ? ""
       : page == .mainMenu ? "↑ ↓  choose    RETURN  select"
       : page == .welcome ? "A / S / SPACE  try the drums"
       : "ESC  main menu"
     switch page {
     case .songs:
+      songController.profileID = progress.selectedProfile.id
       songController.setMIDIMapping(mappings)
       songController.inputOffsetMilliseconds = calibrationMS
       songController.showLibrary()
       pageTitle.stringValue = "SONGS"; window.title = "Drumx · Songs"
-      setStatus("Choose a song and difficulty. Your full kit shares one timing line.")
+      setStatus("")
     case .mainMenu:
       let state = unlockState
       mainMenuView.update(lesson: lesson, player: progress.selectedProfile.name,
@@ -1115,9 +1119,37 @@ final class LabController: NSObject, NSWindowDelegate {
   func confirmApplicationClose() -> Bool {
     if allowsUnsavedExit { return true }
     guard !closePromptActive else { return false }
+    // Closing ends the active phrase; partial song takes are never queued.
+    if transportActive { stopTake() }
+    if songController.hasUnsavedScores {
+      closePromptActive = true
+      songController.stop()
+      songController.retryScoresBeforeClosing { [weak self] saved in
+        guard let self else { return }
+        self.closePromptActive = false
+        if saved {
+          // Re-enter the ordinary close path after asynchronous read-back, so
+          // any pending curriculum history still gets its existing checks.
+          DispatchQueue.main.async { NSApp.terminate(nil) }
+          return
+        }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "Your completed song results are waiting to save."
+        alert.informativeText = "Drumx could not save these results. Keep the app open to retain them, or retry saving before quitting."
+        alert.addButton(withTitle: "Retry saving")
+        alert.addButton(withTitle: "Keep Drumx open")
+        alert.buttons[1].keyEquivalent = "\u{1b}"
+        self.closePromptActive = true
+        let response = alert.runModal()
+        self.closePromptActive = false
+        if response == .alertFirstButtonReturn { DispatchQueue.main.async { NSApp.terminate(nil) } }
+        else if self.currentPage == .songs { self.songController.showLibrary() }
+      }
+      return false
+    }
     // Closing ends the active phrase. Only actual completed unsaved attempts
     // below can prompt; a partial take never creates a hypothetical warning.
-    if transportActive { stopTake() }
     _ = retryPendingHistory(force: true)
     while history.hasPendingSaves {
       let count = history.pendingSaveCount

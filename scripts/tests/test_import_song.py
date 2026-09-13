@@ -405,12 +405,15 @@ class ImportSongChecks(unittest.TestCase):
         manifest = self.load(chart, reference=True)
         info_path = Path(manifest["manifestPath"]).with_name("song-info.json")
         summary = json.loads(info_path.read_text())
-        self.assertEqual(summary["charts"], [
+        self.assertEqual([{key: value for key, value in chart.items() if key != "intensity"}
+                          for chart in summary["charts"]], [
             {"difficulty": "easy", "noteCount": 2, "instrumentCount": 2},
             {"difficulty": "expert", "noteCount": 4000, "instrumentCount": 5}])
         for key, value in summary.items():
-            if key != "charts":
+            if key not in ("charts", "metadataVersion"):
                 self.assertEqual(value, manifest[key])
+        self.assertEqual(summary["metadataVersion"], IMPORTER.SONG_INFO_VERSION)
+        self.assertTrue(all(IMPORTER.current_intensity(chart["intensity"]) for chart in summary["charts"]))
         for key in ("notes", "tempos", "timeSignatures", "sections", "metadata"):
             self.assertNotIn(key, summary)
         self.assertNotIn('"notes"', info_path.read_text())
@@ -500,6 +503,85 @@ class ImportSongChecks(unittest.TestCase):
         first = self.load(ini="[song]\ncharter = First\n")
         second = self.load(ini="[song]\ncharter = Second\n")
         self.assertNotEqual(first["id"], second["id"])
+
+    def test_authored_expert_intensity_prefers_pro_drums_and_preserves_all_tiers(self):
+        chart = simple_chart() + b"[EasyDrums]\n{\n0 = N 0 0\n192 = N 1 0\n}\n"
+        manifest = self.load(chart, ini="[song]\ndiff_drums_real = 4\ndiff_drums = 1\n")
+        easy, expert = manifest["charts"]
+        self.assertEqual(expert["intensity"]["level"], 4)
+        self.assertEqual(expert["intensity"]["authoredField"], "diff_drums_real")
+        self.assertEqual(expert["intensity"]["source"], "authored")
+        self.assertEqual(easy["intensity"]["source"], "estimated")
+        for tier in range(7):
+            rating = IMPORTER.chart_intensity(expert, {"diff_drums_real": "-1", "diff_drums": str(tier)})
+            self.assertEqual((rating["level"], rating["source"]), (tier, "authored"))
+
+    def test_invalid_authored_intensity_falls_back_to_versioned_estimate(self):
+        chart = {"difficulty": "expert", "notes": [{"timeSeconds": 0, "lane": "hihat"}]}
+        for invalid in ("-1", "7", "3.1", "nan", "inf", "not a rating"):
+            rating = IMPORTER.chart_intensity(chart, {"diff_drums_real": invalid, "diff_drums": invalid})
+            self.assertEqual(rating["source"], "estimated")
+            self.assertEqual(rating["version"], 1)
+            self.assertTrue(IMPORTER.current_intensity(rating))
+            self.assertIn(rating["level"], range(7))
+
+    def test_estimated_intensity_tracks_density_bursts_and_coordination(self):
+        sparse = {"difficulty": "easy", "notes": [{"timeSeconds": i * 2, "lane": "hihat"} for i in range(20)]}
+        dense = {"difficulty": "expert", "notes": [{"timeSeconds": i / 8, "lane": lane}
+                 for i in range(160) for lane in ("hihat", "kick")]}
+        a, b = IMPORTER.chart_intensity(sparse), IMPORTER.chart_intensity(dense)
+        self.assertEqual(a["level"], 0)
+        self.assertEqual(b["level"], 6)
+        self.assertGreater(b["metrics"]["averageNPS"], a["metrics"]["averageNPS"])
+        self.assertGreater(b["metrics"]["peakTwoSecondNPS"], a["metrics"]["peakTwoSecondNPS"])
+        self.assertEqual(b["metrics"]["handFootRatio"], 1)
+        alternating = {"difficulty": "hard", "notes": [{"timeSeconds": i / 2, "lane": "kick" if i % 2 else "hihat"}
+                       for i in range(40)]}
+        together = {"difficulty": "hard", "notes": [{"timeSeconds": i, "lane": lane}
+                    for i in range(20) for lane in ("hihat", "kick")]}
+        self.assertGreater(IMPORTER.chart_intensity(together)["metrics"]["demandScore"],
+                           IMPORTER.chart_intensity(alternating)["metrics"]["demandScore"])
+
+    def test_intensity_is_independent_of_chart_offset_and_input_order(self):
+        notes = [{"timeSeconds": i / 4 - 0.25, "lane": "snare" if i % 4 == 2 else "hihat"}
+                 for i in range(100)]
+        rating = IMPORTER.chart_intensity({"difficulty": "hard", "notes": notes})
+        shifted = [dict(note, timeSeconds=note["timeSeconds"] + 19.5) for note in reversed(notes)]
+        self.assertEqual(rating, IMPORTER.chart_intensity({"difficulty": "hard", "notes": shifted}))
+
+    def test_rebuild_index_repairs_only_sidecars_without_hashing_or_reading_media(self):
+        manifest = self.load(ini="[song]\ndiff_drums_real = 5\n")
+        manifest_path = Path(manifest["manifestPath"])
+        full_before = manifest_path.read_bytes()
+        info_path = manifest_path.with_name("song-info.json")
+        old = json.loads(info_path.read_text())
+        old["metadataVersion"] = 0
+        for chart in old["charts"]:
+            chart["intensity"]["version"] = 0
+        info_path.write_text(json.dumps(old))
+        shutil.rmtree(manifest_path.parent / "source")
+        with patch.object(IMPORTER.hashlib, "sha256", side_effect=AssertionError("Index repair must not hash assets")):
+            report = IMPORTER.rebuild_index(self.library)
+        self.assertEqual(report, {"updated": 1, "unchanged": 0, "errors": []})
+        self.assertEqual(manifest_path.read_bytes(), full_before)
+        repaired = json.loads(info_path.read_text())
+        self.assertEqual(repaired["charts"][0]["intensity"]["level"], 5)
+        self.assertEqual(repaired["metadataVersion"], IMPORTER.SONG_INFO_VERSION)
+        self.assertEqual(IMPORTER.rebuild_index(self.library), {"updated": 0, "unchanged": 1, "errors": []})
+
+    def test_rebuild_index_isolates_bad_manifests_and_has_a_standalone_cli(self):
+        manifest = self.load()
+        Path(manifest["manifestPath"]).with_name("song-info.json").unlink()
+        bad = self.library / "bad-chart"
+        bad.mkdir(); (bad / "song.json").write_text("{broken")
+        out = io.StringIO()
+        with redirect_stdout(out):
+            status = IMPORTER.main(["--rebuild-index", "--library", str(self.library)])
+        report = json.loads(out.getvalue())
+        self.assertEqual(status, 0)
+        self.assertEqual(report["updated"], 1)
+        self.assertEqual(len(report["errors"]), 1)
+        self.assertTrue(Path(manifest["manifestPath"]).with_name("song-info.json").exists())
 
 
 if __name__ == "__main__":

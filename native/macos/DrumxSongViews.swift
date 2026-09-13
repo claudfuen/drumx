@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 
 enum DrumxSongInk {
   static let background = NSColor(calibratedRed: 0.047, green: 0.063, blue: 0.071, alpha: 1)
@@ -72,6 +73,40 @@ final class DrumxSongRootView: NSView {
 
 private final class DrumxSongArtwork: NSView {
   var image: NSImage? { didSet { needsDisplay = true } }
+  private var requestedPath: String?
+  private var generation: UInt64 = 0
+  private static let thumbnails: NSCache<NSString, NSImage> = {
+    let cache = NSCache<NSString, NSImage>(); cache.countLimit = 64
+    cache.totalCostLimit = 64 * 1024 * 1024; return cache
+  }()
+  private static let decoding: OperationQueue = {
+    let queue = OperationQueue(); queue.maxConcurrentOperationCount = 2
+    queue.qualityOfService = .userInitiated; queue.name = "org.drumx.song-artwork"; return queue
+  }()
+  func load(path: String?) {
+    if path == requestedPath && image != nil { return }
+    requestedPath = path; generation &+= 1
+    let token = generation
+    image = nil
+    guard let path else { return }
+    if let cached = Self.thumbnails.object(forKey: path as NSString) { image = cached; return }
+    Self.decoding.addOperation { [weak self] in
+      guard let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL,
+        [kCGImageSourceShouldCache: false] as CFDictionary),
+        let thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+          kCGImageSourceCreateThumbnailFromImageAlways: true,
+          kCGImageSourceCreateThumbnailWithTransform: true,
+          kCGImageSourceThumbnailMaxPixelSize: 512,
+          kCGImageSourceShouldCacheImmediately: true] as CFDictionary)
+      else { return }
+      let image = NSImage(cgImage: thumbnail, size: NSSize(width: thumbnail.width, height: thumbnail.height))
+      Self.thumbnails.setObject(image, forKey: path as NSString, cost: thumbnail.bytesPerRow * thumbnail.height)
+      DispatchQueue.main.async { [weak self] in
+        guard let self, self.generation == token, self.requestedPath == path else { return }
+        self.image = image
+      }
+    }
+  }
   override var isFlipped: Bool { true }
   override func draw(_ dirtyRect: NSRect) {
     let shape = NSBezierPath(roundedRect: bounds, xRadius: 12, yRadius: 12)
@@ -96,180 +131,447 @@ private final class DrumxSongArtwork: NSView {
   }
 }
 
+private final class DrumxSongIntensityMarks: NSView {
+  private var rating: DrumxSongIntensity?
+  override var isFlipped: Bool { true }
+  func setRating(_ rating: DrumxSongIntensity?) {
+    self.rating = rating
+    toolTip = rating.map { "\($0.source.capitalized) drum intensity: \($0.level) of 6" } ?? "Drum intensity rating pending"
+    setAccessibilityLabel(toolTip); needsDisplay = true
+  }
+  override func draw(_ dirtyRect: NSRect) {
+    guard let rating else {
+      DrumxSongInk.draw("Pending", in: bounds, size: 10, color: DrumxSongInk.muted); return
+    }
+    let diameter = min(10, max(5, (bounds.width - 16) / 5)), gap: CGFloat = 4
+    let y = (bounds.height - diameter) / 2
+    for index in 0..<5 {
+      let x = CGFloat(index) * (diameter + gap)
+      if rating.level == 6 {
+        let devil = NSBezierPath(ovalIn: NSRect(x: x, y: y + 1, width: diameter, height: diameter))
+        devil.move(to: NSPoint(x: x + 1, y: y + diameter * 0.48))
+        devil.line(to: NSPoint(x: x, y: y - 3))
+        devil.line(to: NSPoint(x: x + diameter * 0.48, y: y + 1)); devil.close()
+        devil.move(to: NSPoint(x: x + diameter - 1, y: y + diameter * 0.48))
+        devil.line(to: NSPoint(x: x + diameter, y: y - 3))
+        devil.line(to: NSPoint(x: x + diameter * 0.52, y: y + 1)); devil.close()
+        NSColor(calibratedRed: 0.88, green: 0.41, blue: 0.36, alpha: 1).setFill(); devil.fill()
+        DrumxSongInk.background.setFill()
+        for eye in [0.28, 0.66] {
+          NSBezierPath(ovalIn: NSRect(x: x + diameter * eye, y: y + diameter * 0.45,
+            width: max(1, diameter * 0.14), height: max(1, diameter * 0.14))).fill()
+        }
+      } else {
+        let circle = NSBezierPath(ovalIn: NSRect(x: x + 0.5, y: y + 0.5, width: diameter - 1, height: diameter - 1))
+        if index < rating.level { DrumxSongInk.paper.withAlphaComponent(0.85).setFill(); circle.fill() }
+        else { DrumxSongInk.muted.withAlphaComponent(0.40).setStroke(); circle.lineWidth = 1; circle.stroke() }
+      }
+    }
+  }
+}
+
+private final class DrumxSongRow: NSTableRowView {
+  override func drawSelection(in dirtyRect: NSRect) {
+    let rect = bounds.insetBy(dx: 3, dy: 2)
+    DrumxSongInk.lime.withAlphaComponent(0.10).setFill()
+    NSBezierPath(roundedRect: rect, xRadius: 8, yRadius: 8).fill()
+    DrumxSongInk.lime.withAlphaComponent(0.72).setFill()
+    NSBezierPath(roundedRect: NSRect(x: rect.minX, y: rect.minY + 12,
+      width: 3, height: max(0, rect.height - 24)), xRadius: 1.5, yRadius: 1.5).fill()
+  }
+}
+
+private final class DrumxSongCell: NSTableCellView {
+  private let songTitle = DrumxSongInk.label("", size: 15, weight: .medium)
+  private let songArtist = DrumxSongInk.label("", size: 12, color: DrumxSongInk.muted)
+  private let songDuration = DrumxSongInk.label("", size: 12, color: DrumxSongInk.muted)
+  private let levels = DrumxSongInk.label("", size: 11, weight: .medium, color: DrumxSongInk.muted)
+  private let intensity = DrumxSongIntensityMarks()
+  override var isFlipped: Bool { true }
+  override init(frame: NSRect) {
+    super.init(frame: frame)
+    for view in [songTitle, songArtist, songDuration, levels, intensity] { addSubview(view) }
+    textField = songTitle; songDuration.alignment = .right; levels.alignment = .right
+    songDuration.font = .monospacedDigitSystemFont(ofSize: 12, weight: .regular)
+  }
+  required init?(coder: NSCoder) { nil }
+  func configure(_ song: DrumxSong, difficulty: String) {
+    songTitle.stringValue = song.title; songArtist.stringValue = song.artist
+    songDuration.stringValue = DrumxSongInk.duration(song.durationSeconds)
+    levels.stringValue = ["easy", "medium", "hard", "expert"].map {
+      song.difficulties.contains($0) ? ($0 == "expert" ? "X" : String($0.prefix(1)).uppercased()) : "·"
+    }.joined(separator: "  ")
+    intensity.setRating(song.intensity(for: difficulty))
+    toolTip = "\(song.title) by \(song.artist) · \(song.difficulties.map { $0.capitalized }.joined(separator: ", "))"
+  }
+  override func layout() {
+    super.layout()
+    let textWidth = max(70, bounds.width - 164)
+    songTitle.frame = NSRect(x: 16, y: 10, width: textWidth, height: 23)
+    songArtist.frame = NSRect(x: 16, y: 34, width: textWidth, height: 20)
+    songDuration.frame = NSRect(x: bounds.width - 139, y: 24, width: 43, height: 20)
+    levels.frame = NSRect(x: bounds.width - 85, y: 13, width: 69, height: 18)
+    intensity.frame = NSRect(x: bounds.width - 83, y: 37, width: 65, height: 16)
+  }
+}
+
+private final class DrumxSongPreviewTrack: NSView {
+  var progress: Double = 0 { didSet { needsDisplay = true } }
+  var active = false { didSet { needsDisplay = true } }
+  override func draw(_ dirtyRect: NSRect) {
+    let track = NSRect(x: 0, y: bounds.midY - 1.5, width: bounds.width, height: 3)
+    DrumxSongInk.paper.withAlphaComponent(0.10).setFill()
+    NSBezierPath(roundedRect: track, xRadius: 1.5, yRadius: 1.5).fill()
+    if active {
+      DrumxSongInk.lime.withAlphaComponent(0.8).setFill()
+      NSBezierPath(roundedRect: NSRect(x: 0, y: track.minY,
+        width: bounds.width * min(1, max(0, progress)), height: 3), xRadius: 1.5, yRadius: 1.5).fill()
+    }
+  }
+}
+
 final class DrumxSongLibraryView: NSView, NSTableViewDataSource, NSTableViewDelegate, NSSearchFieldDelegate {
   var onBack: (() -> Void)?
   var onImport: (() -> Void)?
   var onDirectory: (() -> Void)?
+  var onRefresh: (() -> Void)?
   var onEncore: (() -> Void)?
   var onPlay: (() -> Void)?
   var onSelection: ((DrumxSong) -> Void)?
   var onNoSelection: (() -> Void)?
   var onDifficulty: ((String) -> Void)?
+  var onPreviewToggle: (() -> Void)?
+  var onRetryScoreSave: (() -> Void)?
   private var songs: [DrumxSong] = [], filtered: [DrumxSong] = []
   private var selectedID: String?
+  private var displayedSongID: String?
+  private var applyingFilter = false
+  private var busy = false
+  private var statusMessage = ""
+  private var scoreSaveError: String?
+  private var selectedNoteCount = 0
+  private var previewOrigin: Double?
+  private var previewEnd: Double?
+  private var previewCurrent: Double?
+  private let heading = DrumxSongInk.label("Songs", size: 32, weight: .semibold)
+  private let count = DrumxSongInk.label("0 songs", size: 13, color: DrumxSongInk.muted)
   private let back = LessonButton(title: "‹  Home", target: nil, action: nil)
-  private let heading = DrumxSongInk.label("Songs.", size: 48, weight: .semibold)
-  private let subtitle = DrumxSongInk.label("Your kit. Your music.", size: 16, color: DrumxSongInk.muted)
-  private let encore = LessonButton(title: "Browse Encore ↗", target: nil, action: nil)
-  private let directory = LessonButton(title: "Add song directory", target: nil, action: nil)
   private let importButton = LessonButton(title: "Import song", target: nil, action: nil)
+  private let directory = LessonButton(title: "Add folder", target: nil, action: nil)
+  private let refresh = LessonButton(title: "Refresh", target: nil, action: nil)
+  private let encore = LessonButton(title: "Encore ↗", target: nil, action: nil)
   private let search = NSSearchField()
-  private let count = DrumxSongInk.label("YOUR LIBRARY", size: 11, weight: .semibold, color: DrumxSongInk.muted)
+  private let sort = DrumxPopUpButton()
+  private let filter = DrumxPopUpButton()
+  private let listHeading = DrumxSongInk.label("SONG / ARTIST", size: 10, weight: .medium, color: DrumxSongInk.muted)
+  private let timeHeading = DrumxSongInk.label("TIME", size: 10, weight: .medium, color: DrumxSongInk.muted)
+  private let levelsHeading = DrumxSongInk.label("DRUMS", size: 10, weight: .medium, color: DrumxSongInk.muted)
   private let table = NSTableView()
   private let scroll = NSScrollView()
+  private let selectedHeading = DrumxSongInk.label("SELECTED SONG", size: 10, weight: .medium, color: DrumxSongInk.muted)
   private let artwork = DrumxSongArtwork()
-  private let title = DrumxSongInk.label("Bring your music.", size: 31, weight: .semibold)
-  private let artist = DrumxSongInk.label("Import a Clone Hero or YARG song to get started.", size: 17, color: DrumxSongInk.muted)
+  private let title = DrumxSongInk.label("Your next song", size: 27, weight: .semibold)
+  private let artist = DrumxSongInk.label("Choose something to play.", size: 15, color: DrumxSongInk.muted)
   private let metadata = DrumxSongInk.label("", size: 12, color: DrumxSongInk.muted)
-  private let detail = NSTextField(wrappingLabelWithString: "")
-  private let difficultyLabel = DrumxSongInk.label("DIFFICULTY", size: 10, weight: .semibold, color: DrumxSongInk.muted)
+  private let intensityLabel = DrumxSongInk.label("Intensity", size: 11, color: DrumxSongInk.muted)
+  private let intensity = DrumxSongIntensityMarks()
+  private let intensitySource = DrumxSongInk.label("", size: 10, color: DrumxSongInk.muted)
+  private let preview = LessonButton(title: "▶  Preview", target: nil, action: nil)
+  private let previewTime = DrumxSongInk.label("Mid-song excerpt", size: 11, color: DrumxSongInk.muted)
+  private let previewTrack = DrumxSongPreviewTrack()
+  private let difficultyLabel = DrumxSongInk.label("PLAY DIFFICULTY", size: 10, weight: .medium, color: DrumxSongInk.muted)
   private let difficulty = DrumxPopUpButton()
-  private let play = LessonButton(title: "Play song", target: nil, action: nil)
-  private let format = NSTextField(wrappingLabelWithString: "Song folders · .sng · .zip\nDrum charts in notes.mid or notes.chart")
-  private let status = NSTextField(wrappingLabelWithString: "")
-  private let empty = NSTextField(wrappingLabelWithString: "A library worth playing.\nImport a song, add a song directory, or drop a song folder here.")
+  private let detail = DrumxSongInk.label("", size: 12, color: DrumxSongInk.muted)
+  private let bestHeading = DrumxSongInk.label("YOUR BEST", size: 10, weight: .medium, color: DrumxSongInk.muted)
+  private let stars = DrumxSongInk.label("", size: 21, weight: .medium, color: DrumxSongInk.lime)
+  private let bestValue = DrumxSongInk.label("No completed plays yet", size: 13, color: DrumxSongInk.muted)
+  private let bestDetail = DrumxSongInk.label("", size: 11, color: DrumxSongInk.muted)
+  private let play = LessonButton(title: "Play song  ↵", target: nil, action: nil)
+  private let hint = DrumxSongInk.label("↑ ↓  Browse     Enter  Play     Space  Preview", size: 11, color: DrumxSongInk.muted)
+  private let status = DrumxSongInk.label("", size: 11, color: DrumxSongInk.muted)
+  private let retrySave = LessonButton(title: "Retry save", target: nil, action: nil)
+  private let empty = NSTextField(wrappingLabelWithString: "Add your first songs\n\nImport a song or add a folder to start your library.")
 
   override var isFlipped: Bool { true }
   override init(frame: NSRect) {
     super.init(frame: frame)
-    for item in [back, heading, subtitle, encore, directory, importButton, search, count, scroll,
-                 artwork, title, artist, metadata, detail, difficultyLabel, difficulty, play, format, status, empty] {
-      addSubview(item)
-    }
+    for item in [heading, count, back, importButton, directory, refresh, encore, search, sort, filter,
+      listHeading, timeHeading, levelsHeading, scroll, selectedHeading, artwork, title, artist, metadata,
+      intensityLabel, intensity, intensitySource,
+      preview, previewTime, previewTrack, difficultyLabel, difficulty, detail, bestHeading, stars,
+      bestValue, bestDetail, play, hint, status, retrySave, empty] { addSubview(item) }
     for (button, selector) in [(back, #selector(goBack)), (encore, #selector(openEncore)),
-      (directory, #selector(addDirectory)), (importButton, #selector(importSong)), (play, #selector(playSong))] {
-      button.target = self; button.action = selector; button.isBordered = false
+      (directory, #selector(addDirectory)), (importButton, #selector(importSong)), (play, #selector(playSong)),
+      (preview, #selector(togglePreview)), (refresh, #selector(refreshLibrary)),
+      (retrySave, #selector(retryScoreSave))] {
+      button.target = self; button.action = selector; button.isBordered = false; button.quiet = true
     }
-    importButton.primary = true; play.primary = true; back.quiet = true
-    search.placeholderString = "Search songs, artists, or charters"; search.delegate = self
+    play.quiet = false; play.primary = true
+    retrySave.isHidden = true
+    search.placeholderString = "Search songs or artists"; search.delegate = self
+    search.controlSize = .large; search.focusRingType = .none
     search.setAccessibilityLabel("Search your song library")
+    sort.addItems(withTitles: ["Artist A–Z", "Title A–Z", "Duration"])
+    sort.target = self; sort.action = #selector(filtersChanged)
+    sort.setAccessibilityLabel("Sort songs")
+    filter.addItems(withTitles: ["All difficulties", "Easy", "Medium", "Hard", "Expert"])
+    filter.target = self; filter.action = #selector(filtersChanged)
+    filter.setAccessibilityLabel("Filter songs by authored difficulty")
     let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("song"))
-    table.addTableColumn(column); table.headerView = nil; table.rowHeight = 74
-    table.intercellSpacing = NSSize(width: 0, height: 3)
-    table.dataSource = self; table.delegate = self
-    table.backgroundColor = .clear; table.selectionHighlightStyle = .regular
+    table.addTableColumn(column); table.headerView = nil; table.rowHeight = 64
+    table.intercellSpacing = NSSize(width: 0, height: 1)
+    table.dataSource = self; table.delegate = self; table.backgroundColor = .clear
+    table.selectionHighlightStyle = .regular; table.focusRingType = .none
     table.target = self; table.doubleAction = #selector(playSong)
-    table.setAccessibilityLabel("Imported drum songs")
-    scroll.documentView = table; scroll.hasVerticalScroller = true
+    table.setAccessibilityLabel("Song library")
+    scroll.documentView = table; scroll.hasVerticalScroller = true; scroll.autohidesScrollers = true
     scroll.drawsBackground = false; scroll.borderType = .noBorder
     difficulty.target = self; difficulty.action = #selector(difficultyChanged)
-    for field in [detail, format, status, empty] {
-      field.font = .systemFont(ofSize: 12); field.textColor = DrumxSongInk.muted
-    }
-    empty.font = .systemFont(ofSize: 16); empty.alignment = .center
-    detail.maximumNumberOfLines = 5; status.maximumNumberOfLines = 2
-    play.isEnabled = false; difficulty.isEnabled = false
+    difficulty.setAccessibilityLabel("Play difficulty")
+    for field in [title, artist, metadata] { field.alignment = .center }
+    previewTime.alignment = .right; timeHeading.alignment = .right; levelsHeading.alignment = .right
+    levelsHeading.toolTip = "Authored difficulties: Easy, Medium, Hard, Expert. Marks below show drum intensity."
+    title.maximumNumberOfLines = 1
+    empty.font = .systemFont(ofSize: 16); empty.textColor = DrumxSongInk.muted; empty.alignment = .center
+    play.isEnabled = false; difficulty.isEnabled = false; preview.isEnabled = false
+    setAccessibilityLabel("Songs")
   }
   required init?(coder: NSCoder) { nil }
 
-  override func draw(_ dirtyRect: NSRect) {
-    DrumxSongInk.surface.setFill()
-    NSBezierPath(roundedRect: NSRect(x: bounds.width * 0.44, y: 190,
-      width: bounds.width * 0.56 - 36, height: max(180, bounds.height - 247)), xRadius: 16, yRadius: 16).fill()
+  private var listWidth: CGFloat { max(360, (bounds.width - 80) * 0.56) }
+  private var card: NSRect {
+    NSRect(x: 28 + listWidth + 24, y: 88, width: max(280, bounds.width - listWidth - 80),
+      height: max(450, bounds.height - 146))
   }
-
+  override func draw(_ dirtyRect: NSRect) {
+    DrumxSongInk.surface.withAlphaComponent(0.82).setFill()
+    NSBezierPath(roundedRect: card, xRadius: 16, yRadius: 16).fill()
+    DrumxSongInk.paper.withAlphaComponent(0.075).setStroke()
+    let divider = NSBezierPath()
+    divider.move(to: NSPoint(x: 28, y: 75)); divider.line(to: NSPoint(x: bounds.width - 28, y: 75))
+    divider.lineWidth = 1; divider.stroke()
+  }
   override func layout() {
     super.layout()
-    let w = bounds.width, h = bounds.height, left: CGFloat = 36
-    let split = w * 0.44, sidebar = max(200, split - 60), rightX = split + 28
-    let rightW = max(210, w - rightX - 64)
-    back.frame = NSRect(x: 25, y: 19, width: 100, height: 32)
-    heading.frame = NSRect(x: left, y: 59, width: 300, height: 62)
-    subtitle.frame = NSRect(x: left + 3, y: 128, width: 300, height: 25)
-    importButton.frame = NSRect(x: w - 168, y: 77, width: 132, height: 44)
-    directory.frame = NSRect(x: w - 346, y: 77, width: 166, height: 44)
-    encore.frame = NSRect(x: w - 507, y: 77, width: 149, height: 44)
-    count.frame = NSRect(x: left + 3, y: 182, width: sidebar, height: 20)
-    search.frame = NSRect(x: left, y: 214, width: sidebar, height: 32)
-    scroll.frame = NSRect(x: left, y: 260, width: sidebar, height: max(100, h - 341))
-    table.tableColumns.first?.width = sidebar
-    empty.frame = NSRect(x: left + 14, y: 303, width: sidebar - 28, height: 125)
-    let artSize = min(160, max(88, (h - 370) * 0.43))
-    artwork.frame = NSRect(x: rightX, y: 216, width: artSize, height: artSize)
-    let textX = rightX + artSize + 20, textW = rightW - artSize - 20
-    title.frame = NSRect(x: textX, y: 222, width: textW, height: 41)
-    title.font = .systemFont(ofSize: min(31, max(23, textW / 7)), weight: .semibold)
-    artist.frame = NSRect(x: textX + 1, y: 265, width: textW, height: 29)
-    metadata.frame = NSRect(x: rightX + 1, y: artwork.frame.maxY + 18, width: rightW, height: 21)
-    let controlsY = h - 147
-    detail.frame = NSRect(x: rightX + 1, y: metadata.frame.maxY + 12, width: rightW,
-      height: max(20, min(72, controlsY - metadata.frame.maxY - 27)))
-    difficultyLabel.frame = NSRect(x: rightX + 1, y: controlsY, width: 160, height: 19)
-    difficulty.frame = NSRect(x: rightX, y: controlsY + 22, width: min(175, rightW * 0.47), height: 43)
-    play.frame = NSRect(x: rightX + rightW * 0.52, y: controlsY + 22, width: rightW * 0.48, height: 43)
-    format.frame = NSRect(x: textX + 1, y: 301, width: textW, height: 45)
-    format.isHidden = artSize < 125
-    status.frame = NSRect(x: left + 3, y: h - 48, width: w - 78, height: 39)
+    let w = bounds.width, h = bounds.height, list = listWidth, rect = card
+    heading.frame = NSRect(x: 28, y: 24, width: 108, height: 41)
+    count.frame = NSRect(x: 148, y: 37, width: max(110, w - 665), height: 22)
+    let utilityWidths: [CGFloat] = [82, 102, 96, 82, 94]
+    var utilityX = w - 28 - utilityWidths.reduce(0, +)
+    for (button, width) in zip([back, importButton, directory, refresh, encore], utilityWidths) {
+      button.frame = NSRect(x: utilityX, y: 28, width: width, height: 34); utilityX += width
+    }
+    search.frame = NSRect(x: 28, y: 90, width: max(120, list - 255), height: 34)
+    sort.frame = NSRect(x: 28 + list - 247, y: 90, width: 112, height: 34)
+    filter.frame = NSRect(x: 28 + list - 127, y: 90, width: 127, height: 34)
+    listHeading.frame = NSRect(x: 44, y: 142, width: list - 175, height: 17)
+    timeHeading.frame = NSRect(x: 28 + list - 139, y: 142, width: 43, height: 17)
+    levelsHeading.frame = NSRect(x: 28 + list - 85, y: 142, width: 69, height: 17)
+    scroll.frame = NSRect(x: 28, y: 166, width: list, height: max(160, h - 230))
+    table.tableColumns.first?.width = scroll.contentSize.width
+    empty.frame = NSRect(x: 55, y: 250, width: list - 54, height: 150)
+    let x = rect.minX + 24, inner = rect.width - 48
+    selectedHeading.frame = NSRect(x: x, y: rect.minY + 18, width: inner, height: 18)
+    let compact = h < 790
+    let lowerY: CGFloat
+    if compact {
+      let artSize = min(128, max(92, inner * 0.29))
+      artwork.frame = NSRect(x: x, y: rect.minY + 45, width: artSize, height: artSize)
+      let textX = artwork.frame.maxX + 18, textW = inner - artSize - 18
+      title.alignment = .left; artist.alignment = .left; metadata.alignment = .left
+      title.maximumNumberOfLines = 2; title.lineBreakMode = .byWordWrapping
+      title.font = .systemFont(ofSize: 23, weight: .semibold)
+      title.frame = NSRect(x: textX, y: artwork.frame.minY + 2, width: textW, height: 58)
+      artist.frame = NSRect(x: textX, y: artwork.frame.minY + 64, width: textW, height: 23)
+      metadata.frame = NSRect(x: textX, y: artwork.frame.minY + 90, width: textW, height: 20)
+      lowerY = artwork.frame.maxY + 22
+    } else {
+      let artSize = min(190, max(112, (h - 560) * 0.7))
+      artwork.frame = NSRect(x: rect.midX - artSize / 2, y: rect.minY + 45, width: artSize, height: artSize)
+      let textY = artwork.frame.maxY + 17
+      title.alignment = .center; artist.alignment = .center; metadata.alignment = .center
+      title.maximumNumberOfLines = 1; title.lineBreakMode = .byTruncatingTail
+      title.font = .systemFont(ofSize: inner < 340 ? 24 : 27, weight: .semibold)
+      title.frame = NSRect(x: x - 1, y: textY, width: inner + 2, height: 36)
+      artist.frame = NSRect(x: x, y: textY + 39, width: inner, height: 24)
+      metadata.frame = NSRect(x: x, y: textY + 65, width: inner, height: 20)
+      lowerY = textY + 92
+    }
+    intensityLabel.frame = NSRect(x: rect.midX - 109, y: lowerY, width: 54, height: 17)
+    intensity.frame = NSRect(x: rect.midX - 49, y: lowerY - 2, width: 73, height: 20)
+    intensitySource.frame = NSRect(x: rect.midX + 31, y: lowerY + 1, width: 87, height: 17)
+    preview.frame = NSRect(x: x - 6, y: lowerY + 34, width: 128, height: 32)
+    previewTime.frame = NSRect(x: x + 128, y: lowerY + 43, width: inner - 128, height: 18)
+    previewTrack.frame = NSRect(x: x, y: lowerY + 70, width: inner, height: 8)
+    difficultyLabel.frame = NSRect(x: x, y: lowerY + 93, width: 130, height: 17)
+    difficulty.frame = NSRect(x: x + inner - 142, y: lowerY + 84, width: 142, height: 34)
+    detail.frame = NSRect(x: x, y: lowerY + 127, width: inner, height: 21)
+    bestHeading.frame = NSRect(x: x, y: lowerY + 166, width: inner, height: 17)
+    stars.frame = NSRect(x: x, y: lowerY + 188, width: 130, height: 28)
+    bestValue.frame = NSRect(x: x + (stars.stringValue.isEmpty ? 0 : 139), y: lowerY + 193,
+      width: inner - (stars.stringValue.isEmpty ? 0 : 139), height: 21)
+    bestDetail.frame = NSRect(x: x, y: lowerY + 220, width: inner, height: 19)
+    play.frame = NSRect(x: x, y: rect.maxY - 64, width: inner, height: 43)
+    hint.frame = NSRect(x: 31, y: h - 42, width: list, height: 20)
+    status.frame = NSRect(x: rect.minX + 3, y: h - 42,
+      width: rect.width - (scoreSaveError == nil ? 6 : 102), height: 20)
+    retrySave.frame = NSRect(x: rect.maxX - 92, y: h - 49, width: 92, height: 32)
   }
 
   func update(songs: [DrumxSong], selecting: String? = nil) {
-    self.songs = songs; selectedID = selecting ?? selectedID
-    filterSongs()
+    self.songs = songs; selectedID = selecting ?? selectedID; filterSongs()
   }
   func setStatus(_ message: String, busy: Bool = false) {
-    status.stringValue = message
-    importButton.isEnabled = !busy; directory.isEnabled = !busy
-    play.isEnabled = !busy && selectedID != nil
+    self.busy = busy; statusMessage = message
+    status.stringValue = scoreSaveError ?? message; status.toolTip = scoreSaveError ?? message
+    importButton.isEnabled = !busy; directory.isEnabled = !busy; refresh.isEnabled = !busy
+    play.isEnabled = !busy && selectedID != nil && selectedNoteCount > 0
+  }
+  func setPreviewState(active: Bool, pending: Bool = false) {
+    preview.title = active ? "■  Stop preview" : pending ? "Cancel preview" : "▶  Preview"
+    preview.isEnabled = selectedID != nil; preview.needsDisplay = true
+    previewTrack.active = active
+    if pending || !active {
+      previewOrigin = nil; previewEnd = nil; previewCurrent = nil; previewTrack.progress = 0
+      previewTime.stringValue = pending ? "Preparing preview…" : "Mid-song excerpt"
+    }
+  }
+  func setPreviewPosition(current: Double, end: Double) {
+    guard current.isFinite, end.isFinite, end > current else { return }
+    if previewOrigin == nil || previewEnd != end || current < (previewCurrent ?? current) {
+      previewOrigin = current
+    }
+    previewEnd = end; previewCurrent = current
+    let origin = previewOrigin ?? current
+    previewTrack.progress = (current - origin) / max(0.01, end - origin)
+    previewTime.stringValue = "\(DrumxSongInk.duration(current)) / \(DrumxSongInk.duration(end))"
+  }
+  func setBest(_ summary: DrumxSongScoreSummary?, error: String? = nil) {
+    bestDetail.toolTip = nil
+    guard let summary else {
+      stars.stringValue = ""; bestValue.stringValue = error == nil ? "No completed plays yet" : "Best score unavailable"
+      bestDetail.stringValue = ""; bestValue.toolTip = error; needsLayout = true; return
+    }
+    let score = summary.best.score
+    stars.stringValue = String(repeating: "★", count: min(5, max(0, score.stars)))
+      + String(repeating: "☆", count: 5 - min(5, max(0, score.stars)))
+    bestValue.stringValue = "\(score.points.formatted()) points"; bestValue.toolTip = nil
+    bestDetail.stringValue = "\(score.fullCombo ? "Full combo" : "Best combo \(score.bestCombo.formatted())")  ·  \(summary.playCount.formatted()) \(summary.playCount == 1 ? "play" : "plays")"
+    bestDetail.toolTip = "Completed \(summary.best.completedAt.formatted(date: .abbreviated, time: .shortened)) · \(String(format: "%.1f", score.hitRatePercent))% hit rate"
+    needsLayout = true
+  }
+  func setScoreSaveError(_ message: String?) {
+    scoreSaveError = message; retrySave.isHidden = message == nil
+    status.stringValue = message ?? statusMessage; status.toolTip = message ?? statusMessage
+    status.textColor = message == nil ? DrumxSongInk.muted : NSColor(calibratedRed: 0.91, green: 0.66, blue: 0.47, alpha: 1)
+    needsLayout = true
+  }
+  func moveSelection(_ offset: Int) {
+    guard !filtered.isEmpty else { return }
+    let row = table.selectedRow < 0 ? 0 : min(filtered.count - 1, max(0, table.selectedRow + offset))
+    table.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+    table.scrollRowToVisible(row); window?.makeFirstResponder(table)
   }
   func select(song: DrumxSong, difficulty selected: String, noteCount: Int) {
-    selectedID = song.id; title.stringValue = song.title; artist.stringValue = song.artist
-    metadata.stringValue = [song.album, "\(DrumxSongInk.duration(song.durationSeconds))",
-      song.charter.flatMap { $0.isEmpty ? nil : "Chart: \($0)" }].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "  ·  ")
-    let lanes = Set(song.notes(for: selected).compactMap { $0.pad }).count
-    detail.stringValue = "\(noteCount.formatted()) drum notes  ·  \(lanes) instruments  ·  \(song.drumMode)\n"
-      + (song.warnings.isEmpty ? "Play the original tempo map with your MIDI kit or keyboard. All song difficulties stay separate from your lessons."
-         : song.warnings.prefix(2).joined(separator: " "))
-    artwork.image = song.albumArtPath.flatMap { NSImage(contentsOfFile: $0) }
+    let changedSong = displayedSongID != song.id
+    displayedSongID = song.id
+    selectedID = song.id; selectedNoteCount = noteCount
+    title.stringValue = song.title; title.toolTip = song.title; artist.stringValue = song.artist
+    metadata.stringValue = [song.album, DrumxSongInk.duration(song.durationSeconds)]
+      .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "  ·  ")
+    metadata.toolTip = song.charter.flatMap { $0.isEmpty ? nil : "Chart by \($0)" }
+    let rating = song.intensity(for: selected)
+    intensity.setRating(rating); intensitySource.stringValue = rating?.source.capitalized ?? ""
+    detail.stringValue = "\(noteCount.formatted()) notes"
+      + (song.instrumentCount(for: selected).map { "  ·  \($0) kit voices" } ?? "")
+      + (song.charter.flatMap { $0.isEmpty ? nil : "  ·  \($0)" } ?? "")
+    detail.toolTip = song.warnings.isEmpty ? nil : song.warnings.joined(separator: "\n")
+    if changedSong || artwork.image == nil { artwork.load(path: song.albumArtPath) }
     difficulty.removeAllItems()
     for item in song.difficulties { difficulty.addItem(withTitle: item.capitalized); difficulty.lastItem?.representedObject = item }
     difficulty.selectItem(withTitle: selected.capitalized)
-    difficulty.isEnabled = true; play.isEnabled = noteCount > 0
+    difficulty.isEnabled = true; play.isEnabled = !busy && noteCount > 0
+    bestHeading.stringValue = "YOUR BEST  ·  \(selected.uppercased())"
+    if changedSong { setBest(nil) }
   }
-
+  private func notifySelection(_ song: DrumxSong) {
+    onSelection?(song)
+    if filter.indexOfSelectedItem > 0,
+      let selected = filter.titleOfSelectedItem?.lowercased(), song.difficulties.contains(selected) {
+      onDifficulty?(selected)
+    }
+  }
   private func filterSongs() {
     let query = search.stringValue.trimmingCharacters(in: .whitespacesAndNewlines)
-    filtered = songs.filter { query.isEmpty || "\($0.title) \($0.artist) \($0.charter ?? "")".localizedCaseInsensitiveContains(query) }
-    count.stringValue = "YOUR LIBRARY  /  \(filtered.count) \(filtered.count == 1 ? "SONG" : "SONGS")"
+    let selectedDifficulty = filter.indexOfSelectedItem > 0 ? filter.titleOfSelectedItem?.lowercased() : nil
+    filtered = songs.filter {
+      (query.isEmpty || "\($0.title) \($0.artist) \($0.album ?? "") \($0.charter ?? "")".localizedCaseInsensitiveContains(query))
+        && (selectedDifficulty == nil || $0.difficulties.contains(selectedDifficulty!))
+    }
+    let sortIndex = sort.indexOfSelectedItem
+    filtered.sort { left, right in
+      if sortIndex == 2 && left.durationSeconds != right.durationSeconds { return left.durationSeconds < right.durationSeconds }
+      let first = sortIndex == 0 ? left.artist.localizedStandardCompare(right.artist) : left.title.localizedStandardCompare(right.title)
+      if first != .orderedSame { return first == .orderedAscending }
+      let second = left.title.localizedStandardCompare(right.title)
+      return second == .orderedSame ? left.id < right.id : second == .orderedAscending
+    }
+    count.stringValue = filtered.count == songs.count
+      ? "\(songs.count.formatted()) \(songs.count == 1 ? "song" : "songs")"
+      : "\(filtered.count.formatted()) of \(songs.count.formatted()) songs"
+    applyingFilter = true
     table.reloadData(); empty.isHidden = !filtered.isEmpty
-    empty.stringValue = songs.isEmpty ? "A library worth playing.\n\nImport a song, add a song directory, or drop a song folder here." : "No songs match your search."
+    empty.stringValue = songs.isEmpty ? "Add your first songs\n\nImport a song or add a folder to start your library." : "No matching songs\n\nTry a different search or difficulty."
     if let index = filtered.firstIndex(where: { $0.id == selectedID }) ?? (filtered.isEmpty ? nil : 0) {
       table.selectRowIndexes(IndexSet(integer: index), byExtendingSelection: false)
-      onSelection?(filtered[index])
+      table.scrollRowToVisible(index); applyingFilter = false; notifySelection(filtered[index])
     } else {
-      selectedID = nil; play.isEnabled = false; difficulty.isEnabled = false
-      title.stringValue = songs.isEmpty ? "Bring your music." : "No matching songs"
-      artist.stringValue = songs.isEmpty ? "Start with a song folder." : "Try another search."
-      metadata.stringValue = ""; detail.stringValue = ""; artwork.image = nil
-      difficulty.removeAllItems(); onNoSelection?()
+      table.deselectAll(nil); selectedID = nil; selectedNoteCount = 0
+      play.isEnabled = false; difficulty.isEnabled = false; preview.isEnabled = false
+      title.stringValue = songs.isEmpty ? "Your next song" : "Nothing selected"
+      artist.stringValue = songs.isEmpty ? "Add something you love to play." : "Try another search or difficulty."
+      metadata.stringValue = ""; detail.stringValue = ""; artwork.load(path: nil); displayedSongID = nil
+      intensity.setRating(nil); intensitySource.stringValue = ""
+      difficulty.removeAllItems(); setBest(nil); setPreviewState(active: false)
+      applyingFilter = false; onNoSelection?()
     }
   }
   func numberOfRows(in tableView: NSTableView) -> Int { filtered.count }
   func tableViewSelectionDidChange(_ notification: Notification) {
-    guard filtered.indices.contains(table.selectedRow) else { return }
-    onSelection?(filtered[table.selectedRow])
+    guard !applyingFilter, filtered.indices.contains(table.selectedRow) else { return }
+    notifySelection(filtered[table.selectedRow])
   }
+  func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? { DrumxSongRow() }
   func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-    let song = filtered[row], cell = NSTableCellView()
-    let name = DrumxSongInk.label(song.title, size: 16, weight: .semibold)
-    let artist = DrumxSongInk.label("\(song.artist)  ·  \(DrumxSongInk.duration(song.durationSeconds))", size: 12, color: DrumxSongInk.muted)
-    name.frame = NSRect(x: 16, y: 38, width: tableView.bounds.width - 32, height: 24)
-    artist.frame = NSRect(x: 16, y: 16, width: tableView.bounds.width - 32, height: 20)
-    cell.addSubview(name); cell.addSubview(artist)
-    return cell
+    let identifier = NSUserInterfaceItemIdentifier("song-cell")
+    let cell = tableView.makeView(withIdentifier: identifier, owner: self) as? DrumxSongCell ?? DrumxSongCell()
+    let level = filter.indexOfSelectedItem > 0 ? filter.titleOfSelectedItem!.lowercased() : filtered[row].selectedDifficulty
+    cell.identifier = identifier; cell.configure(filtered[row], difficulty: level); return cell
   }
   func controlTextDidChange(_ obj: Notification) { filterSongs() }
+  @objc private func filtersChanged() { filterSongs() }
   @objc private func goBack() { onBack?() }
   @objc private func openEncore() { onEncore?() }
   @objc private func addDirectory() { onDirectory?() }
+  @objc private func refreshLibrary() { onRefresh?() }
   @objc private func importSong() { onImport?() }
   @objc private func playSong() { if play.isEnabled { onPlay?() } }
+  @objc private func togglePreview() { if preview.isEnabled { onPreviewToggle?() } }
+  @objc private func retryScoreSave() { onRetryScoreSave?() }
   @objc private func difficultyChanged() {
     if let value = difficulty.selectedItem?.representedObject as? String { onDifficulty?(value) }
   }
 }
 
 final class DrumxSongHighwayView: NSView {
+  var score: DrumxSongScore?
+  var personalBestPoints: Int?
+  var recordText = ""
+  var timingFeedback = DrumxSongTimingFeedback().state(at: 0)
+  /// Visual speed only. The audio transport and imported event times are untouched.
+  var scrollSpeed: Double = 1.25 { didSet { needsDisplay = true } }
   var notes: [DrumxSongVisualNote] = []
+  var gridLines: [DrumxSongGridLine] = []
   var time: Double = -2
   var duration: Double = 1
   var snapshot = DXSnapshot()
@@ -294,6 +596,59 @@ final class DrumxSongHighwayView: NSView {
   private let near = NSColor(calibratedRed: 0.120, green: 0.178, blue: 0.186, alpha: 1)
   private let roadLine = NSColor(calibratedRed: 0.240, green: 0.315, blue: 0.320, alpha: 1)
 
+  private func sideFeedback(roadWidth: CGFloat, nowY: CGFloat) {
+    let margin: CGFloat = 24, available = (bounds.width - roadWidth) / 2 - margin * 2
+    guard available >= 64 else { return }
+    let panelW = min(160, available), leftX = (bounds.width - roadWidth) / 2 - panelW - 24
+    let rightX = (bounds.width + roadWidth) / 2 + 24
+    let y = max(120, nowY * 0.48)
+    func ink(_ value: String, x: CGFloat, y: CGFloat, size: CGFloat = 11,
+             color: NSColor = DrumxSongInk.muted, weight: NSFont.Weight = .regular) {
+      DrumxSongInk.draw(value, in: NSRect(x: x, y: y, width: panelW, height: size + 10),
+        size: size, color: color, weight: weight)
+    }
+    ink("SCORE", x: leftX, y: y, size: 10, weight: .semibold)
+    ink((score?.points ?? 0).formatted(), x: leftX, y: y + 23, size: min(29, panelW * 0.22),
+      color: DrumxSongInk.paper, weight: .semibold)
+    let stars = score?.stars ?? 0
+    ink(String(repeating: "★", count: stars) + String(repeating: "☆", count: 5 - stars),
+      x: leftX, y: y + 66, size: min(19, panelW / 6), color: DrumxSongInk.lime)
+    let progressY = y + 97
+    DrumxSongInk.paper.withAlphaComponent(0.10).setFill()
+    NSBezierPath(roundedRect: NSRect(x: leftX, y: progressY, width: panelW, height: 3), xRadius: 1.5, yRadius: 1.5).fill()
+    DrumxSongInk.lime.setFill()
+    NSBezierPath(roundedRect: NSRect(x: leftX, y: progressY,
+      width: panelW * CGFloat(score?.progressToNextStar ?? 0), height: 3), xRadius: 1.5, yRadius: 1.5).fill()
+    ink("\(score?.multiplier ?? 1)×  MULTIPLIER", x: leftX, y: y + 119, size: 10,
+      color: (score?.multiplier ?? 1) == 4 ? DrumxSongInk.lime : DrumxSongInk.paper, weight: .semibold)
+    ink("\(score?.combo ?? 0) note streak", x: leftX, y: y + 143)
+    ink("PERSONAL BEST", x: leftX, y: y + 194, size: 9, weight: .semibold)
+    ink(personalBestPoints?.formatted() ?? "Set your first score", x: leftX, y: y + 213,
+      size: 12, color: DrumxSongInk.paper)
+
+    let feedback = timingFeedback
+    let active = feedback.offsetMS != nil
+    let tint = feedback.status == .centered ? DrumxSongInk.lime
+      : feedback.status == .uneven ? DrumxSongInk.colors[2] : DrumxSongInk.colors[0]
+    ink("TIMING", x: rightX, y: y, size: 10, weight: .semibold)
+    ink(feedback.label, x: rightX, y: y + 24, size: min(16, panelW / 7),
+      color: active ? tint : DrumxSongInk.muted, weight: .medium)
+    let railY = y + 74, middle = rightX + panelW / 2
+    DrumxSongInk.paper.withAlphaComponent(0.15).setFill()
+    NSBezierPath(roundedRect: NSRect(x: rightX, y: railY, width: panelW, height: 3), xRadius: 1.5, yRadius: 1.5).fill()
+    DrumxSongInk.lime.withAlphaComponent(0.35).setFill()
+    NSRect(x: middle - panelW * 0.075, y: railY - 4, width: panelW * 0.15, height: 11).fill()
+    if let offset = feedback.offsetMS {
+      let x = middle + CGFloat(min(1, max(-1, offset / 80))) * (panelW / 2 - 4)
+      tint.setFill(); NSBezierPath(ovalIn: NSRect(x: x - 4, y: railY - 3, width: 8, height: 8)).fill()
+      ink(String(format: "%+.0f ms", offset), x: rightX, y: y + 122, size: 19, color: tint, weight: .medium)
+    }
+    ink("EARLY", x: rightX, y: railY + 17, size: 9)
+    DrumxSongInk.draw("LATE", in: NSRect(x: rightX, y: railY + 17, width: panelW, height: 19),
+      size: 9, color: DrumxSongInk.muted, align: .right)
+    ink("Recent matched hits", x: rightX, y: y + 154, size: 10)
+  }
+
   private func polygon(_ points: [DrumxProjectedPoint]) -> NSBezierPath {
     let path = NSBezierPath()
     guard let first = points.first else { return path }
@@ -308,38 +663,81 @@ final class DrumxSongHighwayView: NSView {
     path.line(to: NSPoint(x: end.x, y: end.y)); color.setStroke(); path.lineWidth = width; path.stroke()
   }
 
+  private func vertices(pad: Int, projection: DrumxProjection, distance: Double,
+                        catcher: Bool = false, scaleX: Double = 1, scaleY: Double = 1) -> [DrumxProjectedPoint] {
+    let center = DrumxSongGeometry.center(pad: pad, distance: distance, road: projection)
+    let rings = DrumxSongGeometry.rings(pad: pad, distance: distance, road: projection, catcher: catcher)
+    let alignment = DrumxSongGeometry.alignmentOffset(rings: rings, pad: pad, distance: distance, road: projection)
+    return rings.last!.map {
+      let point = DrumxSongGeometry.projectFace($0, pad: pad, distance: distance, road: projection)
+      return DrumxProjectedPoint(x: center.x + (point.x - center.x) * scaleX,
+                                 y: center.y + (point.y + alignment - center.y) * scaleY)
+    }
+  }
+
   private func shape(pad: Int, projection: DrumxProjection, distance: Double,
                      catcher: Bool = false, scaleX: Double = 1, scaleY: Double = 1) -> NSBezierPath {
-    let lateral = pad == 2 ? 0 : projection.laneCenter(DrumxSongInk.handPads.firstIndex(of: pad)!)
-    let center = projection.project(lateral: lateral, beatDistance: distance)
-    let points: [DrumxProjectedPoint]
-    if pad == 2 {
-      points = projection.rectangle(centerLateral: 0, beatDistance: distance,
-        worldWidth: 0.99, worldDepth: catcher ? 0.065 : 0.045)
-    } else if [0, 6, 7].contains(pad) {
-      points = projection.cymbal(centerLateral: lateral, beatDistance: distance,
-        worldWidth: (catcher ? 0.75 : 0.66) / 7, worldDepth: catcher ? 0.16 : 0.12)
-    } else {
-      points = projection.drum(centerLateral: lateral, beatDistance: distance,
-        worldWidth: (catcher ? 0.75 : 0.66) / 7, worldDepth: catcher ? 0.16 : 0.12)
+    polygon(vertices(pad: pad, projection: projection, distance: distance,
+      catcher: catcher, scaleX: scaleX, scaleY: scaleY))
+  }
+
+  private func material(pad: Int, projection: DrumxProjection, distance: Double,
+                        alpha: Double, catcher: Bool = false) {
+    let rings = DrumxSongGeometry.rings(pad: pad, distance: distance, road: projection, catcher: catcher)
+    let color = DrumxSongInk.colors[pad]
+    let factor = projection.width(at: distance) / projection.nearWidth
+    let alignment = DrumxSongGeometry.alignmentOffset(rings: rings, pad: pad, distance: distance, road: projection)
+    func projected(_ ring: [DrumxSongVertex]) -> NSBezierPath {
+      polygon(ring.map {
+        let point = DrumxSongGeometry.projectFace($0, pad: pad, distance: distance, road: projection)
+        return DrumxProjectedPoint(x: point.x, y: point.y + alignment)
+      })
     }
-    return polygon(points.map {
-      DrumxProjectedPoint(x: center.x + ($0.x - center.x) * scaleX,
-                          y: center.y + ($0.y - center.y) * scaleY)
-    })
+    let footprint = rings[0].map { DrumxSongVertex(x: $0.x, z: $0.z, height: 0) }
+    NSGraphicsContext.saveGraphicsState()
+    let shadow = NSShadow(); shadow.shadowColor = NSColor.black.withAlphaComponent(alpha * 0.65)
+    shadow.shadowBlurRadius = CGFloat(3 * factor); shadow.shadowOffset = .zero; shadow.set()
+    NSColor.black.withAlphaComponent(alpha * 0.42).setFill(); projected(footprint).fill()
+    NSGraphicsContext.restoreGraphicsState()
+    var faces: [[DrumxSongVertex]] = []
+    for level in 0..<(rings.count - 1) {
+      for index in rings[level].indices {
+        let next = (index + 1) % rings[level].count
+        faces.append([rings[level][index], rings[level][next], rings[level + 1][next], rings[level + 1][index]])
+      }
+    }
+    // Paint back-to-front in camera depth. These are real projected bevel and
+    // shell faces, including the lateral parallax of raised outer-lane notes.
+    faces.sort {
+      let a = $0.reduce(0) { $0 + $1.z - tan(DrumxSongGeometry.pitch) * $1.height }
+      let b = $1.reduce(0) { $0 + $1.z - tan(DrumxSongGeometry.pitch) * $1.height }
+      return a > b
+    }
+    for face in faces {
+      let intensity = DrumxSongGeometry.light(face)
+      let lit = color.blended(withFraction: max(0, 0.80 - intensity * 0.86), of: .black) ?? color
+      let surface = catcher ? lit.blended(withFraction: 0.38, of: .black) ?? lit : lit
+      surface.withAlphaComponent(alpha).setFill()
+      let path = projected(face); path.fill()
+      // A subpixel same-color stroke seals antialiasing seams between facets.
+      surface.withAlphaComponent(alpha).setStroke(); path.lineWidth = 0.4; path.stroke()
+    }
+    let cap = projected(rings.last!)
+    let capLight = color.blended(withFraction: catcher ? 0.90 : 0.42, of: catcher ? .black : .white) ?? color
+    let capDark = color.blended(withFraction: catcher ? 0.98 : 0.12, of: .black) ?? color
+    NSGraphicsContext.saveGraphicsState(); cap.addClip()
+    NSGradient(starting: capLight.withAlphaComponent(alpha), ending: capDark.withAlphaComponent(alpha))?.draw(
+      from: NSPoint(x: cap.bounds.minX, y: cap.bounds.minY),
+      to: NSPoint(x: cap.bounds.maxX, y: cap.bounds.maxY), options: [])
+    NSGraphicsContext.restoreGraphicsState()
+    (catcher ? color : NSColor.white).withAlphaComponent(alpha * (catcher ? 0.70 : 0.38)).setStroke()
+    cap.lineWidth = CGFloat(max(0.45, factor * 0.65)); cap.stroke()
   }
 
   private func catcher(pad: Int, projection: DrumxProjection, now: Double, reduceMotion: Bool) {
     let outline = shape(pad: pad, projection: projection, distance: 0, catcher: true)
     let color = DrumxSongInk.colors[pad]
-    NSGraphicsContext.saveGraphicsState()
-    let shadow = NSShadow(); shadow.shadowColor = NSColor.black.withAlphaComponent(0.36)
-    shadow.shadowBlurRadius = 5; shadow.shadowOffset = NSSize(width: 0, height: -2); shadow.set()
-    stage.withAlphaComponent(0.94).setFill(); outline.fill()
-    NSGraphicsContext.restoreGraphicsState()
-    NSGradient(starting: color.withAlphaComponent(0.20), ending: color.withAlphaComponent(0.025))?
-      .draw(in: outline, angle: 90)
-    color.withAlphaComponent(0.65).setStroke(); outline.lineWidth = 1.5; outline.stroke()
+    material(pad: pad, projection: projection, distance: 0, alpha: 1, catcher: true)
     guard let hit = flashes[pad] else { return }
     let age = now - hit.host, envelope = max(0, 1 - age / 0.27)
     guard envelope > 0 else { return }
@@ -367,8 +765,7 @@ final class DrumxSongHighwayView: NSView {
     let color = isExtra ? NSColor(calibratedRed: 0.940, green: 0.451, blue: 0.395, alpha: 1)
       : DrumxSongInk.colors[pad]
     let alpha = 1 - progress
-    let center = projection.project(lateral: pad == 2 ? 0
-      : projection.laneCenter(DrumxSongInk.handPads.firstIndex(of: pad)!), beatDistance: 0)
+    let center = DrumxSongGeometry.center(pad: pad, distance: 0, road: projection)
     let x = center.x, y = center.y
     if reduceMotion || pad == 2 {
       color.withAlphaComponent(0.75 * alpha).setStroke()
@@ -384,8 +781,8 @@ final class DrumxSongHighwayView: NSView {
       }
     } else if !isExtra {
       let ringWidth = 42 + 35 * progress, ringHeight = 10 + 11 * progress
-      let ring = NSBezierPath(ovalIn: NSRect(x: x - ringWidth / 2, y: y - ringHeight / 2,
-        width: ringWidth, height: ringHeight))
+      let ring = NSBezierPath(ovalIn: NSRect(x: CGFloat(x - ringWidth / 2), y: CGFloat(y - ringHeight / 2),
+        width: CGFloat(ringWidth), height: CGFloat(ringHeight)))
       color.withAlphaComponent(0.46 * alpha).setStroke(); ring.lineWidth = 1.25; ring.stroke()
       for side in -1...1 {
         let dx = Double(side) * (11 + 17 * progress), rise = 9 + 28 * progress
@@ -408,25 +805,26 @@ final class DrumxSongHighwayView: NSView {
     stage.setFill(); bounds.fill()
     guard bounds.width > 200, bounds.height > 260 else { return }
     let w = bounds.width, h = bounds.height, left: CGFloat = 44, right = w - 44
-    let nowY = max(220, h - 150), top: CGFloat = 66, railW = right - left
-    let center = bounds.midX, nearWidth = min(870, w - 132)
-    // Reuse the practice highway's homography. Here a world-depth unit is half
-    // a second, not an invented musical beat: imported tempo maps remain exact.
-    let unitsPerSecond = 2.0, lookSeconds = 2.7
+    let nowY = max(220, h - 150), top: CGFloat = 56, railW = right - left
+    let center = bounds.midX, nearWidth = min(650, w * 0.62)
+    // Reuse the practice highway's homography with a fixed world surface. Speed
+    // changes only seconds-to-distance, keeping gem dimensions and NOW fixed.
+    // A world-depth unit is half a second at 1×, not an invented musical beat.
+    let unitsPerSecond = 2.0 * min(1.8, max(0.7, scrollSpeed)), lookSeconds = 5.4 / unitsPerSecond
     let projection = DrumxProjection(centerX: Double(center), nearWidth: Double(nearWidth),
-      topY: Double(top), strikeY: Double(nowY), previewBeats: lookSeconds * unitsPerSecond)
+      topY: Double(top), strikeY: Double(nowY), previewBeats: 5.4, farScale: 0.28)
     let hostNow = DrumxIO.hostNowSeconds()
     let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
     DrumxSongInk.draw("\(DrumxSongInk.duration(max(0, time)))  /  \(DrumxSongInk.duration(duration))",
-      in: NSRect(x: left, y: 18, width: 160, height: 25), size: 13, color: DrumxSongInk.muted)
+      in: NSRect(x: left, y: 11, width: 160, height: 25), size: 13, color: DrumxSongInk.muted)
     let metrics = snapshot.total
     let accuracy = metrics.has_accuracy != 0 ? String(format: "%.0f%% hit", metrics.hit_rate_percent) : "Ready to play"
     DrumxSongInk.draw("\(accuracy)    ·    \(metrics.streak) streak    ·    \(metrics.missed) missed",
-      in: NSRect(x: w - 470, y: 18, width: 425, height: 25), size: 14, weight: .medium, align: .right)
+      in: NSRect(x: w - 470, y: 11, width: 425, height: 25), size: 14, weight: .medium, align: .right)
     DrumxSongInk.paper.withAlphaComponent(0.08).setFill()
-    NSBezierPath(roundedRect: NSRect(x: left, y: 51, width: railW, height: 3), xRadius: 1.5, yRadius: 1.5).fill()
+    NSBezierPath(roundedRect: NSRect(x: left, y: 41, width: railW, height: 3), xRadius: 1.5, yRadius: 1.5).fill()
     DrumxSongInk.lime.setFill()
-    NSBezierPath(roundedRect: NSRect(x: left, y: 51, width: railW * min(1, max(0, time / max(1, duration))), height: 3), xRadius: 1.5, yRadius: 1.5).fill()
+    NSBezierPath(roundedRect: NSRect(x: left, y: 41, width: railW * min(1, max(0, time / max(1, duration))), height: 3), xRadius: 1.5, yRadius: 1.5).fill()
 
     let road = polygon([projection.project(lateral: -0.5, beatDistance: projection.previewBeats),
       projection.project(lateral: 0.5, beatDistance: projection.previewBeats),
@@ -446,26 +844,33 @@ final class DrumxSongHighwayView: NSView {
         color: roadLine.withAlphaComponent(slot == 0 || slot == 7 ? 0.72 : 0.44),
         width: slot == 0 || slot == 7 ? 1 : 0.7)
     }
-    // Unlabelled half-second subdivisions provide motion reference without
-    // claiming the song has a fixed tempo or a particular time signature.
-    let firstRow = Int(ceil(time * 2)), lastRow = Int(floor((time + lookSeconds) * 2))
-    if lastRow >= firstRow {
-      for row in firstRow...lastRow {
-        let distance = (Double(row) / 2 - time) * unitsPerSecond
-        line(projection.project(lateral: -0.5, beatDistance: distance),
-          projection.project(lateral: 0.5, beatDistance: distance),
-          color: roadLine.withAlphaComponent(0.51), width: 0.65)
-      }
+    // Bar and pulse positions come from the song's tempo and meter map. They
+    // use the same captured-time-to-distance transform as the note centers.
+    var gridLow = 0, gridHigh = gridLines.count
+    while gridLow < gridHigh {
+      let middle = (gridLow + gridHigh) / 2
+      if gridLines[middle].time < time { gridLow = middle + 1 } else { gridHigh = middle }
+    }
+    for grid in gridLines.dropFirst(gridLow) {
+      if grid.time > time + lookSeconds { break }
+      let distance = (grid.time - time) * unitsPerSecond
+      let alpha = grid.kind == .bar ? 0.30 : grid.kind == .beat ? 0.16 : 0.075
+      line(projection.project(lateral: -0.5, beatDistance: distance),
+        projection.project(lateral: 0.5, beatDistance: distance),
+        color: DrumxSongInk.paper.withAlphaComponent(alpha * projection.farVisibility(at: distance)),
+        width: grid.kind == .bar ? 1.1 : 0.6)
     }
     roadLine.withAlphaComponent(0.48).setFill()
     polygon([DrumxProjectedPoint(x: Double(center) - Double(nearWidth) / 2, y: Double(nowY)),
       DrumxProjectedPoint(x: Double(center) + Double(nearWidth) / 2, y: Double(nowY)),
       DrumxProjectedPoint(x: Double(center) + Double(nearWidth) / 2 - 8, y: Double(nowY) + 7),
       DrumxProjectedPoint(x: Double(center) - Double(nearWidth) / 2 + 8, y: Double(nowY) + 7)]).fill()
-    line(projection.project(lateral: -0.5, beatDistance: 0), projection.project(lateral: 0.5, beatDistance: 0),
-      color: DrumxSongInk.paper.withAlphaComponent(0.78), width: 1.5)
-    DrumxSongInk.draw("NOW", in: NSRect(x: center - nearWidth / 2 - 50, y: nowY - 7, width: 39, height: 18),
-      size: 11, color: DrumxSongInk.muted, weight: .medium, align: .center)
+    let strikeY = CGFloat(DrumxSongGeometry.center(pad: 2, distance: 0, road: projection).y)
+    line(projection.project(lateral: -0.505, beatDistance: 0),
+      projection.project(lateral: 0.505, beatDistance: 0),
+      color: DrumxSongInk.paper.withAlphaComponent(0.65), width: 1)
+    DrumxSongInk.draw("NOW", in: NSRect(x: center - nearWidth / 2 - 47, y: strikeY - 7, width: 39, height: 18),
+      size: 10, color: DrumxSongInk.muted, weight: .medium, align: .center)
 
     // Binary search keeps a long song's drawing proportional to visible notes.
     var low = 0, high = notes.count
@@ -491,19 +896,8 @@ final class DrumxSongHighwayView: NSView {
       }
       for item in visible.reversed() where (item.note.pad == 2) == footLayer {
         let alpha = projection.farVisibility(at: item.distance) * (item.missed ? 0.2 : 1)
-        let color = DrumxSongInk.colors[item.note.pad]
-        let gem = shape(pad: item.note.pad, projection: projection, distance: item.distance)
-        NSGraphicsContext.saveGraphicsState()
-        let shadow = NSShadow(); shadow.shadowColor = NSColor.black.withAlphaComponent(0.18 * alpha)
-        shadow.shadowBlurRadius = 3; shadow.shadowOffset = NSSize(width: 0, height: -2); shadow.set()
-        color.withAlphaComponent(alpha).setFill(); gem.fill()
-        NSGraphicsContext.restoreGraphicsState()
-        if [0, 6, 7].contains(item.note.pad) {
-          let lateral = projection.laneCenter(DrumxSongInk.handPads.firstIndex(of: item.note.pad)!)
-          line(projection.project(lateral: lateral - 0.022, beatDistance: item.distance + 0.015),
-            projection.project(lateral: lateral + 0.022, beatDistance: item.distance + 0.015),
-            color: stage.withAlphaComponent(0.25 * alpha), width: 1)
-        }
+        material(pad: item.note.pad, projection: projection, distance: item.distance, alpha: alpha)
+
       }
     }
     for pad in DrumxSongInk.handPads { hitBurst(pad: pad, projection: projection, now: hostNow, reduceMotion: reduceMotion) }
@@ -516,6 +910,8 @@ final class DrumxSongHighwayView: NSView {
       from: NSPoint(x: center, y: top), to: NSPoint(x: center, y: top + featherHeight), options: [])
     NSGraphicsContext.restoreGraphicsState()
 
+    sideFeedback(roadWidth: nearWidth, nowY: nowY)
+
     // Preserve the established physical-kit silhouettes beneath NOW. These
     // static references are not separate timing destinations.
     for (index, pad) in DrumxSongInk.handPads.enumerated() {
@@ -523,7 +919,8 @@ final class DrumxSongHighwayView: NSView {
       let x = CGFloat(point.x), cymbal = [0, 6, 7].contains(pad), color = DrumxSongInk.colors[pad]
       let cy = nowY + (cymbal ? 29 : 43), radius = min(29, nearWidth / 7 * 0.29)
       let ry: CGFloat = cymbal ? 4.5 : 10
-      line(DrumxProjectedPoint(x: x, y: nowY + 9), DrumxProjectedPoint(x: x, y: cy - ry - 3),
+      line(DrumxProjectedPoint(x: Double(x), y: Double(nowY) + 9),
+        DrumxProjectedPoint(x: Double(x), y: Double(cy) - Double(ry) - 3),
         color: roadLine.withAlphaComponent(0.75), width: 0.8)
       let oval = NSBezierPath(ovalIn: NSRect(x: x - radius, y: cy - ry, width: radius * 2, height: ry * 2))
       stage.setFill(); oval.fill(); color.withAlphaComponent(0.78).setStroke(); oval.lineWidth = 1.1; oval.stroke()
@@ -546,7 +943,7 @@ final class DrumxSongHighwayView: NSView {
     DrumxSongInk.draw("P  pause       ·       ENTER  restart       ·       ESC  library",
       in: NSRect(x: left, y: h - 30, width: railW, height: 20), size: 11, color: DrumxSongInk.muted, align: .center)
     if !stateText.isEmpty {
-      let box = NSRect(x: w * 0.17, y: max(95, nowY * 0.32), width: w * 0.66, height: completed ? 198 : 141)
+      let box = NSRect(x: w * 0.17, y: max(95, nowY * 0.32), width: w * 0.66, height: completed ? 254 : 141)
       DrumxSongInk.background.withAlphaComponent(0.94).setFill()
       NSBezierPath(roundedRect: box, xRadius: 16, yRadius: 16).fill()
       DrumxSongInk.draw(stateText, in: NSRect(x: box.minX + 15, y: box.minY + 27, width: box.width - 30, height: 48),
@@ -554,10 +951,15 @@ final class DrumxSongHighwayView: NSView {
       DrumxSongInk.draw(detailText, in: NSRect(x: box.minX + 16, y: box.minY + 85, width: box.width - 32, height: 28),
         size: 13, color: DrumxSongInk.muted, align: .center)
       if completed {
-        DrumxSongInk.draw("\(metrics.matched) / \(metrics.expected) notes hit   ·   \(metrics.best_streak) best streak   ·   \(metrics.extra) extra hits",
-          in: NSRect(x: box.minX + 16, y: box.minY + 127, width: box.width - 32, height: 25), size: 14, align: .center)
+        let earnedStars = score?.stars ?? 0
+        DrumxSongInk.draw("\((score?.points ?? 0).formatted()) points    "
+          + String(repeating: "★", count: earnedStars) + String(repeating: "☆", count: 5 - earnedStars),
+          in: NSRect(x: box.minX + 16, y: box.minY + 122, width: box.width - 32, height: 30),
+          size: 23, color: DrumxSongInk.lime, weight: .semibold, align: .center)
+        DrumxSongInk.draw(recordText, in: NSRect(x: box.minX + 16, y: box.minY + 163, width: box.width - 32, height: 24),
+          size: 13, color: DrumxSongInk.paper, align: .center)
         DrumxSongInk.draw("Enter to play again   ·   Escape to choose a song",
-          in: NSRect(x: box.minX + 16, y: box.minY + 163, width: box.width - 32, height: 20),
+          in: NSRect(x: box.minX + 16, y: box.minY + 207, width: box.width - 32, height: 20),
           size: 11, color: DrumxSongInk.muted, align: .center)
       }
     }

@@ -85,7 +85,9 @@ Use **Continue** to resume, **Learn** to browse lessons, or **Settings** to conf
 
 Open **Songs** to browse your local library, import a song or scan a song directory, choose an authored drum difficulty, and play the complete song. The native player supports Clone Hero / YARG song folders, ZIPs, and SNG packages containing `song.ini`, `notes.mid` or `notes.chart`, and audio stems. Easy, Medium, Hard, and Expert appear when the chart supplies them.
 
-Song play enables hi-hat, snare, kick, three toms, crash, and ride. It preserves chart tempo changes, song offsets, and pro-drum cymbal/tom distinctions. Songs use a separate library and do not award curriculum checkpoints. The shared Godot desktop preview does not yet expose this native Songs section.
+Browse with the arrows and hear short previews from inside each song. Search, sort, filter by difficulty, and use **Refresh** to update registered directories. Intensity circles distinguish authored ratings from computed estimates. The browser loads a small metadata index; it opens the full chart when you play. Completed takes earn points, combo multipliers, stars, and saved personal bests for each player and difficulty. [Scoring rules](docs/song-scoring.md)
+
+Song play enables hi-hat, snare, kick, three toms, crash, and ride. Raised, shaded notes travel down a perspective highway to one shared NOW line. Adjust **Scroll speed** to spread the notes farther apart without changing audio tempo or scoring. Chart tempo changes, song offsets, and pro-drum cymbal/tom distinctions remain intact. Songs use a separate library and do not award curriculum checkpoints. The shared Godot desktop preview does not yet expose this native Songs section.
 
 Python 3 runs the bundled importer. Opus and Ogg audio require **FFmpeg** (`brew install ffmpeg`); decoded audio is cached locally. **Import song** copies a song into `~/Library/Application Support/Drumx/Songs`. **Add song directory** indexes unpacked song folders where they are, such as `~/Documents/Songs`, so a large collection needs no second audio copy. Keep that folder in place. Library metadata and decoded caches stay in Application Support, outside the repository. Your original downloads remain in place. A chart without drums cannot be played as a drum song. [Song formats, mappings, and command-line import](docs/song-format.md)
 
@@ -97,7 +99,9 @@ Python 3 runs the bundled importer. Opus and Ogg audio require **FFmpeg** (`brew
 | **Settings → Kit** | Select MIDI input, inspect incoming notes, and map pad aliases |
 | **Settings → Controls** | Enable optional drum navigation in supported menus |
 
-Lessons score **hi-hat, snare, and kick**; native song play scores the full eight-part kit. The built-in monitor sounds cover the three lesson instruments using 24 acoustic recordings with four velocity layers and two variations per instrument. Use your kit's own sound for the additional pads. [Sample license and provenance](native/assets/BigRusty/README.md)
+Lessons score **hi-hat, snare, and kick**; native song play scores the full eight-part kit. The built-in monitor covers that kit plus open and pedal hi-hats using 80 original acoustic recordings, with four velocity layers and two recorded variations per sound. Enable **Drumx drum sounds** in Sound settings to hear your MIDI strikes, or listen through your module. [Sample license and provenance](native/assets/BigRusty/README.md)
+
+In Songs, **Recorded drums** defaults to **Off**, muting separate drum stems while the backing track plays. Turn it **On** to hear the recorded performance for reference. Library previews use the full mix. Songs with drums embedded in a single mix cannot mute those drums separately. This control is independent of your live pad sounds and scoring. [How song stems work](docs/song-audio.md)
 
 [First MIDI session](docs/first-kit-session.md) · [Controls and troubleshooting](docs/native-lab.md) · [Shared desktop build instructions](docs/desktop-preview.md)
 

@@ -13,8 +13,16 @@ xcrun swiftc -target "$(uname -m)-apple-macosx15.0" -swift-version 5 -O -parse-a
   "$DRUMX_ROOT/native/macos/DrumxIO.swift" \
   "$DRUMX_ROOT/native/macos/DrumxSampler.swift" \
   "$DRUMX_ROOT/native/macos/DrumxSongLibrary.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxSongGrid.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxSongStemMix.swift" \
   "$DRUMX_ROOT/native/macos/tests/DrumxSongChecks.swift" \
   "$DRUMX_TEST_BUILD/drumx_core.o" -Xlinker -lc++ \
   -framework AVFoundation -framework AVFAudio -framework CoreMIDI \
   -framework CoreAudio -framework AudioToolbox -o "$DRUMX_TEST_BUILD/DrumxSongChecks"
 "$DRUMX_TEST_BUILD/DrumxSongChecks" "$@"
+bash "$DRUMX_ROOT/scripts/test-song-geometry.sh"
+bash "$DRUMX_ROOT/scripts/test-song-grid.sh"
+bash "$DRUMX_ROOT/scripts/test-song-timing-feedback.sh"
+bash "$DRUMX_ROOT/scripts/test-song-scores.sh"
+bash "$DRUMX_ROOT/scripts/test-song-stem-mix.sh"
+bash "$DRUMX_ROOT/scripts/test-song-stem-transport.sh"

@@ -26,6 +26,8 @@ import tempfile
 import zipfile
 
 SCHEMA_VERSION = 1
+SONG_INFO_VERSION = 1
+INTENSITY_VERSION = 1
 DIFFICULTIES = ("easy", "medium", "hard", "expert")
 LANES = ("hihat", "snare", "kick", "tom1", "tom2", "tom3", "crash", "ride")
 MAX_FILES = 10000
@@ -690,6 +692,8 @@ def build_charts(parsed, metadata, warnings, double_kick):
     start = min(0.0, min(n["timeSeconds"] for n in all_notes))
     if not 0 < duration <= MAX_DURATION or duration - start > MAX_DURATION:
         fail("Song duration must be positive and no more than two hours")
+    for chart in charts:
+        chart["intensity"] = chart_intensity(chart, metadata)
     return {"drumMode": mode, "offsetSeconds": offset, "chartStartSeconds": start,
             "durationSeconds": round(duration, 9), "charts": charts,
             "doubleKick": double_kick, "doubleKickNoteCount": extra_kicks,
@@ -770,22 +774,220 @@ def atomic_json(path, value):
             os.unlink(temporary)
 
 
+def chart_intensity(chart, metadata=None):
+    """Versioned chart demand estimate, calculated on import rather than browse.
+
+    Authored 0..6 tiers describe Expert only. Other difficulties use the same
+    deterministic density, two-second burst and coordination model.
+    """
+    metadata = metadata or {}
+    notes = chart.get("notes", [])
+    if not notes:
+        fail("Cannot calculate intensity for an empty drum chart")
+    ordered = sorted(notes, key=lambda note: note["timeSeconds"])
+    if any(not isinstance(note.get("timeSeconds"), (int, float))
+           or not math.isfinite(note["timeSeconds"]) or note.get("lane") not in LANES for note in ordered):
+        fail("Invalid drum notes in intensity calculation")
+    active = max(0.0, ordered[-1]["timeSeconds"] - ordered[0]["timeSeconds"])
+    density_window = max(8.0, active + 1.0)
+    density = len(ordered) / density_window
+    left = peak_count = 0
+    for right, note in enumerate(ordered):
+        while note["timeSeconds"] - ordered[left]["timeSeconds"] >= 2.0 - 1e-9:
+            left += 1
+        peak_count = max(peak_count, right - left + 1)
+    groups = defaultdict(set)
+    for note in ordered:
+        groups[round(note["timeSeconds"], 6)].add(note["lane"])
+    hand_foot = sum("kick" in lanes and len(lanes) > 1 for lanes in groups.values()) / len(groups)
+    multiple_hands = sum(len(lanes - {"kick"}) >= 2 for lanes in groups.values()) / len(groups)
+    kick_density = sum(note["lane"] == "kick" for note in ordered) / density_window
+    peak = peak_count / 2.0
+    demand = 0.50 * density + 0.35 * peak + 1.50 * hand_foot + 1.20 * multiple_hands + 0.50 * min(1, kick_density / 2)
+    level = sum(demand >= threshold for threshold in (1.4, 2.6, 3.9, 5.4, 7.2, 9.2))
+    result = {"level": level, "source": "estimated", "version": INTENSITY_VERSION,
+              "metrics": {"noteCount": len(ordered), "activeSeconds": round(active, 4),
+                          "densityWindowSeconds": round(density_window, 4), "averageNPS": round(density, 4),
+                          "peakTwoSecondNPS": round(peak, 4), "handFootRatio": round(hand_foot, 4),
+                          "multiHandRatio": round(multiple_hands, 4), "kickNPS": round(kick_density, 4),
+                          "demandScore": round(demand, 4)}}
+    if chart.get("difficulty") == "expert":
+        for field in ("diff_drums_real", "diff_drums"):
+            try:
+                authored = float(metadata[field])
+            except (KeyError, TypeError, ValueError, OverflowError):
+                continue
+            if math.isfinite(authored) and authored.is_integer() and 0 <= authored <= 6:
+                result.update(level=int(authored), source="authored", authoredField=field)
+                break
+    return result
+
+
+def current_intensity(value):
+    metrics = value.get("metrics") if isinstance(value, dict) else None
+    return (isinstance(value, dict) and type(value.get("level")) is int and 0 <= value["level"] <= 6
+            and value.get("version") == INTENSITY_VERSION and value.get("source") in ("authored", "estimated")
+            and isinstance(metrics, dict) and all(key in metrics for key in
+                ("noteCount", "activeSeconds", "averageNPS", "peakTwoSecondNPS", "handFootRatio", "demandScore"))
+            and all(isinstance(metric, (int, float)) and math.isfinite(metric) for metric in metrics.values()))
+
+
 def song_info(manifest):
     """Keep browsing independent of the size of every playable note chart."""
     fields = ("schemaVersion", "id", "title", "artist", "album", "charter", "year", "genre",
               "sourceFormat", "sourcePath", "chartPath", "manifestPath", "mediaMode", "importedAt",
               "resolution", "selectedDifficulty", "difficulties", "drumMode", "durationSeconds",
               "chartStartSeconds", "offsetSeconds", "audio", "albumArtPath", "warnings", "provenance",
-              "doubleKick", "doubleKickNoteCount", "previewStartSeconds", "previewEndSeconds")
+              "doubleKick", "doubleKickNoteCount", "previewStartSeconds", "previewEndSeconds", "referenceFingerprint")
     summary = {key: manifest[key] for key in fields if key in manifest}
-    summary["charts"] = [{"difficulty": chart["difficulty"], "noteCount": len(chart["notes"]),
-                          "instrumentCount": len({note["lane"] for note in chart["notes"]})}
-                         for chart in manifest["charts"]]
+    summary["metadataVersion"] = SONG_INFO_VERSION
+    summary["charts"] = []
+    for chart in manifest["charts"]:
+        rating = chart.get("intensity")
+        if not current_intensity(rating):
+            rating = chart_intensity(chart, manifest.get("metadata", {}))
+        summary["charts"].append({"difficulty": chart["difficulty"], "noteCount": len(chart["notes"]),
+                                  "instrumentCount": len({note["lane"] for note in chart["notes"]}),
+                                  "intensity": rating})
     return summary
 
 
+def rebuild_index(library=None):
+    """Repair only metadata sidecars. Never hash, decode, copy or rewrite media.
+
+    Full song manifests remain untouched; this works even when referenced song
+    directories are temporarily offline because all chart notes are already local.
+    """
+    library = Path(library or Path.home() / "Library/Application Support/Drumx/Songs").expanduser().resolve()
+    report = {"updated": 0, "unchanged": 0, "errors": []}
+    if not library.exists():
+        return report
+    for folder in sorted(library.iterdir()):
+        manifest_path, info_path = folder / "song.json", folder / "song-info.json"
+        if folder.is_symlink() or not folder.is_dir() or folder.name.startswith(".") or not manifest_path.is_file():
+            continue
+        try:
+            if manifest_path.is_symlink() or info_path.is_symlink():
+                fail("Song index files must not be symbolic links")
+            try:
+                info = json.loads(info_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                info = {}
+            if (info.get("schemaVersion") == SCHEMA_VERSION and info.get("metadataVersion") == SONG_INFO_VERSION
+                    and info.get("id") == folder.name
+                    and info.get("charts") and all(current_intensity(chart.get("intensity")) for chart in info["charts"])
+                    and info_path.stat().st_mtime_ns >= manifest_path.stat().st_mtime_ns):
+                report["unchanged"] += 1
+                continue
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            if manifest.get("schemaVersion") != SCHEMA_VERSION or manifest.get("id") != folder.name or not manifest.get("charts"):
+                fail("Unsupported, mismatched or empty song manifest")
+            atomic_json(info_path, song_info(manifest))
+            report["updated"] += 1
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            report["errors"].append({"path": str(manifest_path), "error": str(error)})
+    return report
+
+
+def _reference_fingerprint(source, root, files, double_kick):
+    """Cheap change detection, recorded only after a successful content import.
+
+    ctime catches same-size edits whose mtime was restored. This is a local refresh
+    optimization, not a replacement for the content hash that establishes song ID.
+    """
+    entries = []
+    for path in sorted(files, key=lambda item: item.relative_to(root).as_posix()):
+        attributes = path.stat()
+        entries.append({"path": path.relative_to(root).as_posix(), "size": attributes.st_size,
+                        "mtime_ns": attributes.st_mtime_ns, "ctime_ns": attributes.st_ctime_ns})
+    return {"schemaVersion": 1, "sourcePath": str(source), "rootPath": str(root),
+            "doubleKick": bool(double_kick), "files": entries}
+
+
+def _manifest_stamp(path):
+    attributes = path.stat()
+    return attributes.st_size, attributes.st_mtime_ns, attributes.st_ctime_ns
+
+
+def _remember_reference(cache, manifest_path, summary, stamp=None):
+    entries = cache.setdefault(summary["sourcePath"], [])
+    # Edited songs retain their older content IDs. Keep all candidates so directory
+    # enumeration order cannot let an obsolete fingerprint shadow the current one.
+    entries[:] = [entry for entry in entries if entry[0] != manifest_path]
+    entries.append((manifest_path, summary, stamp or _manifest_stamp(manifest_path)))
+
+
+def _reference_cache(library):
+    """Read small private sidecars once, never all chart JSON or source media."""
+    cache = {}
+    if not library.exists():
+        return cache
+    for folder in library.iterdir():
+        manifest_path, info_path = folder / "song.json", folder / "song-info.json"
+        if (folder.is_symlink() or not folder.is_dir() or not re.fullmatch(r"[0-9a-f]{24}", folder.name)
+                or manifest_path.is_symlink() or info_path.is_symlink()):
+            continue
+        try:
+            if not manifest_path.is_file() or not info_path.is_file() or info_path.stat().st_size > MAX_METADATA_BYTES:
+                continue
+            summary = json.loads(info_path.read_text(encoding="utf-8"))
+            if (not isinstance(summary, dict) or summary.get("schemaVersion") != SCHEMA_VERSION
+                    or summary.get("id") != folder.name or summary.get("mediaMode") != "reference"
+                    or summary.get("manifestPath") != str(manifest_path)
+                    or not isinstance(summary.get("sourcePath"), str)
+                    or not isinstance(summary.get("referenceFingerprint"), dict)):
+                continue
+            _remember_reference(cache, manifest_path, summary)
+        except (OSError, ValueError, UnicodeError):
+            continue  # An absent or damaged cache must take the normal import path.
+    return cache
+
+
+def _cached_reference(fingerprint, cache, difficulty, source_url, summary_only):
+    entry = next((entry for entry in cache.get(fingerprint["sourcePath"], [])
+                  if entry[1].get("referenceFingerprint") == fingerprint), None)
+    if not entry:
+        return None
+    manifest_path, summary, manifest_stamp = entry
+    info_path = manifest_path.with_name("song-info.json")
+    charts = summary.get("charts")
+    provenance = summary.get("provenance")
+    if (summary.get("referenceFingerprint") != fingerprint or not isinstance(charts, list) or not charts
+            or not all(isinstance(chart, dict) for chart in charts)
+            or summary.get("selectedDifficulty") != (difficulty or charts[-1].get("difficulty"))
+            or (source_url and (not isinstance(provenance, dict) or provenance.get("sourceURL") != source_url))):
+        return None
+    try:
+        if (manifest_path.parent.is_symlink() or manifest_path.is_symlink() or info_path.is_symlink()
+                or not manifest_path.is_file() or _manifest_stamp(manifest_path) != manifest_stamp):
+            return None
+        summary_current = (summary.get("metadataVersion") == SONG_INFO_VERSION
+                           and all(current_intensity(chart.get("intensity")) for chart in charts)
+                           and info_path.stat().st_mtime_ns >= manifest_stamp[1])
+        if summary_only and summary_current:
+            return summary
+        # Direct imports still return the complete playable chart. A metadata
+        # upgrade also uses this cached chart, without reopening the source assets.
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        if (not isinstance(manifest, dict) or manifest.get("schemaVersion") != SCHEMA_VERSION
+                or manifest.get("id") != summary["id"] or manifest.get("mediaMode") != "reference"
+                or manifest.get("manifestPath") != str(manifest_path)
+                or manifest.get("sourcePath") != fingerprint["sourcePath"]
+                or manifest.get("referenceFingerprint") != fingerprint
+                or manifest.get("selectedDifficulty") != summary["selectedDifficulty"]
+                or not manifest.get("charts")):
+            return None
+        if not summary_current:
+            summary = song_info(manifest)
+            atomic_json(info_path, summary)
+            _remember_reference(cache, manifest_path, summary, manifest_stamp)
+        return summary if summary_only else manifest
+    except (OSError, ValueError, KeyError, TypeError, UnicodeError):
+        return None
+
+
 def import_song(source, library=None, difficulty=None, output=None, source_url=None, double_kick=False,
-                reference=False):
+                reference=False, *, _cache=None, _summary_only=False):
     source = Path(source).expanduser().resolve(strict=True)
     if reference and not source.is_dir():
         fail("Reference imports require an unpacked song folder. Extract archives to a folder first.")
@@ -795,6 +997,8 @@ def import_song(source, library=None, difficulty=None, output=None, source_url=N
     if difficulty is not None and difficulty not in DIFFICULTIES:
         fail(f"Unsupported difficulty: {difficulty}")
     library.mkdir(parents=True, exist_ok=True)
+    if reference and _cache is None:
+        _cache = _reference_cache(library)
     warnings = []
     with tempfile.TemporaryDirectory(prefix=".import-", dir=library) as temporary:
         stage = Path(temporary)
@@ -817,6 +1021,13 @@ def import_song(source, library=None, difficulty=None, output=None, source_url=N
             fail("Multiple songs found; use --scan DIRECTORY to import a song collection")
         root = roots[0]
         files = folder_files(root)
+        fingerprint = _reference_fingerprint(source, root, files, double_kick) if reference else None
+        if reference:
+            cached = _cached_reference(fingerprint, _cache, difficulty, source_url, _summary_only and not output)
+            if cached is not None:
+                if output:
+                    atomic_json(Path(output).expanduser().resolve(), cached)
+                return cached
         top_level = {p.name.casefold(): p for p in files if p.parent == root}
         metadata = read_ini(top_level["song.ini"]) if "song.ini" in top_level else {}
         metadata.update(package_metadata)
@@ -892,6 +1103,12 @@ def import_song(source, library=None, difficulty=None, output=None, source_url=N
                     **timing, **preview}
         manifest["notes"] = next(chart["notes"] for chart in manifest["charts"] if chart["difficulty"] == selected)
         manifest["manifestPath"] = str(destination / "song.json")
+        if reference:
+            # Never bless a fingerprint for files that changed during parsing or
+            # hashing; the next refresh must retry the complete source import.
+            if fingerprint != _reference_fingerprint(source, root, folder_files(root), double_kick):
+                fail("Song files changed during import. Wait for file changes to finish, then refresh again.")
+            manifest["referenceFingerprint"] = fingerprint
         if destination.is_symlink():
             fail("Song destination must not be a symbolic link")
         if destination.exists():
@@ -926,12 +1143,17 @@ def import_song(source, library=None, difficulty=None, output=None, source_url=N
             manifest["importedAt"] = existing.get("importedAt", manifest["importedAt"])
             if not source_url:
                 manifest["provenance"] = existing.get("provenance", manifest["provenance"])
+            summary = song_info(manifest)
             atomic_json(existing_path, manifest)
-            atomic_json(destination / "song-info.json", song_info(manifest))
+            atomic_json(destination / "song-info.json", summary)
         else:
+            summary = song_info(manifest)
             atomic_json(candidate / "song.json", manifest)
-            atomic_json(candidate / "song-info.json", song_info(manifest))
+            atomic_json(candidate / "song-info.json", summary)
             candidate.rename(destination)
+        if reference:
+            manifest_path = destination / "song.json"
+            _remember_reference(_cache, manifest_path, summary)
         if output:
             atomic_json(Path(output).expanduser().resolve(), manifest)
         return manifest
@@ -958,10 +1180,11 @@ def scan_directory(directory, library=None, difficulty=None, double_kick=False, 
             sources.extend(Path(folder) / name for name in sorted(files)
                            if Path(name).suffix.casefold() in (".sng", ".zip") and not (Path(folder) / name).is_symlink())
     report = {"imported": [], "errors": [], "skipped": []}
+    cache = _reference_cache(library_path) if reference else None
     for source in sources:
         try:
             manifest = import_song(source, library=library, difficulty=difficulty, double_kick=double_kick,
-                                   reference=reference)
+                                   reference=reference, _cache=cache, _summary_only=True)
             if manifest["manifestPath"] not in report["imported"]:
                 report["imported"].append(manifest["manifestPath"])
             else:
@@ -979,11 +1202,24 @@ def main(argv=None):
     parser.add_argument("--library", type=Path, help="Private library directory (default: ~/Library/Application Support/Drumx/Songs)")
     parser.add_argument("--reference", action="store_true",
                         help="Index unpacked song folders in place without copying media; keep those folders available")
+    parser.add_argument("--rebuild-index", action="store_true",
+                        help="Repair lightweight library metadata and intensity ratings without rescanning source assets")
     parser.add_argument("--output", type=Path, help="Also write a manifest copy to this path")
     parser.add_argument("--difficulty", choices=DIFFICULTIES, help="Initial difficulty (default: highest chart available)")
     parser.add_argument("--double-kick", action="store_true", help="Include optional Expert+ second-pedal notes")
     parser.add_argument("--source-url", help="Record the chart's source page; no network requests are made")
     args = parser.parse_args(argv)
+    if args.rebuild_index:
+        if args.source or args.scan or args.output or args.source_url or args.reference or args.difficulty or args.double_kick:
+            parser.error("--rebuild-index accepts only --library")
+        try:
+            result = rebuild_index(args.library)
+            json.dump(result, sys.stdout, ensure_ascii=False, indent=2)
+            sys.stdout.write("\n")
+            return 0 if not result["errors"] or result["updated"] else 1
+        except (OSError, ValueError) as error:
+            print(json.dumps({"error": str(error)}, ensure_ascii=False), file=sys.stderr)
+            return 1
     if args.scan is True:
         if not args.source:
             parser.error("--scan requires a directory")

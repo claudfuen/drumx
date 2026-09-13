@@ -10,6 +10,7 @@ xcrun swiftc -target "$(uname -m)-apple-macosx15.0" -swift-version 5 -O -parse-a
   "$DRUMX_ROOT/native/macos/DrumxIO.swift" \
   "$DRUMX_ROOT/native/macos/DrumxSampler.swift" \
   "$DRUMX_ROOT/native/macos/DrumxSongLibrary.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxSongGrid.swift" \
   "$DRUMX_ROOT/native/macos/DrumxSongStemMix.swift" \
   "$DRUMX_ROOT/native/macos/tests/DrumxSongStemTransportChecks.swift" \
   -framework AVFoundation -framework AVFAudio -framework CoreMIDI \

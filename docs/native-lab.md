@@ -134,7 +134,7 @@ In **Settings → Sound**, **Drumx drum sounds** enables the app's acoustic moni
 
 To use the module's sounds, arrange a listening route that lets you hear both the module and Drumx's click. USB MIDI alone does not carry the module's audio.
 
-The bundled [Big Rusty Drums](https://shop.karoryfer.com/pages/free-big-rusty-drums) starter set contains 24 original mono 44.1 kHz/16-bit FLAC files: four recorded velocity layers and two alternate takes each for closed hi-hat, snare, and kick. Source files are unchanged and released under CC0. The [asset guide](../native/assets/BigRusty/README.md), [license](../native/assets/BigRusty/LICENSE), and [provenance](../native/assets/BigRusty/provenance.json) travel with the sounds.
+The bundled [Big Rusty Drums](https://shop.karoryfer.com/pages/free-big-rusty-drums) kit contains 80 original mono 44.1 kHz/16-bit FLAC files: four recorded velocity layers and two alternate takes each for closed hi-hat, snare, kick, high tom, mid tom, floor tom, crash, ride, open hi-hat, and pedal hi-hat. Source files are unchanged and released under CC0. The [asset guide](../native/assets/BigRusty/README.md), [license](../native/assets/BigRusty/LICENSE), and [provenance](../native/assets/BigRusty/provenance.json) travel with the sounds. Closing or retriggering the hi-hat stops its open tail; toms and other cymbals can overlap.
 
 The sampler preloads the recordings. Live MIDI monitoring bypasses the main thread and uses a dedicated serial queue with a 32-voice pool. The selected lesson demonstration is prepared as audio and scheduled on the native audio clock, rather than triggering its notes from display frames. These are implementation choices to test on hardware, not published latency results.
 
@@ -195,17 +195,50 @@ Captured MIDI can arrive after a display update or the end of a take. The core c
 
 The native Mac app's **Songs** menu opens a separate local song library. Use
 **Import song** for a folder, ZIP, or SNG, or **Add song directory** to scan a
-collection. Search by title, artist, or charter, then choose one of the drum
+collection of unpacked song folders. Directory imports reference the media in
+place; keep that folder available. Search by title, artist, or charter, then choose one of the drum
 difficulties supplied by the chart. A package can offer any subset of Easy,
 Medium, Hard, and Expert. Guitar, bass, and vocal recordings play as backing
 stems; their note charts are not drum parts.
 
-The song highway uses the same perspective projection as practice, with stable
-instrument positions and one shared NOW line. Song notes retain their original
-timing through tempo changes. Background road divisions are visual spacing,
-not a fixed 4/4 bar count. The complete recording plays, including its intro and
+The browser loads small metadata summaries on a background queue; full note
+arrays are decoded only when playing. Arrow keys browse the list, Enter plays,
+and Space toggles the preview. Selection previews the authored excerpt or a
+section around 40% into the recording, with fades and a visible progress bar.
+Only an 18-second excerpt is decoded for browsing; changing selection cancels
+obsolete decoding. Artwork is downsampled off the main thread and cached.
+
+Sort by artist, title, or duration and filter by authored chart difficulty.
+Intensity is a separate rating: zero to five circles, or five devils for the
+highest tier. Valid authored Expert ratings take precedence; other ratings are
+marked as estimates from note density, short bursts, and coordination. Ratings
+are computed during import and stored in the index. Missing or outdated ratings
+repair in the background while the existing list remains usable.
+
+**Refresh** rescans registered song directories and keeps the selected song.
+Unchanged referenced songs use file fingerprints to avoid rereading their audio.
+Changed or missing files are checked again and failures remain visible. Initial
+indexing and metadata repair show their loading state.
+
+The song highway uses the same timeline projection as practice, with stable
+instrument positions and one shared NOW line. Raised gems and catchers have
+smooth curved shells, shaded sides and rims. Their local camera keeps a fixed
+aspect, so fullscreen extends the road without stretching or tilting the notes.
+Scroll speed defaults to 1.25× and changes visual
+spacing only; it is saved between sessions. Song notes retain their original
+timing through tempo changes. Grid lines follow the imported tempo and time
+signature map: bar lines are strongest, beats are quieter, and compound-meter
+subdivisions are faint. The visible centers of drums, cymbals, and kick bars
+share that same timeline, including across window sizes. The complete recording plays, including its intro and
 outro. Input uses captured host timestamps; audio stems share one scheduled
 start. Rendering never schedules audio.
+
+A side meter shows recent rushing, dragging, centered, or uneven timing across
+the kit. It needs three recent matched hits and goes idle when the evidence is
+stale. Score, combo multiplier, star progress, and the selected difficulty's
+personal best appear alongside the highway. Completed results save separately
+for each player, song, and difficulty. Failed saves remain available to retry;
+closing waits for pending writes. [Scoring rules](song-scoring.md)
 
 | Song control | Action |
 | --- | --- |
@@ -213,6 +246,8 @@ start. Rendering never schedules audio.
 | **D / F / G / H** | High tom / mid tom / floor tom / ride |
 | **Space** | Kick |
 | **Shift + a pad key** | Softer strike |
+| **Scroll speed** | Change visual note spacing from 0.70× to 1.80×; the default is 1.25×. Audio tempo and scoring stay unchanged. |
+| **Recorded drums** | Switch between playing your drums with backing stems and hearing the recorded drums. Library previews use the full mix. |
 | **P** or **Pause / Resume** | Pause or resume audio and the scoring clock together |
 | **Enter** or **Restart** | Restart the song with a fresh count-in and results |
 | **Escape** or **Library** | Stop playback and choose a song |
@@ -220,13 +255,29 @@ start. Rendering never schedules audio.
 Songs inherit the configured hi-hat, snare, and kick MIDI aliases. Additional GM
 defaults are high tom 48/50, mid tom 45/47, floor tom 41/43, crash 49/52/55/57,
 and ride 51/53/59. Configured lesson aliases take precedence over these defaults.
-The existing built-in monitor samples cover hi-hat, snare, and kick; use the
-module's own sound for the other physical pads.
+The built-in monitor covers the full eight-part kit and separate open/pedal
+hi-hat articulations. Paired standard tom notes share high, mid, or floor samples;
+crash and ride aliases share their respective recordings. There are no separate
+china, splash, or ride-bell recordings. In lessons, unlearned notes for those
+articulations remain silent; Songs maps its broader crash/ride aliases to those
+sampled sounds. Learned lesson aliases retain priority over full-kit defaults.
+
+**Recorded drums** defaults to **Off** for song play. It silences separate
+`drums` and `drums_1` through `drums_4` recordings while the backing continues.
+Switch it **On** to hear the recorded performance. The preference is retained
+between sessions and takes effect without restarting the song. Browsing previews
+always use the full mix. A song with no separate drum stems displays **In mix**
+and explains that its embedded drums remain audible. This is independent of
+live Drumx monitoring, your module's sound, and note scoring.
+[Stem behavior and the YARG comparison](song-audio.md)
 
 The importer requires Python 3.10+; decoding Opus and Ogg stems requires FFmpeg.
-Imported media and decoded caches live under
-`~/Library/Application Support/Drumx/Songs`. Reimport repairs missing managed
-media, and equivalent SNG/ZIP downloads create one entry. Song results are
+**Import song** copies media under `~/Library/Application Support/Drumx/Songs`.
+**Add song directory** stores library metadata there and references the chosen
+unpacked collection, with no second audio copy. Decoded caches use Application
+Support in both modes. Reimport repairs missing managed media; a referenced
+source must be restored in its original location or added again after moving.
+Equivalent SNG/ZIP/folder imports create one entry. Song results are
 shown after play and do not write lesson checkpoints or practice history.
 [Format details and limitations](song-format.md)
 
