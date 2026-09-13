@@ -29,6 +29,7 @@ SCHEMA_VERSION = 1
 DIFFICULTIES = ("easy", "medium", "hard", "expert")
 LANES = ("hihat", "snare", "kick", "tom1", "tom2", "tom3", "crash", "ride")
 MAX_FILES = 10000
+MAX_SCAN_ENTRIES = 100000
 MAX_TOTAL_BYTES = 2 * 1024**3
 MAX_FILE_BYTES = 1024**3
 MAX_CHART_BYTES = 64 * 1024**2
@@ -266,8 +267,8 @@ def find_song_folders(root):
         dirs[:] = sorted(d for d in dirs if not d.startswith(".") and d != "__MACOSX"
                          and not (Path(directory) / d).is_symlink())
         visited += len(dirs) + len(files)
-        if visited > MAX_FILES:
-            fail(f"Directory scan exceeds {MAX_FILES} entries; choose a narrower song directory")
+        if visited > MAX_SCAN_ENTRIES:
+            fail(f"Directory scan exceeds {MAX_SCAN_ENTRIES} entries; choose a narrower song directory")
         if any(name.casefold() in ("notes.mid", "notes.midi", "notes.chart") for name in files):
             found.append(Path(directory))
             dirs[:] = []
@@ -329,6 +330,7 @@ def parse_midi(data, warnings):
         position = tick = 0
         running = None
         name, notes, text_events = "", [], []
+        normalized_releases = 0
         active = defaultdict(deque)
         while position < len(track):
             event_count += 1
@@ -391,6 +393,12 @@ def parse_midi(data, warnings):
                 fail("Truncated MIDI channel event")
             payload = track[position:position + size]
             position += size
+            # Some Rock Band keyboard-animation tracks use FF for a discarded
+            # release velocity. YARG consumes this fixed-size event as written.
+            # Tolerate that exact value, keeping pitches and all other data strict.
+            if kind == 0x80 and payload[0] < 128 and payload[1] == 0xFF:
+                payload = bytes((payload[0], 0))
+                normalized_releases += 1
             if any(b >= 128 for b in payload):
                 fail("Invalid MIDI channel data byte")
             if kind == 0x90 and payload[1]:
@@ -407,6 +415,9 @@ def parse_midi(data, warnings):
                 dangling += 1
         if dangling:
             warnings.append(f"MIDI track {name or '(unnamed)'} has {dangling} unterminated notes; treated as hits")
+        if normalized_releases:
+            warnings.append(f"MIDI track {name or '(unnamed)'} has {normalized_releases} Note Off release velocities "
+                            "of 255; normalized to zero because release velocity is unused")
         tracks.append((name, notes, text_events))
     drum_track = next((t for t in tracks if t[0] == "PART DRUMS"), None)
     if drum_track is None:
@@ -666,10 +677,16 @@ def build_charts(parsed, metadata, warnings, double_kick):
     signatures = {0: (4, 4)}
     signatures.update({tick: (n, d) for tick, n, d in parsed["signatures"]})
     all_notes = [note for chart in charts for note in chart["notes"]]
+    declared_lengths = []
+    for value, scale, label in ((metadata.get("song_length"), 1000.0, "song_length"),
+                                (parsed["song"].get("length"), 1.0, ".chart Length")):
+        declared = number(value, label=label) / scale
+        if not 0 <= declared <= MAX_DURATION:
+            warnings.append(f"Ignored {label} outside the supported zero-to-two-hour range; using chart duration")
+        else:
+            declared_lengths.append(declared)
     duration = max(max(n["timeSeconds"] + n["durationSeconds"] for n in all_notes) + 2.0,
-                   clock.seconds_at(parsed["endTick"]),
-                   number(metadata.get("song_length"), label="song_length") / 1000.0,
-                   number(parsed["song"].get("length"), label=".chart Length"))
+                   clock.seconds_at(parsed["endTick"]), *declared_lengths)
     start = min(0.0, min(n["timeSeconds"] for n in all_notes))
     if not 0 < duration <= MAX_DURATION or duration - start > MAX_DURATION:
         fail("Song duration must be positive and no more than two hours")
@@ -713,6 +730,33 @@ def discover_audio(root, song_metadata, warnings):
     return audio, str(art) if art else None
 
 
+def preview_times(metadata, chart_metadata, warnings):
+    result = {}
+    for edge in ("start", "end"):
+        ini_key, chart_key = f"preview_{edge}_time", f"preview{edge}"
+        if ini_key in metadata:
+            value, scale, label = metadata[ini_key], 1000.0, ini_key
+        elif chart_key in chart_metadata:
+            value, scale, label = chart_metadata[chart_key], 1.0, f"Preview{edge.title()}"
+        else:
+            continue
+        try:
+            seconds = number(value, default=-1, label=label) / scale
+            if seconds < 0 or (edge == "end" and seconds == 0):
+                continue
+            if seconds > MAX_DURATION:
+                fail("Preview position exceeds supported song duration")
+        except SongImportError:
+            warnings.append(f"Ignored invalid {label}; using the default song preview")
+            continue
+        result[f"preview{edge.title()}Seconds"] = seconds
+    if ("previewStartSeconds" in result and "previewEndSeconds" in result
+            and result["previewEndSeconds"] <= result["previewStartSeconds"]):
+        result.pop("previewEndSeconds")
+        warnings.append("Ignored preview end at or before its start; using the default preview length")
+    return result
+
+
 def atomic_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary = tempfile.mkstemp(prefix=".song-", suffix=".json", dir=path.parent)
@@ -726,8 +770,25 @@ def atomic_json(path, value):
             os.unlink(temporary)
 
 
-def import_song(source, library=None, difficulty=None, output=None, source_url=None, double_kick=False):
+def song_info(manifest):
+    """Keep browsing independent of the size of every playable note chart."""
+    fields = ("schemaVersion", "id", "title", "artist", "album", "charter", "year", "genre",
+              "sourceFormat", "sourcePath", "chartPath", "manifestPath", "mediaMode", "importedAt",
+              "resolution", "selectedDifficulty", "difficulties", "drumMode", "durationSeconds",
+              "chartStartSeconds", "offsetSeconds", "audio", "albumArtPath", "warnings", "provenance",
+              "doubleKick", "doubleKickNoteCount", "previewStartSeconds", "previewEndSeconds")
+    summary = {key: manifest[key] for key in fields if key in manifest}
+    summary["charts"] = [{"difficulty": chart["difficulty"], "noteCount": len(chart["notes"]),
+                          "instrumentCount": len({note["lane"] for note in chart["notes"]})}
+                         for chart in manifest["charts"]]
+    return summary
+
+
+def import_song(source, library=None, difficulty=None, output=None, source_url=None, double_kick=False,
+                reference=False):
     source = Path(source).expanduser().resolve(strict=True)
+    if reference and not source.is_dir():
+        fail("Reference imports require an unpacked song folder. Extract archives to a folder first.")
     library = Path(library or Path.home() / "Library/Application Support/Drumx/Songs").expanduser().resolve()
     if source_url and not source_url.startswith(("https://", "http://")):
         fail("Source URL must use http or https")
@@ -791,22 +852,28 @@ def import_song(source, library=None, difficulty=None, output=None, source_url=N
         song_id = digest.hexdigest()[:24]
         destination = library / song_id
         candidate = stage / "song"
-        materialized = candidate / "source"
-        materialized.mkdir(parents=True)
-        for path in files:
-            target = materialized / path.relative_to(root)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(path, target)
-        # SNG metadata remains available after its original download is removed.
-        if package_metadata and "song.ini" not in top_level:
-            ini = "[song]\n" + "\n".join(f"{key} = {value}" for key, value in sorted(metadata.items())) + "\n"
-            (materialized / "song.ini").write_text(ini, encoding="utf-8")
+        candidate.mkdir()
+        materialized = root if reference else candidate / "source"
+        if not reference:
+            materialized.mkdir()
+            for path in files:
+                target = materialized / path.relative_to(root)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copyfile(path, target)
+            # SNG metadata remains available after its original download is removed.
+            if package_metadata and "song.ini" not in top_level:
+                ini = "[song]\n" + "\n".join(f"{key} = {value}" for key, value in sorted(metadata.items())) + "\n"
+                (materialized / "song.ini").write_text(ini, encoding="utf-8")
         audio, art = discover_audio(materialized, parsed["song"], warnings)
-        for entry in audio:
-            entry["path"] = str(destination / Path(entry["path"]).relative_to(candidate))
-        if art:
-            art = str(destination / Path(art).relative_to(candidate))
+        if reference and not audio:
+            fail("No song audio found in the referenced folder. Restore its audio before importing.")
+        if not reference:
+            for entry in audio:
+                entry["path"] = str(destination / Path(entry["path"]).relative_to(candidate))
+            if art:
+                art = str(destination / Path(art).relative_to(candidate))
         song = parsed["song"]
+        preview = preview_times(metadata, song, warnings)
         manifest = {"schemaVersion": SCHEMA_VERSION, "id": song_id,
                     "title": clean_text(metadata.get("name", song.get("name", source.stem))),
                     "artist": clean_text(metadata.get("artist", song.get("artist", "Unknown artist"))),
@@ -815,12 +882,14 @@ def import_song(source, library=None, difficulty=None, output=None, source_url=N
                     "year": clean_text(metadata.get("year", song.get("year", ""))).lstrip(", "),
                     "genre": clean_text(metadata.get("genre", song.get("genre", ""))),
                     "sourceFormat": parsed["format"], "sourcePath": str(source),
-                    "chartPath": str(destination / "source" / chart_file.name),
+                    "mediaMode": "reference" if reference else "managed",
+                    "chartPath": str(chart_file if reference else destination / "source" / chart_file.name),
                     "importedAt": datetime.now(timezone.utc).isoformat(),
                     "resolution": parsed["resolution"], "selectedDifficulty": selected,
                     "difficulties": [chart["difficulty"] for chart in timing["charts"]],
                     "audio": audio, "albumArtPath": art, "metadata": metadata,
-                    "warnings": list(dict.fromkeys(warnings)), "provenance": {"sourceURL": source_url}, **timing}
+                    "warnings": list(dict.fromkeys(warnings)), "provenance": {"sourceURL": source_url},
+                    **timing, **preview}
         manifest["notes"] = next(chart["notes"] for chart in manifest["charts"] if chart["difficulty"] == selected)
         manifest["manifestPath"] = str(destination / "song.json")
         if destination.is_symlink():
@@ -835,37 +904,40 @@ def import_song(source, library=None, difficulty=None, output=None, source_url=N
                 fail("Existing song manifest is unreadable; refusing to replace it")
             if existing.get("id") != song_id or existing.get("schemaVersion") != SCHEMA_VERSION:
                 fail("Existing song identity does not match; refusing to replace it")
-            # Restore removed or damaged imported assets without replacing unrelated
-            # files. Every target stays inside this verified managed song directory.
-            managed_source = destination / "source"
-            if managed_source.is_symlink():
-                fail("Managed song source must not be a symbolic link")
-            for staged_file in folder_files(materialized):
-                relative = staged_file.relative_to(materialized)
-                target = managed_source / relative
-                ancestor = target
-                while ancestor != destination:
-                    if ancestor.is_symlink():
-                        fail("Managed song asset must not be a symbolic link")
-                    ancestor = ancestor.parent
-                if target.exists() and not target.is_file():
-                    fail("Managed song asset collides with a directory")
-                if not target.exists() or not filecmp.cmp(staged_file, target, shallow=False):
-                    target.parent.mkdir(parents=True, exist_ok=True)
-                    os.replace(staged_file, target)
+            if not reference:
+                # Repair managed imports, including a previous reference import.
+                # Referencing a folder never changes existing managed media.
+                managed_source = destination / "source"
+                if managed_source.is_symlink():
+                    fail("Managed song source must not be a symbolic link")
+                for staged_file in folder_files(materialized):
+                    relative = staged_file.relative_to(materialized)
+                    target = managed_source / relative
+                    ancestor = target
+                    while ancestor != destination:
+                        if ancestor.is_symlink():
+                            fail("Managed song asset must not be a symbolic link")
+                        ancestor = ancestor.parent
+                    if target.exists() and not target.is_file():
+                        fail("Managed song asset collides with a directory")
+                    if not target.exists() or not filecmp.cmp(staged_file, target, shallow=False):
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        os.replace(staged_file, target)
             manifest["importedAt"] = existing.get("importedAt", manifest["importedAt"])
             if not source_url:
                 manifest["provenance"] = existing.get("provenance", manifest["provenance"])
             atomic_json(existing_path, manifest)
+            atomic_json(destination / "song-info.json", song_info(manifest))
         else:
             atomic_json(candidate / "song.json", manifest)
+            atomic_json(candidate / "song-info.json", song_info(manifest))
             candidate.rename(destination)
         if output:
             atomic_json(Path(output).expanduser().resolve(), manifest)
         return manifest
 
 
-def scan_directory(directory, library=None, difficulty=None, double_kick=False):
+def scan_directory(directory, library=None, difficulty=None, double_kick=False, reference=False):
     directory = Path(directory).expanduser().resolve(strict=True)
     if not directory.is_dir():
         fail("--scan requires a directory")
@@ -877,8 +949,8 @@ def scan_directory(directory, library=None, difficulty=None, double_kick=False):
                          and not (Path(folder) / d).is_symlink()
                          and (Path(folder) / d).resolve() != library_path)
         visited += len(dirs) + len(files)
-        if visited > MAX_FILES:
-            fail(f"Directory scan exceeds {MAX_FILES} entries; choose a narrower song directory")
+        if visited > MAX_SCAN_ENTRIES:
+            fail(f"Directory scan exceeds {MAX_SCAN_ENTRIES} entries; choose a narrower song directory")
         if any(name.casefold() in ("notes.mid", "notes.midi", "notes.chart") for name in files):
             sources.append(Path(folder))
             dirs[:] = []
@@ -888,7 +960,8 @@ def scan_directory(directory, library=None, difficulty=None, double_kick=False):
     report = {"imported": [], "errors": [], "skipped": []}
     for source in sources:
         try:
-            manifest = import_song(source, library=library, difficulty=difficulty, double_kick=double_kick)
+            manifest = import_song(source, library=library, difficulty=difficulty, double_kick=double_kick,
+                                   reference=reference)
             if manifest["manifestPath"] not in report["imported"]:
                 report["imported"].append(manifest["manifestPath"])
             else:
@@ -904,6 +977,8 @@ def main(argv=None):
     parser.add_argument("--scan", nargs="?", const=True, metavar="DIRECTORY",
                         help="Recursively import a collection (DIRECTORY or the positional source)")
     parser.add_argument("--library", type=Path, help="Private library directory (default: ~/Library/Application Support/Drumx/Songs)")
+    parser.add_argument("--reference", action="store_true",
+                        help="Index unpacked song folders in place without copying media; keep those folders available")
     parser.add_argument("--output", type=Path, help="Also write a manifest copy to this path")
     parser.add_argument("--difficulty", choices=DIFFICULTIES, help="Initial difficulty (default: highest chart available)")
     parser.add_argument("--double-kick", action="store_true", help="Include optional Expert+ second-pedal notes")
@@ -919,13 +994,15 @@ def main(argv=None):
         parser.error("--output and --source-url are only available for a single song")
     try:
         if args.scan:
-            result = scan_directory(args.scan, args.library, args.difficulty, args.double_kick)
+            result = scan_directory(args.scan, args.library, args.difficulty, args.double_kick, args.reference)
             json.dump(result, sys.stdout, ensure_ascii=False, indent=2)
             sys.stdout.write("\n")
             return 0 if result["imported"] or not result["errors"] else 1
-        manifest = import_song(args.source, args.library, args.difficulty, args.output, args.source_url, args.double_kick)
+        manifest = import_song(args.source, args.library, args.difficulty, args.output, args.source_url,
+                               args.double_kick, args.reference)
         json.dump({"id": manifest["id"], "title": manifest["title"], "artist": manifest["artist"],
                    "manifestPath": manifest["manifestPath"], "difficulties": manifest["difficulties"],
+                   "mediaMode": manifest["mediaMode"],
                    "notes": len(manifest["notes"]), "audioStems": len(manifest["audio"]),
                    "warnings": manifest["warnings"]}, sys.stdout, ensure_ascii=False, indent=2)
         sys.stdout.write("\n")

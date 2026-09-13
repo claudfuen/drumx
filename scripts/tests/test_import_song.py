@@ -1,11 +1,14 @@
 """Behavioral checks with tiny original charts; no commercial media is committed."""
 import importlib.util
+from contextlib import redirect_stdout
 import io
 import json
 from pathlib import Path
+import shutil
 import struct
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 SPEC = importlib.util.spec_from_file_location("import_song", Path(__file__).parents[1] / "import_song.py")
@@ -94,6 +97,29 @@ class ImportSongChecks(unittest.TestCase):
         self.assertEqual(manifest["timeSignatures"][-1]["denominator"], 8)
         self.assertEqual(manifest["timeSignatures"][-1]["numerator"], 6)
         self.assertEqual(manifest["durationSeconds"], 4.75)
+
+    def test_out_of_range_declared_length_warns_without_rejecting_valid_notes(self):
+        manifest = self.load(ini="[song]\nsong_length = 25500507\n")
+        self.assertEqual(manifest["durationSeconds"], 2.5)
+        self.assertTrue(any("Ignored song_length" in warning for warning in manifest["warnings"]))
+        summary = json.loads(Path(manifest["manifestPath"]).with_name("song-info.json").read_text())
+        self.assertEqual(summary["durationSeconds"], 2.5)
+        for length in ("-5", "25500"):
+            manifest = self.load(simple_chart(song_extra=f"Length = {length}"))
+            self.assertEqual(manifest["durationSeconds"], 2.5)
+            self.assertTrue(any("Ignored .chart Length" in warning for warning in manifest["warnings"]))
+        supported = self.load(ini="[song]\nsong_length = 20000\n")
+        self.assertEqual(supported["durationSeconds"], 20)
+
+    def test_real_chart_timing_over_two_hours_is_still_rejected(self):
+        after_limit = 384 * (IMPORTER.MAX_DURATION + 1)
+        charts = [simple_chart(expert=f"0 = N 0 0\n{after_limit} = N 1 0"),
+                  simple_chart(expert=f"0 = N 0 {after_limit}"),
+                  simple_chart() + f'[Events]\n{{\n{after_limit} = E "[end]"\n}}\n'.encode()]
+        for chart in charts:
+            with self.subTest(chart=chart[-80:]):
+                with self.assertRaisesRegex(IMPORTER.SongImportError, "no more than two hours"):
+                    self.load(chart, ini="[song]\nsong_length = 25500507\n")
 
     def test_midi_all_difficulties_toms_running_status_and_double_kick(self):
         events = [text(0, "PART DRUMS", 3), text(0, "[ENABLE_CHART_DYNAMICS]")]
@@ -280,6 +306,161 @@ class ImportSongChecks(unittest.TestCase):
         IMPORTER.import_song(self.song, self.library)
         self.assertEqual(copied.read_bytes(), b"original audio")
 
+    def test_reference_import_keeps_absolute_media_paths_and_only_stores_json(self):
+        (self.song / "song.opus").write_bytes(b"original audio")
+        (self.song / "album.jpg").write_bytes(b"original artwork")
+        with patch.object(IMPORTER.shutil, "copyfile", side_effect=AssertionError("unexpected media copy")):
+            manifest = self.load(reference=True)
+        destination = Path(manifest["manifestPath"]).parent
+        self.assertEqual(manifest["mediaMode"], "reference")
+        self.assertEqual(sorted(p.name for p in destination.iterdir()), ["song-info.json", "song.json"])
+        self.assertEqual(Path(manifest["chartPath"]), (self.song / "notes.chart").resolve())
+        self.assertEqual(Path(manifest["audio"][0]["path"]), (self.song / "song.opus").resolve())
+        self.assertEqual(Path(manifest["albumArtPath"]), (self.song / "album.jpg").resolve())
+        for key in ("chartPath", "albumArtPath"):
+            self.assertTrue(Path(manifest[key]).is_absolute())
+            self.assertTrue(Path(manifest[key]).is_file())
+
+    def test_reference_and_managed_modes_share_identity_without_deleting_media(self):
+        (self.song / "song.opus").write_bytes(b"original audio")
+        referenced = self.load(reference=True, source_url="https://example.com/chart")
+        managed = IMPORTER.import_song(self.song, self.library)
+        self.assertEqual(managed["id"], referenced["id"])
+        self.assertEqual(managed["mediaMode"], "managed")
+        copied = Path(managed["audio"][0]["path"])
+        self.assertTrue(copied.is_relative_to(self.library.resolve()))
+        self.assertEqual(copied.read_bytes(), b"original audio")
+        copied.write_bytes(b"damaged managed copy")
+        with patch.object(IMPORTER.shutil, "copyfile", side_effect=AssertionError("unexpected media copy")):
+            referenced_again = IMPORTER.import_song(self.song, self.library, reference=True)
+        self.assertEqual(referenced_again["id"], managed["id"])
+        self.assertEqual(referenced_again["importedAt"], referenced["importedAt"])
+        self.assertEqual(referenced_again["provenance"], referenced["provenance"])
+        self.assertEqual(Path(referenced_again["audio"][0]["path"]), (self.song / "song.opus").resolve())
+        self.assertEqual(copied.read_bytes(), b"damaged managed copy")
+        IMPORTER.import_song(self.song, self.library)
+        self.assertEqual(copied.read_bytes(), b"original audio")
+
+    def test_reference_scan_deduplicates_and_cli_indexes_folders_in_place(self):
+        (self.song / "song.opus").write_bytes(b"original audio")
+        initial = self.load(reference=True)
+        shutil.copytree(self.song, self.root / "duplicate")
+        for arguments in (["--scan", str(self.root)], [str(self.root), "--scan"]):
+            output = io.StringIO()
+            with redirect_stdout(output):
+                result = IMPORTER.main([*arguments, "--reference", "--library", str(self.library)])
+            report = json.loads(output.getvalue())
+            self.assertEqual(result, 0)
+            self.assertEqual(report["imported"], [initial["manifestPath"]])
+            self.assertEqual(len(report["skipped"]), 1)
+            self.assertEqual(report["errors"], [])
+        self.assertEqual(sorted(p.name for p in Path(initial["manifestPath"]).parent.iterdir()),
+                         ["song-info.json", "song.json"])
+        current = json.loads(Path(initial["manifestPath"]).read_text())
+        self.assertTrue(Path(current["audio"][0]["path"]).is_file())
+        self.assertEqual(current["mediaMode"], "reference")
+
+    def test_reference_archives_fail_with_extract_first_message_and_scan_continues(self):
+        (self.song / "song.opus").write_bytes(b"original audio")
+        manifest = self.load(reference=True)
+        for extension in ("zip", "sng"):
+            archive = self.root / ("song." + extension)
+            archive.write_bytes(b"archive placeholder")
+            with self.assertRaisesRegex(IMPORTER.SongImportError, "Extract archives to a folder first"):
+                IMPORTER.import_song(archive, self.library, reference=True)
+        report = IMPORTER.scan_directory(self.root, self.library, reference=True)
+        self.assertEqual(report["imported"], [manifest["manifestPath"]])
+        self.assertEqual(len(report["errors"]), 2)
+        self.assertTrue(all("Extract archives" in error["error"] for error in report["errors"]))
+
+    def test_reference_missing_source_or_audio_does_not_publish_false_success(self):
+        (self.song / "song.opus").write_bytes(b"original audio")
+        manifest = self.load(reference=True)
+        saved = Path(manifest["manifestPath"]).read_bytes()
+        (self.song / "song.opus").unlink()
+        self.assertFalse(Path(manifest["audio"][0]["path"]).exists())
+        with self.assertRaisesRegex(IMPORTER.SongImportError, "Restore its audio"):
+            IMPORTER.import_song(self.song, self.library, reference=True)
+        with self.assertRaises(FileNotFoundError):
+            IMPORTER.import_song(self.root / "missing", self.library, reference=True)
+        self.assertEqual(Path(manifest["manifestPath"]).read_bytes(), saved)
+        self.assertEqual(len(list(self.library.glob("*/song.json"))), 1)
+
+    def test_directory_scan_bound_is_independent_of_per_song_file_bound(self):
+        for index in range(3):
+            song = self.root / f"song-{index}"
+            song.mkdir()
+            (song / "notes.chart").write_bytes(simple_chart().replace(b"Original Test Song", f"Song {index}".encode()))
+            (song / "song.opus").write_bytes(b"original audio")
+        with patch.object(IMPORTER, "MAX_FILES", 2):
+            report = IMPORTER.scan_directory(self.root, self.library, reference=True)
+        self.assertEqual(len(report["imported"]), 3)
+        self.assertEqual(report["errors"], [])
+
+    def test_browse_sidecar_remains_small_and_reports_all_chart_counts(self):
+        expert = "\n".join(f"{tick * 24} = N {tick % 5} 0" for tick in range(4000))
+        chart = simple_chart(expert=expert) + b"[EasyDrums]\n{\n0 = N 0 0\n192 = N 1 0\n}\n"
+        (self.song / "song.opus").write_bytes(b"original audio")
+        (self.song / "album.jpg").write_bytes(b"original artwork")
+        manifest = self.load(chart, reference=True)
+        info_path = Path(manifest["manifestPath"]).with_name("song-info.json")
+        summary = json.loads(info_path.read_text())
+        self.assertEqual(summary["charts"], [
+            {"difficulty": "easy", "noteCount": 2, "instrumentCount": 2},
+            {"difficulty": "expert", "noteCount": 4000, "instrumentCount": 5}])
+        for key, value in summary.items():
+            if key != "charts":
+                self.assertEqual(value, manifest[key])
+        for key in ("notes", "tempos", "timeSignatures", "sections", "metadata"):
+            self.assertNotIn(key, summary)
+        self.assertNotIn('"notes"', info_path.read_text())
+        self.assertLess(info_path.stat().st_size, 6000)
+        self.assertGreater(Path(manifest["manifestPath"]).stat().st_size, info_path.stat().st_size * 100)
+
+    def test_browse_sidecar_refreshes_for_managed_and_reference_reimports(self):
+        (self.song / "song.opus").write_bytes(b"original audio")
+        manifest = self.load(source_url="https://example.com/chart")
+        info_path = Path(manifest["manifestPath"]).with_name("song-info.json")
+        initial = json.loads(info_path.read_text())
+        self.assertEqual(initial["mediaMode"], "managed")
+        for reference in (True, True, False):
+            info_path.write_text('{"stale": true}')
+            with patch.object(IMPORTER.os, "replace", wraps=IMPORTER.os.replace) as replace:
+                manifest = IMPORTER.import_song(self.song, self.library, reference=reference)
+            summary = json.loads(info_path.read_text())
+            self.assertEqual(summary, IMPORTER.song_info(manifest))
+            self.assertEqual(summary["id"], initial["id"])
+            self.assertEqual(summary["importedAt"], initial["importedAt"])
+            self.assertEqual(summary["provenance"], initial["provenance"])
+            self.assertTrue(Path(summary["audio"][0]["path"]).is_file())
+            self.assertTrue(any(Path(call.args[1]) == info_path for call in replace.call_args_list))
+            self.assertEqual(list(info_path.parent.glob(".song-*.json")), [])
+
+    def test_preview_positions_use_ini_milliseconds_before_chart_seconds_and_ignore_offset(self):
+        chart = simple_chart(song_extra="PreviewStart = 42.5\nPreviewEnd = 62.5\nOffset = 2")
+        manifest = self.load(chart, ini="[song]\npreview_start_time = 0\npreview_end_time = 12500\ndelay = 1000\n")
+        self.assertEqual(manifest["previewStartSeconds"], 0)
+        self.assertEqual(manifest["previewEndSeconds"], 12.5)
+        info = json.loads(Path(manifest["manifestPath"]).with_name("song-info.json").read_text())
+        self.assertEqual(info["previewStartSeconds"], 0)
+        self.assertEqual(info["previewEndSeconds"], 12.5)
+        fallback = self.load(chart)
+        self.assertEqual(fallback["previewStartSeconds"], 42.5)
+        self.assertEqual(fallback["previewEndSeconds"], 62.5)
+
+    def test_preview_invalid_values_and_missing_sentinels_do_not_break_import(self):
+        for value in ("nan", "inf", "unavailable", "9999999999999999999999999999"):
+            with self.subTest(value=value):
+                manifest = self.load(ini=f"[song]\npreview_start_time = {value}\n")
+                self.assertNotIn("previewStartSeconds", manifest)
+                self.assertTrue(any("Ignored invalid preview_start_time" in warning for warning in manifest["warnings"]))
+        missing = self.load(ini="[song]\npreview_start_time = -1\npreview_end_time = 0\n")
+        self.assertNotIn("previewStartSeconds", missing)
+        self.assertNotIn("previewEndSeconds", missing)
+        reversed_times = self.load(ini="[song]\npreview_start_time = 30000\npreview_end_time = 20000\n")
+        self.assertEqual(reversed_times["previewStartSeconds"], 30)
+        self.assertNotIn("previewEndSeconds", reversed_times)
+
     def test_midi_running_status_survives_meta_and_sysex_like_yarg(self):
         events = [text(0, "PART DRUMS", 3), (0, b"\x99\x60\x64"),
                   text(0, "test"), (240, b"\x61\x64"),
@@ -287,6 +468,33 @@ class ImportSongChecks(unittest.TestCase):
                   (481, b"\x89\x60\x00"), (481, b"\x61\x00"), (481, b"\x62\x00")]
         parsed = IMPORTER.parse_midi(midi_file(events), [])
         self.assertEqual(len(parsed["raw"]["expert"]), 3)
+
+    def test_midi_note_off_release_255_does_not_change_note_time_or_velocity(self):
+        events = [text(0, "PART DRUMS", 3), (0, b"\x99\x60\x64"), (120, b"\x61\x50"),
+                  (240, b"\x89\x60\xff"), (360, b"\x61\xff"),
+                  (480, b"\x99\x62\x64"), (481, b"\x89\x62\x00")]
+        animation = [text(0, "PART KEYS_ANIM_RH", 3), (0, b"\x90\x36\x40"),
+                     (60, b"\x80\x36\xff")]
+        warnings = []
+        parsed = IMPORTER.parse_midi(midi_file(events, extra_tracks=[animation]), warnings)
+        self.assertEqual(parsed["raw"]["expert"], [(0, 0, 240, 100), (120, 1, 240, 80), (480, 2, 1, 100)])
+        release_warnings = [warning for warning in warnings if "release velocities" in warning]
+        self.assertEqual(len(release_warnings), 2)
+        self.assertIn("PART DRUMS has 2", release_warnings[1])
+
+    def test_midi_release_compatibility_keeps_other_channel_data_and_bounds_strict(self):
+        for payload in (b"\x90\x60\xff", b"\x80\xff\x00", b"\x80\x60\x80",
+                        b"\xb0\x01\xff", b"\xc0\xff", b"\xe0\x00\xff"):
+            with self.subTest(payload=payload):
+                with self.assertRaisesRegex(IMPORTER.SongImportError, "Invalid MIDI channel data byte"):
+                    IMPORTER.parse_midi(midi_file([text(0, "PART DRUMS", 3), (0, payload)]), [])
+        for body, message in ((b"\x00\x80\x60", "Truncated MIDI channel event"),
+                              (b"\x00\xff\x01\x05a", "MIDI meta event exceeds track bounds"),
+                              (b"\x00\xf0\x03\xf7", "MIDI SysEx event exceeds track bounds")):
+            data = b"MThd" + struct.pack(">IHHH", 6, 1, 1, 480) + b"MTrk" + struct.pack(">I", len(body)) + body
+            with self.subTest(body=body):
+                with self.assertRaisesRegex(IMPORTER.SongImportError, message):
+                    IMPORTER.parse_midi(data, [])
 
     def test_different_charters_receive_distinct_library_ids(self):
         first = self.load(ini="[song]\ncharter = First\n")

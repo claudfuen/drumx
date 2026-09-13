@@ -81,7 +81,7 @@ Open **Songs** to browse your local library, import a song or scan a song direct
 
 Song play enables hi-hat, snare, kick, three toms, crash, and ride. It preserves chart tempo changes, song offsets, and pro-drum cymbal/tom distinctions. Songs use a separate library and do not award curriculum checkpoints. The shared Godot desktop preview does not yet expose this native Songs section.
 
-Python 3 runs the bundled importer. Opus and Ogg audio require **FFmpeg** (`brew install ffmpeg`); decoded audio is cached locally. Imported charts and audio live in `~/Library/Application Support/Drumx/Songs`, outside the repository. Your original downloads remain in place. A chart without drums cannot be played as a drum song. [Song formats, mappings, and command-line import](docs/song-format.md)
+Python 3 runs the bundled importer. Opus and Ogg audio require **FFmpeg** (`brew install ffmpeg`); decoded audio is cached locally. **Import song** copies a song into `~/Library/Application Support/Drumx/Songs`. **Add song directory** indexes unpacked song folders where they are, such as `~/Documents/Songs`, so a large collection needs no second audio copy. Keep that folder in place. Library metadata and decoded caches stay in Application Support, outside the repository. Your original downloads remain in place. A chart without drums cannot be played as a drum song. [Song formats, mappings, and command-line import](docs/song-format.md)
 
 | Input | Action |
 | --- | --- |

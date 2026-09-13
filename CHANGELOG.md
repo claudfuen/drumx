@@ -4,6 +4,12 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Index large song collections without duplicating media
+
+- Add reference imports for unpacked song directories, with atomic lightweight library summaries and lazy-play metadata. Keep managed single-song imports available and preserve identity when switching modes.
+- Read authored preview start/end times. Tolerate a narrowly identified unused MIDI release-velocity quirk, and fall back from invalid declared duration tags while retaining the two-hour bound on real charts.
+- Pass 31 importer tests. Validate a private 1,948-song collection: 1,942 songs have playable drums across four difficulties, and six have no drum track. Song media stays outside the repository.
+
 ### Give each desktop release a visible version
 
 - Introduce a shared product VERSION and numbered `0.1.0-preview.N` GitHub releases. Embed the same version, workflow run, commit, and source state in both desktop packages; expose copyable build details in the native and shared main menus.

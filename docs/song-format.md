@@ -13,15 +13,29 @@ The same import is available from the command line with Python 3.10 or newer:
 python3 scripts/import_song.py "$HOME/Downloads/Artist - Song.sng"
 python3 scripts/import_song.py "$HOME/Music/Clone Hero Songs" --scan
 python3 scripts/import_song.py --scan "$HOME/Music/Clone Hero Songs"
+python3 scripts/import_song.py --scan "$HOME/Documents/Songs" --reference
 python3 scripts/import_song.py "/path/to/song" --difficulty hard --double-kick
 ```
 
-The default destination is `~/Library/Application Support/Drumx/Songs`.
-`--library DIRECTORY` overrides it. Original charts, metadata, artwork, and
-recordings are copied into the library so moving a download does not break a song.
+The manifest destination is `~/Library/Application Support/Drumx/Songs`.
+`--library DIRECTORY` overrides it. By default, original charts, metadata, artwork,
+and recordings are copied into the library so moving a download does not break a song.
 `--source-url URL` records provenance for one song. `--output FILE` writes an
 additional manifest for inspection. Neither downloads nor imported media belong
 in Git.
+
+`--reference` indexes unpacked song folders in place. It writes the app's JSON files
+and keeps absolute paths to the original chart, artwork, and recordings without
+copying media. Keep the source folders in a stable location such as
+`~/Documents/Songs`. The native app's **Add song directory** action uses this mode;
+**Import song** keeps the default managed-copy behavior. Native playback may still
+create a private decoded-audio cache when a recording needs codec conversion.
+
+Reference imports require a folder and available song audio. Extract ZIP, SNG,
+and other archives before referencing them. A reference scan reports archives and
+folders without playable drum charts or audio as individual failures and continues.
+Moving or deleting a referenced recording breaks playback until the source is
+restored or its new location is imported. Reference imports never delete media.
 
 A recursive directory scan discovers song folders and `.sng`/`.zip` files, reports
 individual failures, and continues importing other songs. Its JSON report has
@@ -106,22 +120,38 @@ not establish the actual decoded recording's length.
 
 ## JSON contract, schema version 1
 
-Each imported song lives at `<library>/<id>/song.json`, with media in its `source`
-subdirectory. The ID is a 24-character SHA-256 prefix of length-framed normalized INI metadata
+Each imported song has `<library>/<id>/song.json` and a small `song-info.json`
+browsing summary. Managed imports keep media in
+its `source` subdirectory; reference imports keep media in the original song folder.
+The ID is a 24-character SHA-256 prefix of length-framed normalized INI metadata
 and asset contents and paths. It is independent of download path, archive wrapper,
 and selected difficulty, but distinguishes chart authors and changed media.
-Equivalent folder, ZIP, and SNG inputs deduplicate. Reimport updates the manifest
-and restores missing or damaged managed source files. Existing import timestamps
-and recorded provenance survive a duplicate import.
+Equivalent folder, ZIP, and SNG inputs deduplicate, and media mode does not change
+the identity. A managed reimport updates the manifest and restores missing or
+damaged managed source files, including when switching from reference mode.
+A reference reimport only updates manifest paths and leaves any previous managed
+copies untouched. Existing timestamps and recorded provenance survive a duplicate
+import. Neither switching modes nor rescanning removes songs or source media.
 
 The native consumer may ignore additional fields added within version 1.
+
+The native library reads `song-info.json` to browse without loading every note in
+the collection. It loads the full `song.json` when preparing a song for playback.
+The summary preserves the display, identity, provenance, media paths, warnings,
+difficulty selection, and scalar timing fields below. Its `charts` contains only
+`{difficulty, noteCount, instrumentCount}` per difficulty, where `instrumentCount`
+counts distinct canonical drum lanes. It omits `notes`, `tempos`, `timeSignatures`,
+`sections`, and raw `metadata`. Both JSON files are written atomically on each
+import, including duplicate imports and changes between managed and reference
+media. New song directories are published only after both files are ready.
 
 | Field | Meaning |
 | --- | --- |
 | `schemaVersion`, `id` | Integer schema version and stable content identity |
 | `title`, `artist`, `album`, `charter`, `year`, `genre` | Display strings; simple formatting tags removed |
 | `sourceFormat` | `midi` or `chart` |
-| `sourcePath`, `chartPath`, `manifestPath` | Absolute original input, managed chart, and manifest paths |
+| `mediaMode` | `managed` or `reference`; older manifests without this field use managed media |
+| `sourcePath`, `chartPath`, `manifestPath` | Absolute original input, playable chart, and manifest paths |
 | `importedAt` | UTC ISO-8601 string |
 | `resolution` | Ticks per quarter note |
 | `drumMode` | `pro`, `fourLane`, or `fiveLane` |
@@ -129,11 +159,12 @@ The native consumer may ignore additional fields added within version 1.
 | `charts` | Array of `{difficulty, notes}` for every available drum difficulty |
 | `notes` | Duplicate of the selected chart's notes, for simple consumers |
 | `offsetSeconds`, `chartStartSeconds`, `durationSeconds` | Timing values described above |
+| `previewStartSeconds`, `previewEndSeconds` | Optional audio positions for a browsing preview; independent of chart offset |
 | `tempos` | Array of `{tick, beat, timeSeconds, bpm}` |
 | `timeSignatures` | Array of `{tick, beat, timeSeconds, numerator, denominator}` |
 | `sections` | Array of `{tick, beat, timeSeconds, name}` |
-| `audio` | Array of `{stem, path}` with absolute managed asset paths |
-| `albumArtPath` | Absolute managed artwork path, or null |
+| `audio` | Array of `{stem, path}` with absolute managed or referenced asset paths |
+| `albumArtPath` | Absolute managed or referenced artwork path, or null |
 | `doubleKick`, `doubleKickNoteCount` | Inclusion option and total optional kick count across difficulties |
 | `warnings` | Human-readable import caveats |
 | `metadata`, `provenance` | Raw string metadata and an optional `sourceURL` |
@@ -145,6 +176,15 @@ Simultaneous notes remain simultaneous. Duplicate notes for the same tick and
 mapped lane are collapsed. Sustain durations are retained as data even though
 Drumx scores a drum strike at the note's start.
 
+Preview positions use `song.ini`'s `preview_start_time` and `preview_end_time` in
+milliseconds, falling back to `.chart`'s `PreviewStart` and `PreviewEnd` in seconds
+when the corresponding INI field is absent. Negative values mean unspecified;
+an end of zero is also unspecified. Non-finite values, positions past the two-hour
+song bound, and ends at or before the start are omitted with a warning. The native
+player checks these positions against the decoded recording's actual duration
+and chooses a default preview when needed. Both JSON files include valid preview
+positions.
+
 ## Validation and input bounds
 
 ```sh
@@ -154,15 +194,25 @@ python3 -m unittest discover -s scripts/tests -p test_import_song.py -v
 The tests generate small original MIDI, `.chart`, ZIP, and SNG fixtures in temporary
 directories. They cover integrated tempo changes, meter, all drum difficulties,
 pro cymbals/toms, disco flip, dynamics, offsets, second pedals, metadata precedence,
-content deduplication, stable media, repair on reimport, malformed input, and safe
-archive handling. No commercial recordings or charts are committed.
+content deduplication, stable media, repair on reimport, reference-only indexing,
+mode switches, missing source media, small browsing summaries with accurate chart
+counts, malformed input, and safe archive handling.
+No commercial recordings or charts are committed.
+
+For compatibility with some Rock Band keyboard-animation tracks, MIDI Note Off
+release velocity 255 is normalized to zero and reported as a warning. Release
+velocity is unused for drum scoring. Invalid note pitches, Note On velocities,
+other channel data, and truncated events remain errors.
 
 Archive indices are validated before extraction. Absolute paths, traversal,
 backslash paths, links, special files, case-insensitive duplicate names,
 file/directory collisions, encrypted ZIP entries, overlapping SNG payloads, and
-invalid section boundaries are rejected. Limits are 10,000 files, 1 GiB per file,
+invalid section boundaries are rejected. A library scan may traverse 100,000
+entries; per-song limits remain 10,000 files, 1 GiB per file,
 2 GiB expanded per package, 64 MiB per chart, 8 MiB per metadata/index section,
-and one million parsed events. Playable charts are limited to 200,000 notes per
+and one million parsed events. Declared `song_length` or `.chart` `Length` values
+outside zero through two hours are ignored with a warning; actual note timing,
+sustains, offsets, and end markers still obey the duration limit. Playable charts are limited to 200,000 notes per
 difficulty and two hours, matching the native engine's bounds. Failed imports do
 not publish a new song manifest.
 
