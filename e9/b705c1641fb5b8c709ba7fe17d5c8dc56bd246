@@ -1,0 +1,23 @@
+scripts/test-song-stem-mix.sh
+  s_505f6bd01e41cc::t_b60120da5e2d9d 1-13
+native/macos/DrumxSongStemMix.swift
+  s_505f6bd01e41cc::t_b60120da5e2d9d 1-62
+native/macos/tests/DrumxSongStemMixChecks.swift
+  s_505f6bd01e41cc::t_b60120da5e2d9d 1-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e9b705c1641fb5b8c709ba7fe17d5c8dc56bd246",
+  "prompts": {},
+  "sessions": {
+    "s_505f6bd01e41cc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0986c-bcbf-76e2-863b-47446b3a4950",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
