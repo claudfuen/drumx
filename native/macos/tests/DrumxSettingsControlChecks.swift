@@ -74,6 +74,10 @@ private final class ActionProbe: NSObject {
     check(panels[3].isHiddenOrHasHiddenAncestor && !panels[0].isHiddenOrHasHiddenAncestor, "inactive sections remain hidden from pointer and keyboard interaction")
 
     let bottomAction = NSButton(title: "Fixture final setting", target: probe, action: #selector(ActionProbe.changed(_:)))
+    // Production LessonButtons draw their own unbordered surface. Native bezel
+    // alignment insets differ by macOS version and inflate a bordered button's
+    // frame beyond its constrained alignment height, which is not this UI.
+    bottomAction.isBordered = false
     bottomAction.translatesAutoresizingMaskIntoConstraints = false
     panels[3].addSubview(bottomAction)
     NSLayoutConstraint.activate([
@@ -94,7 +98,7 @@ private final class ActionProbe: NSObject {
       check(zip(tabs, tabs.dropFirst()).allSatisfy { $0.frame.maxX < $1.frame.minX } && tabs.last!.frame.maxX < scroll.frame.maxX,
         "compact settings navigation leaves calm space and never overlaps")
       check(panels[3].bounds.contains(bottomAction.frame) && bottomAction.frame.height == 44,
-        "the selected section preserves its final control within the document")
+        "the selected section preserves its final control within the document (viewport \(size), panel \(panels[3].bounds), control \(bottomAction.frame), alignment \(bottomAction.alignmentRect(forFrame: bottomAction.frame)))")
       bottomAction.scrollToVisible(bottomAction.bounds)
       check(!bottomAction.visibleRect.isEmpty,
         "the final setting can be scrolled into view without removing section navigation")
