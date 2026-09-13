@@ -47,13 +47,17 @@ Checkpoints use repeated comparable takes at a lesson's prescribed tempo. Each r
 ## Downloads
 
 <!-- drumx:downloads:start -->
-[**Current release: preview-9ddcab48cd71**](https://github.com/claudfuen/drumx/releases/tag/preview-9ddcab48cd71) · [All releases](https://github.com/claudfuen/drumx/releases)
+<!-- drumx:release v0.1.0-preview.15 2c76c49a8123409af89bb82a1abb3944da4b52e0 -->
+Current experimental release: **[0.1.0-preview.15](https://github.com/claudfuen/drumx/releases/tag/v0.1.0-preview.15)** · [`2c76c49a8123`](https://github.com/claudfuen/drumx/commit/2c76c49a8123409af89bb82a1abb3944da4b52e0)
 
-| Package | Status |
+| Platform | Download |
 | --- | --- |
-| [**Download Mac / Apple Silicon**](https://github.com/claudfuen/drumx/releases/download/preview-9ddcab48cd71/Drumx-macos-arm64.zip) | Experimental shared app; ad-hoc signed, not notarized |
-| [**Download Windows / x64**](https://github.com/claudfuen/drumx/releases/download/preview-9ddcab48cd71/Drumx-windows-x86_64.zip) | Experimental shared app; unsigned |
-| **Native macOS app** | Current presentation baseline; build locally below |
+| macOS · Apple Silicon | [Download Mac](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.15/Drumx-macos-arm64.zip) |
+| Windows · x64 | [Download Windows](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.15/Drumx-windows-x86_64.zip) |
+
+[Build manifest](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.15/build-manifest.json) · [Checksums](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.15/SHA256SUMS.txt) · [All releases](https://github.com/claudfuen/drumx/releases)
+
+These are experimental shared desktop builds. Extract the complete archive before opening the app. The release notes record signing status and open quality gates.
 <!-- drumx:downloads:end -->
 
 CI publishes numbered versions such as **0.1.0-preview.34** after both platforms pass, then updates the download links above automatically. Every release includes immutable Git tags, ZIPs, checksums, and a build manifest. Downloads persist independently of expiring CI logs. Native Mac remains the presentation baseline and can be built locally below.
