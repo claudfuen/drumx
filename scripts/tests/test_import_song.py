@@ -187,22 +187,34 @@ class ImportSongChecks(unittest.TestCase):
         self.assertEqual(Path(manifest["audio"][0]["path"]).read_bytes(), sample)
 
     def test_archive_traversal_links_duplicate_names_and_bad_offsets_are_rejected(self):
-        for bad_name in ("../outside", "/absolute", "a/../../outside", "C:/bad", "folder\\bad"):
+        for bad_name in ("../outside", "/absolute", "a/../../outside", "C:/bad", "folder\\bad", "folder\x00bad"):
             with self.subTest(name=bad_name):
                 path = self.root / "bad.zip"
+                # zipfile sanitizes names while writing on Windows. Replace an
+                # equal-length ASCII placeholder in both filename headers so the
+                # hostile filename is identical on every test platform.
+                raw_name = bad_name.encode("ascii")
+                placeholder = b"x" * len(raw_name)
                 with zipfile.ZipFile(path, "w") as archive:
                     archive.writestr("notes.chart", simple_chart())
-                    archive.writestr(bad_name, b"bad")
+                    archive.writestr(placeholder.decode("ascii"), b"bad")
+                raw_archive = path.read_bytes()
+                self.assertEqual(raw_archive.count(placeholder), 2)
+                path.write_bytes(raw_archive.replace(placeholder, raw_name))
+                with zipfile.ZipFile(path) as archive:
+                    self.assertEqual(archive.infolist()[-1].orig_filename, bad_name)
                 with self.assertRaises(IMPORTER.SongImportError):
                     IMPORTER.import_song(path, self.library)
-        path = self.root / "link.zip"
-        with zipfile.ZipFile(path, "w") as archive:
-            info = zipfile.ZipInfo("link")
-            info.create_system = 3
-            info.external_attr = 0o120777 << 16
-            archive.writestr(info, "../outside")
-        with self.assertRaises(IMPORTER.SongImportError):
-            IMPORTER.import_song(path, self.library)
+        for creator_os in (0, 3):
+            with self.subTest(link_creator_os=creator_os):
+                path = self.root / "link.zip"
+                with zipfile.ZipFile(path, "w") as archive:
+                    info = zipfile.ZipInfo("link")
+                    info.create_system = creator_os
+                    info.external_attr = 0o120777 << 16
+                    archive.writestr(info, "../outside")
+                with self.assertRaises(IMPORTER.SongImportError):
+                    IMPORTER.import_song(path, self.library)
         path = self.root / "duplicate.zip"
         with zipfile.ZipFile(path, "w") as archive:
             archive.writestr("notes.chart", simple_chart())

@@ -130,6 +130,10 @@ def extract_zip(source, destination):
     with zipfile.ZipFile(source) as archive:
         entries = []
         for info in archive.infolist():
+            # ZipInfo sanitizes names before exposing .filename: on Windows it
+            # replaces backslashes, and on every OS it truncates at NUL. Validate
+            # the original archive spelling before that information is lost.
+            safe_relative(info.orig_filename.rstrip("/"))
             safe_relative(info.filename.rstrip("/"))
             mode = info.external_attr >> 16
             if stat.S_ISLNK(mode) or (stat.S_IFMT(mode) and not
