@@ -4,6 +4,13 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Clarify menu hierarchy and install the native app
+
+- Group Continue with its progress, separate Settings from play choices, and make the selected lesson's availability or checkpoint state explicit. Keep native and shared menu presentation aligned for supported routes.
+- Replace duplicate exits with destination-specific navigation and put keyboard focus on visible actions. Return activates once; MIDI navigation follows the same visible selection and excludes hidden controls.
+- Use compact Settings sections, functional headings, quieter rows, and readable controls. Add viewport, scrolling, primary-focus, and locked-lesson checks.
+- Add a signature-verified local installer for `/Applications/Drumx.app` that preserves the library/progress identity and retains the previous bundle. Define the menu and large-library acceptance gate separately from full M1 completion.
+
 ### Index large song collections without duplicating media
 
 - Add reference imports for unpacked song directories, with atomic lightweight library summaries and lazy-play metadata. Keep managed single-song imports available and preserve identity when switching modes.

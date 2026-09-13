@@ -21,13 +21,12 @@ final class DrumxSettingsPage: NSView {
   var tabs: [LessonButton] = []
   var panels: [NSView] = []
   private let heading = NSTextField(labelWithString: "Settings")
-  private let caption = NSTextField(labelWithString: "Get comfortable. Then get playing.")
   private let viewport = NSScrollView()
   private let content = NSStackView()
   override var isFlipped: Bool { true }
   override init(frame: NSRect) {
     super.init(frame: frame)
-    heading.textColor = SetupInk.paper; caption.textColor = SetupInk.muted
+    heading.textColor = SetupInk.paper
     viewport.drawsBackground = false; viewport.borderType = .noBorder
     viewport.hasVerticalScroller = true; viewport.autohidesScrollers = true
     viewport.scrollerStyle = .overlay
@@ -41,7 +40,7 @@ final class DrumxSettingsPage: NSView {
       content.widthAnchor.constraint(equalTo: viewport.contentView.widthAnchor),
       content.heightAnchor.constraint(greaterThanOrEqualTo: viewport.contentView.heightAnchor),
     ])
-    addSubview(heading); addSubview(caption); addSubview(viewport)
+    addSubview(heading); addSubview(viewport)
   }
   required init?(coder: NSCoder) { nil }
   func install(tabs: [LessonButton], panels: [NSView]) {
@@ -56,32 +55,38 @@ final class DrumxSettingsPage: NSView {
     needsLayout = true
   }
   func revealSelectedSection() {
-    needsLayout = true
+    needsLayout = true; needsDisplay = true
     viewport.contentView.scroll(to: .zero)
     viewport.reflectScrolledClipView(viewport.contentView)
   }
   override func layout() {
     super.layout()
-    let width = min(1500, max(0, bounds.width - 88))
+    let width = min(1120, max(0, bounds.width - 88))
     let x = (bounds.width - width) / 2
-    let scale = min(1.3, max(1, (bounds.height - 40) / 660))
-    let totalHeight = max(0, min(bounds.height - 24, 740 * scale))
-    let top = max(12, (bounds.height - totalHeight) / 2)
-    heading.font = .systemFont(ofSize: 36 * scale, weight: .bold)
-    caption.font = .systemFont(ofSize: 14 * scale)
-    heading.frame = NSRect(x: x, y: top, width: width / 2, height: 50 * scale)
-    caption.frame = NSRect(x: x + width / 2, y: top + 21 * scale, width: width / 2, height: 24 * scale)
-    caption.alignment = .right
-    let tabY = top + 65 * scale, tabHeight = 48 * scale
-    let count = max(1, tabs.count), gap: CGFloat = 12
-    let tabWidth = max(0, (width - gap * CGFloat(count - 1)) / CGFloat(count))
+    let top = min(44, max(24, bounds.height * 0.045))
+    heading.font = .systemFont(ofSize: 36, weight: .bold)
+    heading.frame = NSRect(x: x, y: top, width: width, height: 48)
+    let tabY = top + 62, tabHeight: CGFloat = 48
+    let gap: CGFloat = 16
+    let tabWidth = min(136, max(0, (width - gap * CGFloat(max(0, tabs.count - 1))) / CGFloat(max(1, tabs.count))))
     for (index, tab) in tabs.enumerated() {
       tab.frame = NSRect(x: x + CGFloat(index) * (tabWidth + gap), y: tabY,
         width: tabWidth, height: tabHeight)
     }
-    let panelY = tabY + tabHeight + 22 * scale
+    let panelY = tabY + tabHeight + 32
     viewport.frame = NSRect(x: x, y: panelY, width: width,
-      height: max(0, top + totalHeight - panelY))
+      height: max(0, bounds.height - panelY - 28))
+    needsDisplay = true
+  }
+  override func draw(_ dirtyRect: NSRect) {
+    guard let first = tabs.first else { return }
+    let y = first.frame.maxY + 2
+    SetupInk.paper.withAlphaComponent(0.09).setFill()
+    NSBezierPath(rect: NSRect(x: first.frame.minX, y: y, width: viewport.frame.width, height: 1)).fill()
+    for tab in tabs where tab.state == .on {
+      SetupInk.lime.setFill()
+      NSBezierPath(rect: NSRect(x: tab.frame.minX + 14, y: y - 1, width: max(0, tab.frame.width - 28), height: 2)).fill()
+    }
   }
 }
 
@@ -93,6 +98,14 @@ final class DrumxSettingsSurface: NSView {
     layer?.borderWidth = 1; layer?.borderColor = NSColor.white.withAlphaComponent(0.065).cgColor
   }
   required init?(coder: NSCoder) { nil }
+}
+
+final class DrumxSettingsRowSurface: NSView {
+  override var isFlipped: Bool { true }
+  override func draw(_ dirtyRect: NSRect) {
+    SetupInk.paper.withAlphaComponent(0.085).setFill()
+    NSBezierPath(rect: NSRect(x: 0, y: max(0, bounds.height - 1), width: bounds.width, height: 1)).fill()
+  }
 }
 
 private final class KitPad: NSButton {
@@ -223,7 +236,7 @@ final class DrumxKitCheckView: NSView {
     }
   }
   override func draw(_ dirtyRect: NSRect) {
-    SetupInk.text("YOUR FOUNDATION KIT", in: NSRect(x: 24, y: 20, width: bounds.width - 48, height: 18), size: 11, color: SetupInk.muted, weight: .semibold)
+    SetupInk.text("FOUNDATION KIT", in: NSRect(x: 24, y: 20, width: bounds.width - 48, height: 18), size: 11, color: SetupInk.muted, weight: .semibold)
     let track = NSRect(x: 24, y: bounds.height - 14, width: bounds.width - 48, height: 3)
     NSColor.white.withAlphaComponent(0.06).setFill(); NSBezierPath(rect: track).fill()
     var signal = track; signal.size.width *= CGFloat(lastVelocity) / 127

@@ -10,6 +10,7 @@ private enum CourseInk {
     let field = wrapping ? NSTextField(wrappingLabelWithString: value) : NSTextField(labelWithString: value)
     field.font = .systemFont(ofSize: size, weight: weight)
     field.textColor = color
+    field.isEditable = false; field.isSelectable = false
     field.lineBreakMode = wrapping ? .byWordWrapping : .byTruncatingTail
     return field
   }
@@ -86,6 +87,7 @@ private final class CoursePathButton: NSButton {
 }
 
 private final class CourseStarsView: NSView {
+  var stepState = "UP NEXT" { didSet { needsDisplay = true } }
   var conditions = "" { didSet { needsDisplay = true } }
   var stars = 0 { didSet { needsDisplay = true } }
   var hasRecordedScore = false { didSet { needsDisplay = true } }
@@ -95,14 +97,14 @@ private final class CourseStarsView: NSView {
     let scale = min(bounds.width / 290, bounds.height / 146)
     guard scale > 0 else { return }
     let inset = (bounds.width - 290 * scale) / 2
-    CourseInk.text(hasRecordedScore ? "BEST RECORDED" : "YOUR NEXT GOAL", in: NSRect(x: 0, y: 4 * scale, width: bounds.width, height: 18 * scale),
-      size: 10 * scale, color: CourseInk.muted, alignment: .center)
+    CourseInk.text(stepState, in: NSRect(x: 0, y: 4 * scale, width: bounds.width, height: 18 * scale),
+      size: 11 * scale, color: CourseInk.lime, alignment: .center)
     for index in 0..<5 {
       let center = NSPoint(x: inset + (29 + CGFloat(index) * 58) * scale, y: 65 * scale)
       let path = NSBezierPath()
       for point in 0..<10 {
         let angle = -Double.pi / 2 + Double(point) * Double.pi / 5
-        let radius = (point.isMultiple(of: 2) ? 23.0 : 10.0) * scale
+        let radius = (point.isMultiple(of: 2) ? 19.0 : 8.5) * scale
         let position = NSPoint(x: center.x + cos(angle) * radius, y: center.y + sin(angle) * radius)
         if point == 0 { path.move(to: position) } else { path.line(to: position) }
       }
@@ -110,8 +112,8 @@ private final class CourseStarsView: NSView {
       if index < stars { CourseInk.lime.setFill(); path.fill() }
       else { CourseInk.paper.withAlphaComponent(0.18).setStroke(); path.lineWidth = scale; path.stroke() }
     }
-    CourseInk.text(hasRecordedScore ? conditions : "Score and checkpoint are separate.", in: NSRect(x: 0, y: 112 * scale, width: bounds.width, height: 24 * scale),
-      size: 12 * scale, color: CourseInk.paper, alignment: .center)
+    CourseInk.text(hasRecordedScore ? "BEST  ·  \(conditions)" : "No completed take yet", in: NSRect(x: 0, y: 112 * scale, width: bounds.width, height: 24 * scale),
+      size: 11 * scale, color: CourseInk.muted, alignment: .center)
   }
 }
 
@@ -121,7 +123,7 @@ final class DrumxCourseMenuView: NSView {
   var onSelect: ((String) -> Void)?
   var onContinue: (() -> Void)?
   private let content = NSView()
-  private let titleLabel = CourseInk.label("One step at a time.", size: 38, weight: .bold)
+  private let titleLabel = CourseInk.label("Learn.", size: 38, weight: .bold)
   private let subtitle = CourseInk.label("", size: 14, color: CourseInk.muted)
   private let progressLabel = CourseInk.label("", size: 12, color: CourseInk.muted)
   private let stepLabel = CourseInk.label("", size: 11, color: CourseInk.lime, weight: .medium)
@@ -136,6 +138,7 @@ final class DrumxCourseMenuView: NSView {
   private var chapterPage = 0
   private let playButton = CoursePathButton(title: "Play this step", target: nil, action: nil)
   private let starsView = CourseStarsView()
+  private let pathDivider = NSView()
   private var chapterLabels: [NSTextField] = []
   private var nodes: [CoursePathButton] = []
   private var availableIDs = Set<String>()
@@ -150,6 +153,10 @@ final class DrumxCourseMenuView: NSView {
   override init(frame: NSRect) {
     super.init(frame: frame)
     addSubview(content)
+    pathDivider.wantsLayer = true
+    pathDivider.layer?.backgroundColor = CourseInk.paper.withAlphaComponent(0.09).cgColor
+    pathDivider.setAccessibilityElement(false)
+    content.addSubview(pathDivider)
     for view in [titleLabel, subtitle, progressLabel, stepLabel, lessonTitle, objective, stepHint,
                  trailLabel, trailHint, previousPage, nextPage, playButton, starsView] { content.addSubview(view) }
     progressLabel.alignment = .right; trailHint.alignment = .center
@@ -208,6 +215,7 @@ final class DrumxCourseMenuView: NSView {
     place(stepHint, 270 * scale, 323, width - 270 * scale, 46)
     let starWidth = min(340 * scale, width - leftWidth - 32 * scale)
     place(starsView, width - starWidth, 155, starWidth, 146)
+    place(pathDivider, 0, 393, width, 1)
     place(trailLabel, 2 * scale, 416, 240 * scale, 20)
     place(trailHint, width - 460 * scale, 416, 230 * scale, 24)
     place(previousPage, width - 224 * scale, 410, 106 * scale, 32)
@@ -262,7 +270,7 @@ final class DrumxCourseMenuView: NSView {
     displayedPlayer = player; contextID = recommended.id
     availableIDs = available; clearedIDs = cleared; self.lockReasons = lockReasons
     self.bestStarsByID = bestStarsByID; self.bestConditionsByID = bestConditionsByID
-    subtitle.stringValue = "\(player)’s path. From your first pulse to rudiments and grooves."
+    subtitle.stringValue = "Foundations  /  \(DrumxCourse.lessons.count) lessons in rhythm, coordination and rudiments"
     progressLabel.stringValue = "\(cleared.count) / \(DrumxCourse.lessons.count) steps complete"
     progressLabel.setAccessibilityValue("\(cleared.count) steps complete. \(practised) lessons practised.")
     refreshFeature()
@@ -275,6 +283,7 @@ final class DrumxCourseMenuView: NSView {
     chapterPage = lesson.chapter / chaptersPerPage
     let available = availableIDs.contains(featuredID)
     let complete = clearedIDs.contains(featuredID)
+    starsView.stepState = complete ? "CHECKPOINT EARNED" : !available ? "LOCKED" : featuredID == contextID ? "YOUR NEXT STEP" : "AVAILABLE TO PLAY"
     stepLabel.stringValue = "STEP \(String(format: "%02d", index + 1))  /  \(DrumxCourse.chapterTitles[lesson.chapter].uppercased())"
     lessonTitle.stringValue = lesson.title
     objective.stringValue = lesson.objective
@@ -286,12 +295,13 @@ final class DrumxCourseMenuView: NSView {
       : lockReasons[featuredID] ?? "Complete the previous step to open this lesson."
     if available && lesson.version == DrumxTempoCoach.lessonVersion {
       stepHint.stringValue = complete
-        ? "72 BPM checkpoint earned. Scores, reading and recall remain separate."
-        : "Play the coached pulse to earn the 72 BPM checkpoint. Earlier access stays available."
+        ? "72 BPM checkpoint earned. Replay to improve your score."
+        : "Build up to 72 BPM. Two steady checkpoint takes unlock the next step."
     }
     starsView.stars = min(5, max(0, bestStarsByID[featuredID] ?? 0))
     starsView.hasRecordedScore = bestStarsByID[featuredID] != nil
     starsView.conditions = bestConditionsByID[featuredID] ?? "Recorded game score"
+    stepHint.toolTip = stepHint.stringValue
     starsView.setAccessibilityLabel(starsView.hasRecordedScore
       ? "\(starsView.stars) of 5 stars recorded for \(lesson.title). \(starsView.conditions). Score is separate from the checkpoint."
       : "Build toward five stars for \(lesson.title).")
@@ -307,6 +317,11 @@ final class DrumxCourseMenuView: NSView {
     }
     window?.recalculateKeyViewLoop()
     needsLayout = true
+  }
+  func focusSelection() {
+    guard window?.attachedSheet == nil else { return }
+    if playButton.isEnabled { window?.makeFirstResponder(playButton) }
+    else if let node = nodes.first(where: { $0.selected && !$0.isHidden }) { window?.makeFirstResponder(node) }
   }
   private func focusStep(_ index: Int) {
     guard !nodes.isEmpty else { return }

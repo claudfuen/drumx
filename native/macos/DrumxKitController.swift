@@ -63,7 +63,7 @@ extension LabController {
         case .activate: mainMenuView.activateSelection()
         }
       } else {
-        let available = kitMenuActions.filter { !$0.isHidden && $0.isEnabled }
+        let available = kitMenuActions.filter { !$0.isHiddenOrHasHiddenAncestor && $0.isEnabled }
         if !available.isEmpty {
           kitMenuIndex = kitSelectedAction.flatMap { selected in available.firstIndex { $0 === selected } } ?? 0
           switch command {
@@ -91,12 +91,15 @@ extension LabController {
     selectKitMenuAction(); updateKitMenuLegend()
   }
   private func selectKitMenuAction() {
-    let available = kitMenuActions.filter { !$0.isHidden && $0.isEnabled }
+    let available = kitMenuActions.filter { !$0.isHiddenOrHasHiddenAncestor && $0.isEnabled }
     for button in kitMenuActions { button.selectedByKit = false }
     guard kitMenusEnabled, kitSetup.isMIDISelected, !available.isEmpty else { return }
     kitMenuIndex = min(kitMenuIndex, available.count - 1)
     kitSelectedAction = available[kitMenuIndex]
     available[kitMenuIndex].selectedByKit = true
+    if playerWindow == nil && checkWindow == nil {
+      window.makeFirstResponder(available[kitMenuIndex])
+    }
   }
   func updateKitMenuLegend() {
     guard kitMenusEnabled, kitSetup.isMIDISelected, !transportActive,

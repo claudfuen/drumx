@@ -22,6 +22,25 @@ final class LessonButton: NSButton {
   override func mouseExited(with event: NSEvent) { hovered = false; needsDisplay = true }
   override func becomeFirstResponder() -> Bool { needsDisplay = true; return true }
   override func resignFirstResponder() -> Bool { needsDisplay = true; return true }
+  override func keyDown(with event: NSEvent) {
+    if event.keyCode == 36 || event.keyCode == 76 {
+      if !event.isARepeat && isEnabled && !isHiddenOrHasHiddenAncestor { performClick(nil) }
+      return
+    }
+    if let controller = target as? LabController,
+      [.prepare, .review].contains(controller.currentPage),
+      controller.playerWindow == nil, controller.checkWindow == nil,
+      event.modifierFlags.intersection([.command, .control, .option]).isEmpty,
+      let pad = ["a": 0, "s": 1, " ": 2][event.charactersIgnoringModifiers?.lowercased() ?? ""] {
+      if !event.isARepeat {
+        controller.keyboardHit(pad: pad, velocity: event.modifierFlags.contains(.shift) ? 48 : 108,
+          hostTime: event.timestamp)
+      }
+      return
+    }
+    // Other controls and the responder chain retain their own arrow/Escape handling.
+    super.keyDown(with: event)
+  }
   override var intrinsicContentSize: NSSize {
     NSSize(
       width: max(
@@ -66,7 +85,7 @@ final class LessonRootView: NSView {
       controller?.dismissOrStop()
       return
     }
-    if event.keyCode == 36 {
+    if event.keyCode == 36 || event.keyCode == 76 {
       controller?.quickStart()
       return
     }
@@ -536,8 +555,24 @@ final class LabController: NSObject, NSWindowDelegate {
       (courseView, .course), (prepareView, .prepare), (scene, .stage), (reviewView, .review),
       (settingsView, .settings), (pauseView, .pause), (songController.view, .songs)] { view.isHidden = destination != page }
     playerButton.isHidden = page != .mainMenu
-    backButton.isHidden = ![Page.course, .prepare, .review, .settings].contains(page)
-    courseButton.isHidden = [.welcome, .mainMenu, .stage, .pause].contains(page)
+    backButton.isHidden = ![Page.prepare, .review, .settings].contains(page)
+    if page == .prepare { backButton.title = "← Learn" }
+    else if page == .review { backButton.title = "← Lesson" }
+    else if page == .settings {
+      switch settingsOrigin {
+      case .course: backButton.title = "← Learn"
+      case .prepare: backButton.title = "← Lesson"
+      case .review: backButton.title = "← Review"
+      case .songs: backButton.title = "← Songs"
+      case .pause: backButton.title = "← Pause"
+      case .welcome: backButton.title = "← Welcome"
+      case .stage: backButton.title = "← Practice"
+      case .mainMenu, .settings: backButton.title = "← Main menu"
+      }
+    }
+    backButton.invalidateIntrinsicContentSize()
+    courseButton.isHidden = [.welcome, .mainMenu, .stage, .pause, .songs].contains(page)
+      || (page == .settings && [.mainMenu, .welcome].contains(settingsOrigin))
     kitButton.isHidden = ![Page.course, .prepare, .review, .songs].contains(page)
     play.isHidden = page != .stage
     runScoreHUD.isHidden = page != .stage
@@ -549,6 +584,7 @@ final class LabController: NSObject, NSWindowDelegate {
       : "ESC  main menu"
     switch page {
     case .songs:
+      songController.profileID = progress.selectedProfile.id
       songController.setMIDIMapping(mappings)
       songController.inputOffsetMilliseconds = calibrationMS
       songController.showLibrary()
@@ -559,7 +595,7 @@ final class LabController: NSObject, NSWindowDelegate {
       mainMenuView.update(lesson: lesson, player: progress.selectedProfile.name,
         unlocked: state.availableIDs.count, cleared: state.clearedIDs.count)
       pageTitle.stringValue = "MAIN MENU"; window.title = "Drumx · Main menu"
-      setStatus("Your rhythm. Your pace. Progress saved on this Mac.")
+      setStatus("")
     case .course:
       refreshCourse(); pageTitle.stringValue = "FOUNDATIONS"; window.title = "Drumx · Foundations"
       setStatus("Explore each chapter. Open lessons stay yours to revisit.")
@@ -586,7 +622,24 @@ final class LabController: NSObject, NSWindowDelegate {
     focusStage()
   }
   func focusStage() {
-    if playerWindow == nil && checkWindow == nil { window.makeFirstResponder(currentPage == .songs ? songController.view : transportActive ? scene : root) }
+    guard playerWindow == nil && checkWindow == nil else { return }
+    if currentPage == .songs { window.makeFirstResponder(songController.view); return }
+    if transportActive { window.makeFirstResponder(scene); return }
+    func focusFirst(_ actions: [NSButton]) {
+      if let action = actions.first(where: { $0.isEnabled && !$0.isHiddenOrHasHiddenAncestor }) {
+        window.makeFirstResponder(action)
+      } else { window.makeFirstResponder(root) }
+    }
+    switch currentPage {
+    case .mainMenu: mainMenuView.focusSelection()
+    case .course: courseView.focusSelection()
+    case .prepare: focusFirst([startButton, hearButton])
+    case .review: focusFirst([retryButton, nextLessonButton, repeatPulseButton, slowButton, backButton])
+    case .pause: focusFirst([pauseRestart, pauseReviewButton, pauseHome])
+    case .settings:
+      focusFirst(settingsButtons.indices.contains(settingsSection) ? [settingsButtons[settingsSection]] : [])
+    case .welcome, .stage, .songs: window.makeFirstResponder(root)
+    }
   }
   func setStatus(_ text: String) {
     status.stringValue = text

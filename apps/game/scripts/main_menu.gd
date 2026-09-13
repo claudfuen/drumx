@@ -106,6 +106,7 @@ var headline: Label
 var invitation: Label
 var chapter_label: Label
 var progress_label: Label
+var utility_divider := ColorRect.new()
 var artwork := TextureRect.new()
 var art_caption: Label
 var actions: Array[MenuAction] = []
@@ -126,6 +127,9 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	composition.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(composition)
+	utility_divider.color = Color(PAPER, 0.09)
+	utility_divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	composition.add_child(utility_divider)
 	player_label = make_label("", label_font, MUTED)
 	headline = make_label("Find your\nrhythm.", title_font, PAPER)
 	invitation = make_label("Build a rhythm that stays with you.", label_font, MUTED)
@@ -194,7 +198,8 @@ func refresh() -> void:
 	progress_label.text = "%d / %d lessons cleared   ·   %d available" % [cleared, total, unlocked]
 	actions[0].subtitle = lesson_title
 	actions[0].tooltip_text = "Continue " + lesson_title
-	actions[1].subtitle = "Explore foundations · %d lessons" % total
+	actions[1].subtitle = "Guided lessons · Build your foundation"
+	actions[2].subtitle = "Kit, sound & saving"
 	actions[0].accessibility_description = "Continue " + lesson_title
 	actions[1].accessibility_description = "Explore the learning path, including available and upcoming lessons."
 	actions[2].accessibility_description = "Connect your kit, adjust sounds, and review local saving."
@@ -219,11 +224,12 @@ func layout_menu() -> void:
 	place(player_label, Rect2(4, 17, 416, 20), scale, text_top)
 	place(headline, Rect2(0, 50, 432, 164), scale, text_top)
 	place(invitation, Rect2(4, 221, 422, 26), scale, text_top)
-	place(chapter_label, Rect2(4, 284, 416, 20), scale, text_top)
-	place(actions[0], Rect2(0, 312, 424, 86), scale, text_top)
-	place(actions[1], Rect2(0, 407, 424, 54), scale, text_top)
-	place(actions[2], Rect2(0, 465, 424, 54), scale, text_top)
-	place(progress_label, Rect2(4, 544, 424, 20), scale, text_top)
+	place(chapter_label, Rect2(4, 270, 416, 20), scale, text_top)
+	place(actions[0], Rect2(0, 292, 424, 80), scale, text_top)
+	place(progress_label, Rect2(4, 378, 424, 20), scale, text_top)
+	place(actions[1], Rect2(0, 404, 424, 54), scale, text_top)
+	place(utility_divider, Rect2(22, 477, 380, 1), scale, text_top)
+	place(actions[2], Rect2(0, 488, 424, 50), scale, text_top)
 	artwork.position = Vector2(width - art_width, (height - art_height) / 2)
 	artwork.size = Vector2(art_width, art_height)
 	var art_scale := art_width / 460

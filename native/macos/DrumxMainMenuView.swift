@@ -259,6 +259,7 @@ final class DrumxMainMenuView: NSView {
   var onSettings: (() -> Void)?
 
   private let content = NSView()
+  private let utilityDivider = NSView()
   private let buildButton = MainMenuBuildButton(title: "", target: nil, action: nil)
   private let headline = NSTextField(wrappingLabelWithString: "Find your\nrhythm.")
   private let invitation = MainMenuInk.label("Build a rhythm that stays with you.", size: 16,
@@ -277,6 +278,10 @@ final class DrumxMainMenuView: NSView {
   override init(frame: NSRect) {
     super.init(frame: frame)
     addSubview(content)
+    utilityDivider.wantsLayer = true
+    utilityDivider.layer?.backgroundColor = MainMenuInk.paper.withAlphaComponent(0.09).cgColor
+    utilityDivider.setAccessibilityElement(false)
+    content.addSubview(utilityDivider)
     addSubview(buildButton)
     buildButton.title = MainMenuBuildIdentity.current?.caption ?? "Development build · version unavailable"
     buildButton.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
@@ -297,8 +302,9 @@ final class DrumxMainMenuView: NSView {
       content.addSubview(view)
     }
     continueButton.primary = true
-    exploreButton.subtitle = "Explore foundations · \(DrumxCourse.lessons.count) lessons"
-    songsButton.subtitle = "Your song library · Full-kit drums"
+    exploreButton.subtitle = "Guided lessons · Build your foundation"
+    songsButton.subtitle = "Browse your library · Play the full kit"
+    settingsButton.subtitle = "Kit, sound & players"
     songsButton.target = self; songsButton.action = #selector(openSongs)
     continueButton.target = self; continueButton.action = #selector(continuePractice)
     exploreButton.target = self; exploreButton.action = #selector(exploreFoundations)
@@ -352,12 +358,13 @@ final class DrumxMainMenuView: NSView {
     place(playerLabel, 4, 543, 416, 20)
     place(headline, 0, 366, 432, 164)
     place(invitation, 4, 333, 422, 26)
-    place(chapterLabel, 4, 276, 416, 20)
-    place(continueButton, 0, 196, 424, 80)
-    place(exploreButton, 0, 140, 424, 50)
-    place(songsButton, 0, 84, 424, 50)
-    place(settingsButton, 0, 28, 424, 50)
-    place(progressLabel, 4, 0, 424, 20)
+    place(chapterLabel, 4, 290, 416, 20)
+    place(continueButton, 0, 208, 424, 80)
+    place(progressLabel, 4, 182, 424, 20)
+    place(exploreButton, 0, 122, 424, 54)
+    place(songsButton, 0, 66, 424, 54)
+    place(utilityDivider, 22, 57, 380, 1)
+    place(settingsButton, 0, 0, 424, 50)
     artwork.frame = NSRect(x: width - artWidth, y: (height - artHeight) / 2,
                            width: artWidth, height: artHeight)
     artwork.needsDisplay = true
@@ -394,6 +401,11 @@ final class DrumxMainMenuView: NSView {
     guard window?.attachedSheet == nil else { return }
     let count = actions.count
     select((selectedIndex + offset % count + count) % count)
+    window?.makeFirstResponder(actions[selectedIndex])
+  }
+
+  func focusSelection() {
+    guard window?.attachedSheet == nil else { return }
     window?.makeFirstResponder(actions[selectedIndex])
   }
 

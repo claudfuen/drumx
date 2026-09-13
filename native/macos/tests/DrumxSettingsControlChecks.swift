@@ -58,12 +58,12 @@ private final class ActionProbe: NSObject {
       panel.isHidden = index != 0
       return panel
     }
-    let tabs = ["Your kit", "Sound", "Playing", "Players"].map { NSButton(title: $0, target: nil, action: nil) }
+    let tabs = ["Kit", "Sound", "Controls", "Players"].map { NSButton(title: $0, target: nil, action: nil) }
     page.install(tabs: tabs, panels: panels)
     page.layoutSubtreeIfNeeded()
     guard let scroll = page.subviews.compactMap({ $0 as? NSScrollView }).first else { fatalError("missing settings viewport") }
     check(page.bounds.contains(scroll.frame), "minimum-size content viewport remains inside the settings page")
-    check(zip(tabs, tabs.dropFirst()).allSatisfy { $0.frame.maxX < $1.frame.minX }, "four broad tabs do not overlap")
+    check(zip(tabs, tabs.dropFirst()).allSatisfy { $0.frame.maxX < $1.frame.minX }, "settings sections do not overlap")
     check(tabs.allSatisfy { page.bounds.contains($0.frame) }, "all section actions fit at minimum app width")
     panels[0].isHidden = true; panels[3].isHidden = false
     page.revealSelectedSection(); page.layoutSubtreeIfNeeded()
@@ -72,6 +72,38 @@ private final class ActionProbe: NSObject {
     panels[3].isHidden = true; panels[0].isHidden = false
     page.revealSelectedSection(); page.layoutSubtreeIfNeeded()
     check(panels[3].isHiddenOrHasHiddenAncestor && !panels[0].isHiddenOrHasHiddenAncestor, "inactive sections remain hidden from pointer and keyboard interaction")
+
+    let bottomAction = NSButton(title: "Fixture final setting", target: probe, action: #selector(ActionProbe.changed(_:)))
+    bottomAction.translatesAutoresizingMaskIntoConstraints = false
+    panels[3].addSubview(bottomAction)
+    NSLayoutConstraint.activate([
+      bottomAction.trailingAnchor.constraint(equalTo: panels[3].trailingAnchor, constant: -16),
+      bottomAction.bottomAnchor.constraint(equalTo: panels[3].bottomAnchor, constant: -16),
+      bottomAction.widthAnchor.constraint(equalToConstant: 180),
+      bottomAction.heightAnchor.constraint(equalToConstant: 44),
+    ])
+    for size in [NSSize(width: 1020, height: 780), NSSize(width: 1440, height: 900), NSSize(width: 1840, height: 1180)] {
+      page.setFrameSize(size)
+      panels[0].isHidden = true; panels[3].isHidden = false
+      tabs.forEach { $0.state = .off }; tabs[3].state = .on
+      page.revealSelectedSection(); page.layoutSubtreeIfNeeded()
+      check(page.bounds.contains(scroll.frame) && scroll.frame.width <= 1120,
+        "settings keep a readable bounded content column at supported viewport sizes")
+      check(tabs.allSatisfy { page.bounds.contains($0.frame) && $0.frame.width >= 44 && $0.frame.height >= 44 },
+        "every settings section retains a visible useful hit target")
+      check(zip(tabs, tabs.dropFirst()).allSatisfy { $0.frame.maxX < $1.frame.minX } && tabs.last!.frame.maxX < scroll.frame.maxX,
+        "compact settings navigation leaves calm space and never overlaps")
+      check(panels[3].bounds.contains(bottomAction.frame) && bottomAction.frame.height == 44,
+        "the selected section preserves its final control within the document")
+      bottomAction.scrollToVisible(bottomAction.bounds)
+      check(!bottomAction.visibleRect.isEmpty,
+        "the final setting can be scrolled into view without removing section navigation")
+      check(tabs.allSatisfy { !$0.visibleRect.isEmpty }, "settings navigation remains visible while content scrolls")
+      panels[3].isHidden = true; panels[0].isHidden = false
+      page.revealSelectedSection(); page.layoutSubtreeIfNeeded()
+      check(scroll.contentView.bounds.origin.y == 0 && bottomAction.isHiddenOrHasHiddenAncestor,
+        "changing sections restores the start and hides the previous section's controls")
+    }
 
     let kit = DrumxKitCheckView(frame: NSRect(x: 0, y: 0, width: 430, height: 460))
     kit.layoutSubtreeIfNeeded()
@@ -119,6 +151,8 @@ private final class ActionProbe: NSObject {
     check(visibleNodes().last?.title == "20", "resuming a later lesson reveals its chapter automatically")
     let left = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
       windowNumber: window.windowNumber, context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 123)!
+    let returnKey = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+      windowNumber: window.windowNumber, context: nil, characters: "\r", charactersIgnoringModifiers: "\r", isARepeat: false, keyCode: 36)!
     let thirteenth = courseButtons.first { $0.title == "13" }!
     thirteenth.keyDown(with: left); course.layoutSubtreeIfNeeded()
     check(visibleNodes().last?.title == "12" && launches == 0, "left arrow crosses the chapter page boundary without launching")
@@ -129,6 +163,26 @@ private final class ActionProbe: NSObject {
         check(course.bounds.contains(course.convert(node.bounds, from: node)), "visible course steps remain inside their viewport")
       }
     }
+    updateCourse(0)
+    course.focusSelection()
+    let playAction = descendants(course).compactMap { $0 as? NSButton }.first { $0.title == "Play this step" }!
+    check(window.firstResponder === playAction && playAction.isEnabled && !playAction.isHiddenOrHasHiddenAncestor,
+      "course focus starts on the visible primary play action")
+    let beforeReturn = launches
+    window.firstResponder?.keyDown(with: returnKey)
+    check(launches == beforeReturn + 1, "Return on the focused course primary launches exactly once")
+    let firstLesson = DrumxCourse.lessons[0]
+    course.update(lesson: firstLesson, player: "Locked fixture", statuses: [:], practised: 0,
+      availability: [firstLesson.id], recommendedID: firstLesson.id)
+    course.layoutSubtreeIfNeeded()
+    let lockedStep = visibleNodes().first { $0.title == "02" }!
+    lockedStep.performClick(nil)
+    course.focusSelection()
+    check(!playAction.isEnabled && window.firstResponder === lockedStep && !lockedStep.isHiddenOrHasHiddenAncestor,
+      "a locked featured lesson focuses its inspectable step instead of disabled Play")
+    let beforeLockedReturn = launches
+    window.firstResponder?.keyDown(with: returnKey)
+    check(launches == beforeLockedReturn, "Return can inspect a locked step without starting it")
 
     let menu = DrumxMainMenuView()
     window.contentView = menu
@@ -139,6 +193,9 @@ private final class ActionProbe: NSObject {
     var continued = 0, explored = 0
     menu.onContinue = { continued += 1 }
     menu.onExplore = { explored += 1 }
+    menu.focusSelection()
+    check(window.firstResponder === continueAction && continueAction.isEnabled && !continueAction.isHiddenOrHasHiddenAncestor,
+      "main-menu focus starts on its visible primary Continue action")
     var previousHeadingSize: CGFloat = 0
     for (index, size) in [NSSize(width: 980, height: 540), NSSize(width: 1440, height: 780),
                           NSSize(width: 1840, height: 1180)].enumerated() {
@@ -161,10 +218,10 @@ private final class ActionProbe: NSObject {
       check(heading.attributedStringValue.isEqual(to: original) && heading.font == displayFont,
         "selection and focus attempts preserve both headline text and its scaled typography")
       _ = window.makeFirstResponder(continueAction)
-      menu.activateSelection()
-      menu.moveSelection(1); menu.activateSelection()
+      window.firstResponder?.keyDown(with: returnKey)
+      menu.moveSelection(1); window.firstResponder?.keyDown(with: returnKey)
       check(continued == index + 1 && explored == index + 1,
-        "Continue and keyboard navigation to Learn still activate after headline interaction")
+        "Return activates focused Continue and Learn exactly once after headline interaction")
     }
     print("Drumx native settings/control contracts: \(checks) checks passed without a visible window.")
   }

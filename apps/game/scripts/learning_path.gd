@@ -30,6 +30,7 @@ var _play: PathButton
 var _previous_page: PathButton
 var _next_page: PathButton
 var _stars: CourseStars
+var _path_divider := ColorRect.new()
 var _chapters: Array[Label] = []
 var _nodes: Array[PathButton] = []
 var _labels: Array[Dictionary] = []
@@ -107,6 +108,7 @@ class PathButton extends Button:
 
 
 class CourseStars extends Control:
+	var step_state := "YOUR NEXT STEP"
 	var stars := 0
 	var has_record := false
 	var conditions := "Build toward five stars."
@@ -123,13 +125,13 @@ class CourseStars extends Control:
 		draw_set_transform(Vector2((size.x - 290 * scale) / 2, 0), 0, Vector2.ONE * scale)
 		var header_size := maxi(10, ceili(11 / scale))
 		draw_string(label_font, Vector2(0, 4 + label_font.get_ascent(header_size)),
-			"BEST RECORDED" if has_record else "YOUR NEXT GOAL", HORIZONTAL_ALIGNMENT_CENTER, 290, header_size, MUTED)
+			step_state, HORIZONTAL_ALIGNMENT_CENTER, 290, header_size, LIME)
 		for index in range(5):
 			var center := Vector2(29 + index * 58, 65)
 			var points := PackedVector2Array()
 			for point in range(10):
 				var angle := -PI / 2 + float(point) * PI / 5
-				var radius := 23.0 if point % 2 == 0 else 10.0
+				var radius := 19.0 if point % 2 == 0 else 8.5
 				points.append(center + Vector2(cos(angle), sin(angle)) * radius)
 			if index < stars:
 				draw_colored_polygon(points, LIME)
@@ -137,7 +139,7 @@ class CourseStars extends Control:
 				points.append(points[0])
 				draw_polyline(points, Color(PAPER, 0.18), 1, true)
 		draw_string(detail_font, Vector2(0, 112 + detail_font.get_ascent(14)),
-			conditions, HORIZONTAL_ALIGNMENT_CENTER, 290, 14, PAPER)
+			"BEST  ·  " + conditions if has_record else "No completed take yet", HORIZONTAL_ALIGNMENT_CENTER, 290, 12, MUTED)
 		draw_set_transform(Vector2.ZERO)
 
 
@@ -155,8 +157,11 @@ func _ready() -> void:
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	composition.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(composition)
-	_title = _label("One step at a time.", 38, PAPER, 700)
-	_subtitle = _label("From your first pulse to rudiments and grooves.", 14, MUTED)
+	_path_divider.color = Color(PAPER, 0.09)
+	_path_divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	composition.add_child(_path_divider)
+	_title = _label("Learn.", 38, PAPER, 700)
+	_subtitle = _label("", 14, MUTED)
 	_progress = _label("", 12, MUTED)
 	_progress.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_step = _label("", 11, LIME, 500)
@@ -220,6 +225,8 @@ func _refresh() -> void:
 	var frontier: int = model.frontier()
 	var available := featured_index <= frontier
 	var complete: bool = model.cleared(featured_index)
+	_subtitle.text = "Foundations  /  %d lessons in rhythm, coordination and rudiments" % course.lessons.size()
+	_stars.step_state = "CHECKPOINT EARNED" if complete else "LOCKED" if not available else "YOUR NEXT STEP" if featured_index == frontier else "AVAILABLE TO PLAY"
 	var total_cleared := 0
 	for index in range(course.lessons.size()):
 		if model.cleared(index): total_cleared += 1
@@ -363,6 +370,7 @@ func _layout() -> void:
 	_place(_step_hint, 270 * scale, 323, width - 270 * scale, 46, scale)
 	var star_width := minf(340 * scale, width - left_width - 32 * scale)
 	_place(_stars, width - star_width, 155, star_width, 146, scale)
+	_place(_path_divider, 0, 393, width, 1, scale)
 	_place(_trail_title, 2 * scale, 416, 240 * scale, 20, scale)
 	_place(_trail_hint, width - 460 * scale, 416, 230 * scale, 24, scale)
 	_place(_previous_page, width - 224 * scale, 410, 106 * scale, 32, scale)

@@ -77,6 +77,8 @@ bash scripts/build-macos-lab.sh
 open .build/DrumxLab.app
 ```
 
+To keep a launchable copy in Applications, quit Drumx and run `bash scripts/install-macos-lab.sh`, then `open /Applications/Drumx.app`. The installer preserves the application's library and progress identity and retains the previous bundle locally.
+
 Use **Continue** to resume, **Learn** to browse lessons, or **Settings** to configure the kit and sound. On a new profile, Find the pulse starts at 60 BPM with a coached path to its 72 BPM checkpoint. Other lessons offer **Use checkpoint settings** to prepare their authored tempo and 16 guided bars.
 
 ### Songs on the native Mac app
@@ -92,8 +94,8 @@ Python 3 runs the bundled importer. Opus and Ogg audio require **FFmpeg** (`brew
 | **A / S / Space** | Hi-hat / snare / kick; Shift makes a softer strike |
 | **Arrow keys / Enter** | Select and activate menu actions |
 | **Escape** | Close the current overlay, pause active playing, or return to the main menu |
-| **Settings → Your kit** | Select MIDI input, inspect incoming notes, and map pad aliases |
-| **Settings → Playing** | Enable optional drum navigation in supported menus |
+| **Settings → Kit** | Select MIDI input, inspect incoming notes, and map pad aliases |
+| **Settings → Controls** | Enable optional drum navigation in supported menus |
 
 Lessons score **hi-hat, snare, and kick**; native song play scores the full eight-part kit. The built-in monitor sounds cover the three lesson instruments using 24 acoustic recordings with four velocity layers and two variations per instrument. Use your kit's own sound for the additional pads. [Sample license and provenance](native/assets/BigRusty/README.md)
 
@@ -106,6 +108,7 @@ Lessons score **hi-hat, snare, and kick**; native song play scores the full eigh
 | Gate | Required evidence |
 | --- | --- |
 | [Premium practice session](docs/premium-quality-gate.md) | A coherent 30-minute session, readable menus at supported sizes, reliable recovery, measured frame pacing, and physical-kit testing |
+| [Menus and song library](docs/menu-quality.md) | Clear destinations, visible keyboard focus, responsive settings, and browsing, previews, and index refresh with a large collection |
 | [Curriculum C1](docs/curriculum-review.md) | Distinct lesson outcomes, faithful notation/audio/scoring, repeatable checkpoints, preserved progress, and observed learner comprehension |
 | **Next: curriculum C2** | Two-/four-bar phrasing, sustained grooves with deliberate fills, and sixteenth-note literacy in both renderers |
 

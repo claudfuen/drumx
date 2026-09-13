@@ -18,7 +18,6 @@ var source_option: OptionButton
 var selected_section := 0
 
 var _heading: Label
-var _caption: Label
 var _tabs: Array[Button] = []
 var _panels: Array[Control] = []
 var _centered_stacks: Array[Dictionary] = []
@@ -58,13 +57,13 @@ class SettingRow:
 			_layout_row()
 
 	func _layout_row() -> void:
-		copy.position.x = 24
-		copy.size.x = maxf(120, size.x - accessory_width - 80)
+		copy.position.x = 0
+		copy.size.x = maxf(120, size.x - accessory_width - 40)
 		copy.size.y = copy.get_combined_minimum_size().y
-		accessory.size = Vector2(accessory_width, maxf(36, accessory.get_combined_minimum_size().y))
-		custom_minimum_size.y = maxf(92, maxf(copy.size.y, accessory.size.y) + 32)
-		copy.position.y = maxf(12, (size.y - copy.size.y) / 2)
-		accessory.position = Vector2(size.x - accessory_width - 24, maxf(12, (size.y - accessory.size.y) / 2))
+		accessory.size = Vector2(accessory_width, maxf(44, accessory.get_combined_minimum_size().y))
+		custom_minimum_size.y = maxf(96, maxf(copy.size.y, accessory.size.y) + 36)
+		copy.position.y = maxf(18, (size.y - copy.size.y) / 2)
+		accessory.position = Vector2(size.x - accessory_width, maxf(18, (size.y - accessory.size.y) / 2))
 
 
 class SoundToggle:
@@ -208,7 +207,7 @@ class FoundationKit:
 			draw_polyline(points, color, thickness, true)
 
 	func draw_kit() -> void:
-		text("YOUR FOUNDATION KIT", Vector2(24, 30), 11, MUTED)
+		text("FOUNDATION KIT", Vector2(24, 30), 11, MUTED)
 		if not pulses.is_empty():
 			last_velocity = int(pulses.back().get("velocity", 0))
 			last_pad = int(pulses.back().get("pad", -1))
@@ -257,12 +256,9 @@ func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_heading = _label("Settings", 36, PAPER, 700)
-	_caption = _label("Get comfortable. Then get playing.", 14, MUTED)
-	_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	add_child(_heading)
-	add_child(_caption)
 	for index in range(4):
-		var tab := _button(["Your kit", "Sound", "Playing", "Progress"][index], func(): select_section(index))
+		var tab := _button(["Kit", "Sound", "Controls", "Progress"][index], func(): select_section(index))
 		tab.accessibility_description = "Settings section"
 		tab.gui_input.connect(func(event): _tab_input(event, index))
 		_tabs.append(tab)
@@ -291,6 +287,15 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED and _heading != null:
 		_layout()
+
+
+func _draw() -> void:
+	if _tabs.is_empty() or _body_scroll == null:
+		return
+	var y := _tabs[0].position.y + _tabs[0].size.y + 2
+	draw_line(Vector2(_tabs[0].position.x, y), Vector2(_tabs[0].position.x + _body_scroll.size.x, y), Color(PAPER, 0.09), 1)
+	var selected := _tabs[selected_section]
+	draw_line(Vector2(selected.position.x + 14, y), Vector2(selected.position.x + selected.size.x - 14, y), LIME, 2)
 
 
 func _font(weight: int = 400) -> Font:
@@ -347,10 +352,25 @@ func _style_button(item: Button, primary: bool = false) -> void:
 	item.add_theme_color_override("font_disabled_color", MUTED)
 
 
+func _style_section(item: Button, selected: bool) -> void:
+	item.add_theme_font_override("font", _font(600))
+	item.add_theme_font_size_override("font_size", 14)
+	for state in ["normal", "hover", "pressed", "disabled", "focus"]:
+		var box := StyleBoxFlat.new()
+		box.bg_color = Color(PAPER, 0.04) if state == "hover" or state == "pressed" else Color.TRANSPARENT
+		if state == "focus":
+			box.border_color = Color(LIME, 0.8)
+			box.set_border_width_all(1)
+		box.set_corner_radius_all(4)
+		item.add_theme_stylebox_override(state, box)
+	for name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		item.add_theme_color_override(name, PAPER if selected or name != "font_color" else MUTED)
+
+
 func _button(value: String, action: Callable, primary: bool = false) -> Button:
 	var item := Button.new()
 	item.text = value
-	item.custom_minimum_size.y = 42
+	item.custom_minimum_size.y = 44
 	item.focus_mode = Control.FOCUS_ALL
 	item.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	item.pressed.connect(action)
@@ -370,11 +390,11 @@ func _build_kit() -> void:
 	signal_label = _label("Strike a pad to see its signal.", 12, PAPER, 500, true)
 	panel.add_child(signal_label)
 	_kit_details = VBoxContainer.new()
-	_kit_details.add_theme_constant_override("separation", 16)
+	_kit_details.add_theme_constant_override("separation", 18)
 	panel.add_child(_kit_details)
-	_kit_details.add_child(_label("Connect. Strike. Play.", 26, PAPER, 600))
+	_kit_details.add_child(_label("MIDI input", 24, PAPER, 600))
 	source_option = OptionButton.new()
-	source_option.custom_minimum_size.y = 40
+	source_option.custom_minimum_size.y = 44
 	source_option.clip_text = true
 	source_option.accessibility_name = "MIDI input"
 	source_option.item_selected.connect(func(index):
@@ -401,39 +421,42 @@ func _build_kit() -> void:
 	_kit_details.add_child(_mapping_help)
 	_receipt_status = _label("Waiting for your kit", 13, LIME, 500)
 	_kit_details.add_child(_receipt_status)
-	_kit_details.add_child(_button("Go to my lesson →", _go_to_lesson))
+	_kit_details.add_child(_button("Open current lesson", _go_to_lesson))
 
 
 func _setting_row(title: String, detail: String, accessory: Control, accessory_width: float = 230) -> Control:
 	var item := SettingRow.new()
-	item.add_theme_stylebox_override("panel", _surface())
-	item.custom_minimum_size.y = 92
+	var divider := StyleBoxFlat.new()
+	divider.bg_color = Color.TRANSPARENT
+	divider.border_color = Color(PAPER, 0.085)
+	divider.border_width_bottom = 1
+	item.add_theme_stylebox_override("panel", divider)
+	item.custom_minimum_size.y = 96
 	item.accessory = accessory
 	item.accessory_width = accessory_width
 	item.copy = VBoxContainer.new()
-	item.copy.add_theme_constant_override("separation", 7)
+	item.copy.add_theme_constant_override("separation", 6)
 	item.copy.add_child(_label(title, 17, PAPER, 500))
-	item.copy.add_child(_label(detail, 13, MUTED, 400, true))
+	item.copy.add_child(_label(detail, 14, MUTED, 400, true))
 	item.add_child(item.copy)
 	item.add_child(accessory)
 	return item
 
 
-func _content_panel(title: String, detail: String, rows: Array, footnote: String) -> void:
+func _content_panel(title: String, rows: Array, footnote: String) -> void:
 	var panel := Control.new()
 	_panels.append(panel)
 	_body_content.add_child(panel)
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 16)
+	stack.add_theme_constant_override("separation", 20)
 	panel.add_child(stack)
-	stack.add_child(_label(title, 28, PAPER, 600))
-	stack.add_child(_label(detail, 13, MUTED, 400, true))
+	stack.add_child(_label(title, 24, PAPER, 600))
 	var body := VBoxContainer.new()
-	body.add_theme_constant_override("separation", 18)
+	body.add_theme_constant_override("separation", 0)
 	for item in rows:
 		body.add_child(item)
 	stack.add_child(body)
-	stack.add_child(_label(footnote, 13, MUTED, 400, true))
+	stack.add_child(_label(footnote, 14, MUTED, 400, true))
 	_centered_stacks.append({"panel": panel, "stack": stack})
 
 
@@ -454,67 +477,63 @@ func _build_sound() -> void:
 	_volume_readout.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	volume_control.add_child(_volume_readout)
 	_audio_status = _label("", 12, MUTED, 400, true)
-	_content_panel("Listen your way.", "App sounds or module sounds. One clear listening route.", [
-		_setting_row("Hear your hits", "Turn off when you listen to the module's own sounds.", _monitor_toggle),
-		_setting_row("Drum volume", "Keep the click and your drums comfortable to hear together.", volume_control),
-		_setting_row("Audio connection", "Reopen the system's current output after changing your listening route.", _button("Retry audio", _retry_audio), 150),
+	_content_panel("Audio", [
+		_setting_row("Drum sounds", "Turn off when listening to your module's own sounds.", _monitor_toggle),
+		_setting_row("Volume", "Keep the click and your drums comfortable to hear together.", volume_control),
+		_setting_row("Audio connection", "Reopen the system's current output after changing your listening route.", _button("Retry audio", _retry_audio, true), 150),
 		_audio_status,
 	], "Audio uses this computer's selected output. USB MIDI sends notes, not your module's audio.")
 
 
 func _build_playing() -> void:
-	_content_panel("Stay in the groove.", "Practice choices stay close to the pattern.", [
-		_setting_row("Your next take", "Choose the tempo, phrase length, and visual guidance in your lesson.", _button("Go to my lesson", _go_to_lesson), 180),
+	_content_panel("Playing controls", [
+		_setting_row("Practice setup", "Choose the tempo, phrase length, and visual guidance in your lesson.", _button("Open lesson", _go_to_lesson, true), 180),
 		_setting_row("Hand suggestions", "R / L suggest which hand to use. MIDI cannot verify your hands.", _label("R / L", 18, LIME, 600), 90),
-		_setting_row("Playing preferences", "Drum-menu navigation and scoring offset are not available in this preview.", _label("COMING LATER", 11, MUTED, 600), 130),
+		_setting_row("Kit navigation and timing", "Drum-menu navigation and scoring offset are not available in this preview.", _label("UNAVAILABLE", 11, MUTED, 600), 130),
 	], "A MIDI timing result does not assess grip, rebound, posture, or technique.")
 
 
 func _build_progress() -> void:
 	_saved_takes = _label("0 TAKES", 15, LIME, 600)
 	_saved_lesson = _label("Find the pulse", 15, PAPER, 500, true)
-	_retry_save_button = _button("Retry save", func(): _call("retry_progress_save"))
-	_content_panel("Your practice stays here.", "Return to your lesson with the work you've already done.", [
+	_retry_save_button = _button("Retry save", func(): _call("retry_progress_save"), true)
+	_content_panel("Saved progress", [
 		_setting_row("Practice history", "Completed takes and reading answers save on this computer.", _saved_takes, 150),
 		_setting_row("Save recovery", "If saving is interrupted, keep Drumx open and retry. An unreadable original file stays preserved.", _retry_save_button, 150),
-		_setting_row("Your selected lesson", "Continue on the main menu opens this step.", _saved_lesson, 270),
-		_setting_row("One local practice record", "Separate players and imports from the Mac lab are not available in this preview.", _label("LOCAL SAVE", 11, MUTED, 600), 130),
+		_setting_row("Selected lesson", "Continue on the main menu opens this step.", _saved_lesson, 270),
+		_setting_row("Local practice record", "Separate players and imports from the Mac lab are not available in this preview.", _label("LOCAL SAVE", 11, MUTED, 600), 130),
 	], "This preview uses its own save file. It does not replace the native Mac app's progress.")
 
 
 func _layout() -> void:
 	if _heading == null or _panels.size() != 4:
 		return
-	var width := minf(1500, maxf(1, size.x - 88))
+	var width := minf(1120, maxf(1, size.x - 88))
 	var x := (size.x - width) / 2
-	var visual_scale := clampf((size.y - 40) / 660, 1, 1.3)
-	var total_height := minf(size.y - 24, 740 * visual_scale)
-	var top := maxf(12, (size.y - total_height) / 2)
-	_heading.add_theme_font_size_override("font_size", roundi(36 * visual_scale))
-	_caption.add_theme_font_size_override("font_size", roundi(14 * visual_scale))
+	var top := minf(44, maxf(24, size.y * 0.045))
 	_heading.position = Vector2(x, top)
-	_heading.size = Vector2(width / 2, 50 * visual_scale)
-	_caption.position = Vector2(x + width / 2, top + 21 * visual_scale)
-	_caption.size = Vector2(width / 2, 24 * visual_scale)
-	var tab_y := top + 65 * visual_scale
-	var tab_height := 48 * visual_scale
+	_heading.size = Vector2(width, 48)
+	var tab_y := top + 62
+	var tab_height := 48.0
+	var tab_width := minf(136, (width - 48) / 4)
 	for index in range(4):
-		_tabs[index].position = Vector2(x + float(index) * (width + 12) / 4, tab_y)
-		_tabs[index].size = Vector2((width - 36) / 4, tab_height)
+		_tabs[index].position = Vector2(x + float(index) * (tab_width + 16), tab_y)
+		_tabs[index].size = Vector2(tab_width, tab_height)
 	_status_label.position = Vector2(x, tab_y + tab_height + 10)
 	_status_label.size.x = width
 	var status_height := maxf(20, _status_label.get_combined_minimum_size().y) if _status_label.visible else 0.0
 	_status_label.size.y = status_height
 	var status_space := status_height + 10 if _status_label.visible else 0.0
-	var body_height := maxf(1, total_height - 140 * visual_scale - status_space)
-	_body_scroll.position = Vector2(x, tab_y + tab_height + 22 * visual_scale + status_space)
+	var body_y := tab_y + tab_height + 32 + status_space
+	var body_height := maxf(1, size.y - body_y - 28)
+	_body_scroll.position = Vector2(x, body_y)
 	_body_scroll.size = Vector2(width, body_height)
 	_kit_details.size.x = width * 0.5 - 44
-	var required_height := maxf(360, _kit_details.get_combined_minimum_size().y + 32)
+	var required_height := maxf(430, _kit_details.get_combined_minimum_size().y + 40)
 	if selected_section > 0:
 		var selected_stack: VBoxContainer = _centered_stacks[selected_section - 1].stack
 		selected_stack.size.x = width
-		required_height = selected_stack.get_combined_minimum_size().y + 24
+		required_height = selected_stack.get_combined_minimum_size().y + 12
 	var content_width := width
 	if required_height > body_height:
 		content_width -= _body_scroll.get_v_scroll_bar().get_combined_minimum_size().x
@@ -535,7 +554,8 @@ func _layout() -> void:
 		var stack: VBoxContainer = entry.stack
 		stack.size.x = content_width
 		stack.size.y = stack.get_combined_minimum_size().y
-		stack.position = Vector2(0, maxf(0, (panel_rect.size.y - stack.size.y) / 2))
+		stack.position = Vector2(0, 4)
+	queue_redraw()
 
 
 func _tab_input(event: InputEvent, index: int) -> void:
@@ -559,7 +579,7 @@ func select_section(index: int) -> void:
 	_body_scroll.scroll_vertical = 0
 	for item in range(_panels.size()):
 		_panels[item].visible = item == selected_section
-		_style_button(_tabs[item], item == selected_section)
+		_style_section(_tabs[item], item == selected_section)
 		_tabs[item].accessibility_description = "Selected settings section" if item == selected_section else "Settings section"
 	call_deferred("_layout")
 
