@@ -1,0 +1,22 @@
+apps/game/native/backend_checks.cpp
+  s_f983bef49b9fee::t_2da163adb63a0a 8-9,11-21,44,61-62,66-70,73-77,80-81,83-84,87-97,99,187-188
+CHANGELOG.md
+  s_f983bef49b9fee::t_baa693c9262e86 12
+  s_f983bef49b9fee::t_4c58ebb04f6968 7-11,13-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b66193e77509f64392f89089d4111646ccd79e7c",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
