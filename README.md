@@ -47,15 +47,15 @@ Checkpoints use repeated comparable takes at a lesson's prescribed tempo. Each r
 ## Downloads
 
 <!-- drumx:downloads:start -->
-<!-- drumx:release v0.1.0-preview.21 97c35e939d1997f798d6c9dbda32912600ddde35 -->
-Current experimental release: **[0.1.0-preview.21](https://github.com/claudfuen/drumx/releases/tag/v0.1.0-preview.21)** · [`97c35e939d19`](https://github.com/claudfuen/drumx/commit/97c35e939d1997f798d6c9dbda32912600ddde35)
+<!-- drumx:release v0.1.0-preview.22 5f4c6be04a4841410fbf0902d8d29842d4209e51 -->
+Current experimental release: **[0.1.0-preview.22](https://github.com/claudfuen/drumx/releases/tag/v0.1.0-preview.22)** · [`5f4c6be04a48`](https://github.com/claudfuen/drumx/commit/5f4c6be04a4841410fbf0902d8d29842d4209e51)
 
 | Platform | Download |
 | --- | --- |
-| macOS · Apple Silicon | [Download Mac](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.21/Drumx-macos-arm64.zip) |
-| Windows · x64 | [Download Windows](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.21/Drumx-windows-x86_64.zip) |
+| macOS · Apple Silicon | [Download Mac](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.22/Drumx-macos-arm64.zip) |
+| Windows · x64 | [Download Windows](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.22/Drumx-windows-x86_64.zip) |
 
-[Build manifest](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.21/build-manifest.json) · [Checksums](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.21/SHA256SUMS.txt) · [All releases](https://github.com/claudfuen/drumx/releases)
+[Build manifest](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.22/build-manifest.json) · [Checksums](https://github.com/claudfuen/drumx/releases/download/v0.1.0-preview.22/SHA256SUMS.txt) · [All releases](https://github.com/claudfuen/drumx/releases)
 
 These are experimental shared desktop builds. Extract the complete archive before opening the app. The release notes record signing status and open quality gates.
 <!-- drumx:downloads:end -->
