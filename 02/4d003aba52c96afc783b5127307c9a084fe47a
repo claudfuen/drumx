@@ -1,0 +1,62 @@
+scripts/build-macos-lab.sh
+  s_1d8d824485c606::t_42dcc6f50ea839 19,40
+  s_1d8d824485c606::t_2961e018fadb33 7
+scripts/test-song-player.sh
+  s_1d8d824485c606::t_9897e5f7348ccf 9
+  s_1d8d824485c606::t_3c1f5fe58721d6 1-8,10-20
+native/macos/DrumxLab.swift
+  s_1d8d824485c606::t_9be9d80d6f0485 64,89,296-297,414,418,529,532,537,541,546,551-556,589,731,895,1097-1100,1181
+  s_1d8d824485c606::t_d53adea3479428 275,286
+README.md
+  s_1d8d824485c606::t_f2cc2f0a6b2626 69-71,73
+  s_1d8d824485c606::t_acf0003c30004c 72
+native/macos/DrumxSongViews.swift
+  s_1d8d824485c606::t_d58b4cc15b8dce 22
+  s_1d8d824485c606::t_639441d62b3179 9-19,286-288,292-406,408-409,411-419,430-468,474,476,479,482-505,509-516,518-520,522-535,537-539,541-546
+  s_1d8d824485c606::t_3701e7908337cd 1-8,20-21,23-105,107-186,188,197-199,202-237,244-285,289-291,407,410,420-429,469-473,475,477-478,480,506-508,517,521,536,540,547-565
+  s_1d8d824485c606::t_6fd88655070d06 106,187,189-196,200-201,238-243,481
+native/macos/tests/DrumxSongChecks.swift
+  s_1d8d824485c606::t_3c1f5fe58721d6 1-84
+native/macos/DrumxMainMenuView.swift
+  s_f983bef49b9fee::t_a9c57e61c17348 227,240,243,256,261-262,273-274,277,313-317
+  s_f983bef49b9fee::t_d6a124baf3c6c3 364-365
+docs/native-lab.md
+  s_1d8d824485c606::t_0acbfabdf1b12f 194-238
+scripts/test-native.sh
+  s_1d8d824485c606::t_7c9da968712cc5 102
+native/macos/DrumxSongController.swift
+  s_1d8d824485c606::t_d58b4cc15b8dce 1-29,31,34-54,60-77,81,83-98,100-103,106-144,146,148-185,188-194,196-198,200,202-204,206-239,244-259,262-263,266-281,283-326
+  s_1d8d824485c606::t_937f6859ccec88 32-33,78-80,82,240-243,260-261,264-265,282
+  s_1d8d824485c606::t_3c1f5fe58721d6 186-187,201
+  s_1d8d824485c606::t_6fd88655070d06 30,99,104-105,145,147,195,199,205
+  s_1d8d824485c606::t_6d454cdd754759 55-59
+native/macos/DrumxSongLibrary.swift
+  s_1d8d824485c606::t_6fd88655070d06 38-39,225-227
+  s_1d8d824485c606::t_3c1f5fe58721d6 158,164-178,191
+  s_1d8d824485c606::t_d58b4cc15b8dce 26-37,40-71
+  s_1d8d824485c606::t_bc5fa77388c09c 1-25,72-157,159-163,179-190,192-224,228-288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "024d003aba52c96afc783b5127307c9a084fe47a",
+  "prompts": {},
+  "sessions": {
+    "s_1d8d824485c606": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0982f-e570-77e3-b321-473ae71d79a3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    },
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
