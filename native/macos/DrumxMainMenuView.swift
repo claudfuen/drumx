@@ -245,6 +245,10 @@ final class DrumxMainMenuView: NSView {
     addSubview(content)
     headline.maximumNumberOfLines = 2
     headline.lineBreakMode = .byWordWrapping
+    // Wrapping labels default to selectable. This title must never enter the
+    // field editor, which would replace its display typography on a click.
+    headline.isEditable = false
+    headline.isSelectable = false
     artwork.setAccessibilityElement(false)
     for view in [playerLabel, headline, invitation, chapterLabel, continueButton,
                  exploreButton, settingsButton, progressLabel, artwork] {
@@ -311,9 +315,11 @@ final class DrumxMainMenuView: NSView {
     chapterLabel.font = .systemFont(ofSize: 10 * scale, weight: .medium)
     progressLabel.font = .systemFont(ofSize: 11 * scale)
     invitation.font = .systemFont(ofSize: 16 * scale)
+    let headlineFont = NSFont.systemFont(ofSize: 69 * scale, weight: .semibold)
+    headline.font = headlineFont
     let paragraph = NSMutableParagraphStyle(); paragraph.lineSpacing = -4 * scale
     headline.attributedStringValue = NSAttributedString(string: "Find your\nrhythm.", attributes: [
-      .font: NSFont.systemFont(ofSize: 69 * scale, weight: .semibold),
+      .font: headlineFont,
       .foregroundColor: MainMenuInk.paper, .kern: -2.8 * scale, .paragraphStyle: paragraph,
     ])
     for button in actions { button.drawingScale = scale }

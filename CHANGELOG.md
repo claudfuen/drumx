@@ -4,6 +4,11 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Keep the main-menu headline stable when clicked
+
+- Make the native "Find your rhythm" heading static and keep its text-field font synchronized with its responsive typography. Clicking it no longer enters a small-font text-selection state.
+- Add native control regression coverage for headline focus, selection, typography at three window sizes, and continued menu activation.
+
 ### Add a full-kit song scoring contract
 
 - Accept imported tempo-map timestamps for up to eight drum parts and full-length songs through a portable song API. Preserve the lesson API and snapshot layout; total results include every song pad.

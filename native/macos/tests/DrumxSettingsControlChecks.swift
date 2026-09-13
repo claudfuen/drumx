@@ -129,6 +129,43 @@ private final class ActionProbe: NSObject {
         check(course.bounds.contains(course.convert(node.bounds, from: node)), "visible course steps remain inside their viewport")
       }
     }
+
+    let menu = DrumxMainMenuView()
+    window.contentView = menu
+    let heading = descendants(menu).compactMap { $0 as? NSTextField }.first {
+      $0.stringValue == "Find your\nrhythm."
+    }!
+    let continueAction = descendants(menu).compactMap { $0 as? NSButton }.first { $0.title == "Continue" }!
+    var continued = 0, explored = 0
+    menu.onContinue = { continued += 1 }
+    menu.onExplore = { explored += 1 }
+    var previousHeadingSize: CGFloat = 0
+    for (index, size) in [NSSize(width: 980, height: 540), NSSize(width: 1440, height: 780),
+                          NSSize(width: 1840, height: 1180)].enumerated() {
+      menu.setFrameSize(size); menu.layoutSubtreeIfNeeded()
+      let original = NSAttributedString(attributedString: heading.attributedStringValue)
+      let displayFont = original.attribute(.font, at: 0, effectiveRange: nil) as! NSFont
+      check(!heading.isEditable && !heading.isSelectable, "main-menu headline is static text, not a selectable field")
+      check(displayFont.pointSize >= 50 && displayFont.pointSize > previousHeadingSize,
+        "main-menu headline remains prominent and grows with the supported viewport")
+      check(heading.font == displayFont, "headline cell and attributed text agree on the display font")
+      previousHeadingSize = displayFont.pointSize
+      check(window.makeFirstResponder(continueAction), "Continue accepts game-menu keyboard focus")
+      heading.selectText(nil)
+      check(heading.currentEditor() == nil, "attempting to select the decorative headline cannot create a field editor")
+      check(window.firstResponder === continueAction, "attempted headline selection preserves the focused menu action")
+      // AppKit may report success after substituting the window as responder.
+      _ = window.makeFirstResponder(heading)
+      check(window.firstResponder !== heading && heading.currentEditor() == nil,
+        "headline cannot own text-field focus or install an editor")
+      check(heading.attributedStringValue.isEqual(to: original) && heading.font == displayFont,
+        "selection and focus attempts preserve both headline text and its scaled typography")
+      _ = window.makeFirstResponder(continueAction)
+      menu.activateSelection()
+      menu.moveSelection(1); menu.activateSelection()
+      check(continued == index + 1 && explored == index + 1,
+        "Continue and keyboard navigation to Learn still activate after headline interaction")
+    }
     print("Drumx native settings/control contracts: \(checks) checks passed without a visible window.")
   }
 }
