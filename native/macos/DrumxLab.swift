@@ -584,7 +584,6 @@ final class LabController: NSObject, NSWindowDelegate {
       : "ESC  main menu"
     switch page {
     case .songs:
-      songController.profileID = progress.selectedProfile.id
       songController.setMIDIMapping(mappings)
       songController.inputOffsetMilliseconds = calibrationMS
       songController.showLibrary()
