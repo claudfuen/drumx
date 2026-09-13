@@ -1,0 +1,63 @@
+native/assets/BigRusty/README.md
+  s_505f6bd01e41cc::t_5caae007f427c4 1,3,15,19-22,29-41,51-52,55-57,65-66,71,75
+apps/game/scripts/main.gd
+  s_505f6bd01e41cc::t_1e78125681a8b6 1471,1485
+docs/song-audio.md
+  s_505f6bd01e41cc::t_61bd6967836182 1-54
+native/macos/tests/DrumxCourseIntegrationChecks.swift
+  s_505f6bd01e41cc::t_1e78125681a8b6 181
+native/macos/tests/README.md
+  s_505f6bd01e41cc::t_1e78125681a8b6 18
+apps/game/native/backend_checks.cpp
+  s_505f6bd01e41cc::t_2ee7c582da0416 105
+CHANGELOG.md
+  s_505f6bd01e41cc::t_3287a9b66684fb 7-13
+apps/game/native/native_audio.cpp
+  s_505f6bd01e41cc::t_67599dea2f2421 8,16,18-26,29,58-60,62-67,70,74-77,86-91,114-117,135-137,144-145,183,190
+scripts/tests/test_fetch_samples.py
+  s_505f6bd01e41cc::t_5caae007f427c4 1-132
+native/macos/tests/DrumxSongStemTransportChecks.swift
+  s_505f6bd01e41cc::t_488ba962c44463 1-25,29-136
+  s_505f6bd01e41cc::t_e3d2c1c0852b3d 26-28
+apps/game/native/CMakeLists.txt
+  s_505f6bd01e41cc::t_2ee7c582da0416 58-60
+apps/game/native/audio_checks.cpp
+  s_505f6bd01e41cc::t_2ee7c582da0416 1-100,108-152,155-165
+  s_505f6bd01e41cc::t_67599dea2f2421 101-107,153-154
+apps/game/native/README.md
+  s_505f6bd01e41cc::t_4dd12048932337 22,35-41
+  s_505f6bd01e41cc::t_67599dea2f2421 23
+  s_505f6bd01e41cc::t_25819c1ddb4884 68
+scripts/test-native.sh
+  s_505f6bd01e41cc::t_70f25612155a1f 8
+  s_505f6bd01e41cc::t_64d32ced2c8817 3
+native/macos/tests/DrumxIOChecks.swift
+  s_505f6bd01e41cc::t_b3df66f381c978 120,137,150,198-231,249
+  s_505f6bd01e41cc::t_86f401ec9dbdb5 232-248
+scripts/test-song-stem-transport.sh
+  s_505f6bd01e41cc::t_488ba962c44463 1-17
+scripts/fetch-samples.py
+  s_505f6bd01e41cc::t_5772140d96663f 2,8-9,15-25,30-33,39,41,43-62,64-67,69-70,74-97,119-140,174-175
+scripts/package-game.py
+  s_505f6bd01e41cc::t_1e78125681a8b6 52-53,217
+scripts/verify-game-content.py
+  s_505f6bd01e41cc::t_1e78125681a8b6 93-94
+docs/desktop-preview.md
+  s_505f6bd01e41cc::t_698e1bbc3f542b 9,31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "97c35e939d1997f798d6c9dbda32912600ddde35",
+  "prompts": {},
+  "sessions": {
+    "s_505f6bd01e41cc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0986c-bcbf-76e2-863b-47446b3a4950",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
