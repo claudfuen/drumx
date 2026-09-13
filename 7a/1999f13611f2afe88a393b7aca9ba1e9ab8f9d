@@ -1,0 +1,23 @@
+native/core/drumx_core.cpp
+  s_1d8d824485c606::t_6d00fe8fdd4d8e 81,215,228-283,308,394-396,400,413,421,428-429,438-441
+native/core/tests.cpp
+  s_1d8d824485c606::t_8e8328638b65b6 456-504,520
+native/core/drumx_core.h
+  s_1d8d824485c606::t_6d00fe8fdd4d8e 48-60,124-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a1999f13611f2afe88a393b7aca9ba1e9ab8f9d",
+  "prompts": {},
+  "sessions": {
+    "s_1d8d824485c606": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0982f-e570-77e3-b321-473ae71d79a3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
