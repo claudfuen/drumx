@@ -197,6 +197,28 @@ struct Checks {
 
         sampler.setEnabled(true)
         precondition(sampler.diagnostics().monitoring)
+        sampler.playPad(pad: 0, velocity: 108)
+        let beforeSongMode = sampler.diagnostics()
+        sampler.setSongSampleSuppressed(true)
+        sampler.playPad(pad: 1, velocity: 108)
+        sampler.receiveMIDI(note: 38, velocity: 108, generation: 7)
+        let originalRecording = sampler.diagnostics()
+        precondition(originalRecording.monitoring && originalRecording.activeVoices == 0 &&
+            originalRecording.scheduledHits == beforeSongMode.scheduledHits,
+            "Song performance stops live sample tails and suppresses keyboard/MIDI without changing the monitoring preference")
+        sampler.setSongSampleSuppressed(false)
+        sampler.playPad(pad: 1, velocity: 108)
+        precondition(sampler.diagnostics().scheduledHits == beforeSongMode.scheduledHits + 1,
+            "Leaving song performance restores enabled hit monitoring")
+        sampler.setSongSampleSuppressed(true)
+        sampler.setEnabled(false)
+        sampler.setSongSampleSuppressed(false)
+        sampler.playPad(pad: 1, velocity: 108)
+        precondition(!sampler.diagnostics().monitoring &&
+            sampler.diagnostics().scheduledHits == beforeSongMode.scheduledHits + 1,
+            "Changing the sound preference while suppressed is preserved on exit")
+        sampler.setEnabled(true)
+        print("PASS temporary song sample suppression: tails, keyboard, MIDI, restoration and sound preference preservation")
         let fullKitNotes = [(48, "tom_high"), (50, "tom_high"), (45, "tom_mid"),
             (47, "tom_mid"), (41, "tom_floor"), (43, "tom_floor"), (49, "crash"),
             (57, "crash"), (51, "ride"), (59, "ride"), (46, "hihat_open"), (44, "hihat_pedal")]

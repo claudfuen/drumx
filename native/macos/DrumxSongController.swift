@@ -8,10 +8,12 @@ final class DrumxSongController: NSObject {
   private let backButton = LessonButton(title: "‹  Library", target: nil, action: nil)
   private let pauseButton = LessonButton(title: "Pause", target: nil, action: nil)
   private let restartButton = LessonButton(title: "Restart", target: nil, action: nil)
-  private let recordedDrumsButton = LessonButton(title: "Recorded drums: Off", target: nil, action: nil)
+  private let recordedDrumsButton = DrumxPopUpButton()
   private let audioMixLabel = DrumxSongInk.label("", size: 11, color: DrumxSongInk.muted)
   private var audioMode = DrumxSongAudioMode(rawValue:
-    UserDefaults.standard.string(forKey: "drumx.songs.audioMode") ?? "") ?? .practice
+    UserDefaults.standard.string(forKey: "drumx.songs.recordedDrumsMode") ?? "") ?? .performance
+  private var performanceMuted = false
+  private var missDeadlines: [Int: Double] = [:]
   private let songTitle = DrumxSongInk.label("", size: 24, weight: .semibold)
   private let songSubtitle = DrumxSongInk.label("", size: 12, color: DrumxSongInk.muted)
   private let scrollSpeedLabel = DrumxSongInk.label("Scroll speed · 1.25×", size: 11, color: DrumxSongInk.muted)
@@ -97,10 +99,10 @@ final class DrumxSongController: NSObject {
       button.target = self; button.action = selector; button.isBordered = false
     }
     backButton.quiet = true; pauseButton.primary = true
-    recordedDrumsButton.target = self; recordedDrumsButton.action = #selector(toggleRecordedDrums)
-    recordedDrumsButton.isBordered = false; recordedDrumsButton.quiet = true
+    recordedDrumsButton.addItems(withTitles: DrumxSongAudioMode.allCases.map(\.title))
+    recordedDrumsButton.target = self; recordedDrumsButton.action = #selector(changeRecordedDrums)
     recordedDrumsButton.setAccessibilityLabel("Recorded drums")
-    recordedDrumsButton.toolTip = "Turn off the song's recorded drums to hear your own playing. Library previews use the full mix."
+    recordedDrumsButton.toolTip = "Follow my playing restores recorded drums on hits and mutes them on misses. Always on plays the full recording. Off uses your kit and any enabled Drumx hit sounds."
     let savedSpeed = UserDefaults.standard.object(forKey: "drumx.songs.scrollSpeed") as? Double ?? 1.25
     highway.scrollSpeed = savedSpeed.isFinite ? min(1.8, max(0.7, savedSpeed)) : 1.25
     scrollSpeedControl.doubleValue = highway.scrollSpeed
@@ -229,6 +231,7 @@ final class DrumxSongController: NSObject {
     playPreparationCancellation?.cancel(); playPreparationCancellation = nil
     clock.stop(at: DrumxIO.hostNowSeconds())
     transport.stop(); timer?.invalidate(); timer = nil; playing = false
+    io.setSongSampleSuppressed(false)
   }
 
   func interrupt(reason: String) { pause(reason: reason) }
@@ -452,6 +455,7 @@ final class DrumxSongController: NSObject {
   private func beginSong(_ song: DrumxSong, prepared: DrumxSongPreparedAudio) {
     stop()
     isActive = true
+    updateSampleSuppression()
     guard let profileID else {
       library.setStatus("Choose a player profile before starting a song.")
       return
@@ -470,6 +474,10 @@ final class DrumxSongController: NSObject {
     attemptID = UUID(); attemptProfileID = profileID; attemptSongID = song.id
     attemptDifficulty = difficulty; attemptCompletedAt = nil
     inputLedger = DrumxSongInputLedger(); scoredMetrics = nil; scoreRevision = 0
+    performanceMuted = false
+    missDeadlines = DrumxSongStemGate.missDeadlines(targets: timing.notes.enumerated().map {
+      DrumxSongGateTarget(id: $0.offset, pad: $0.element.pad, time: $0.element.time)
+    })
     recentTiming.reset(); highway.timingFeedback = recentTiming.state(at: 0)
     highway.reset(); highway.notes = timing.notes; highway.duration = timing.duration
     highway.gridLines = DrumxSongGrid.lines(resolution: song.resolution, tempos: song.tempos,
@@ -488,7 +496,7 @@ final class DrumxSongController: NSObject {
     guard let prepared, let timing else { return }
     do {
       try transport.start(prepared, position: pausedPosition, audioLead: timing.lead,
-        countdown: countdown, mode: audioMode)
+        countdown: countdown, mode: audioMode, performanceMuted: performanceMuted)
       // Resume countdown cannot turn a newly played hit into an earlier strike.
       // A fresh song still accepts the first target's ordinary early window.
       let captureStart = transport.epoch + pausedPosition - (pausedPosition == 0 ? 0.125 : 0)
@@ -586,6 +594,13 @@ final class DrumxSongController: NSObject {
         notes.append(.init(id: Int(event.id), time: event.time_seconds, hit: event.hit != 0))
       }
     }
+    let muted = DrumxSongStemGate.isMuted(resolvedNotes: notes,
+      hitTimes: inputLedger.creditedHitTimes, missDeadlines: missDeadlines)
+    if muted != performanceMuted {
+      performanceMuted = muted
+      transport.setPerformanceMuted(muted)
+      updateAudioMix()
+    }
     let score = DrumxSongScore(expectedNotes: count, resolvedNotes: notes,
       extraTimes: inputLedger.extraTimes, completed: completed)
     guard score.isValid, score.matched == Int(total.matched), score.missed == Int(total.missed),
@@ -670,6 +685,7 @@ final class DrumxSongController: NSObject {
     inLibrary = visible; library.isHidden = !visible
     for item in [highway, backButton, pauseButton, restartButton, songTitle, songSubtitle,
                  scrollSpeedLabel, scrollSpeedControl, recordedDrumsButton, audioMixLabel] { item.isHidden = visible }
+    updateSampleSuppression()
     layout(); view.window?.makeFirstResponder(view)
   }
   private func layout() {
@@ -690,17 +706,36 @@ final class DrumxSongController: NSObject {
 
   @objc private func backToLibrary() { showLibrary() }
   private func updateAudioMix() {
-    let mix = DrumxSongStemMix(stems: prepared?.stems ?? [], mode: audioMode)
+    let mix = DrumxSongStemMix(stems: prepared?.stems ?? [], mode: audioMode,
+      performanceMuted: performanceMuted)
     recordedDrumsButton.isEnabled = mix.hasSeparateDrums
-    recordedDrumsButton.title = mix.hasSeparateDrums
-      ? "Recorded drums: \(audioMode == .reference ? "On" : "Off")" : "Recorded drums: In mix"
+    if mix.hasSeparateDrums {
+      if recordedDrumsButton.numberOfItems != DrumxSongAudioMode.allCases.count {
+        recordedDrumsButton.removeAllItems()
+        recordedDrumsButton.addItems(withTitles: DrumxSongAudioMode.allCases.map(\.title))
+      }
+      recordedDrumsButton.selectItem(at: DrumxSongAudioMode.allCases.firstIndex(of: audioMode) ?? 0)
+    } else if recordedDrumsButton.itemTitles != ["Recorded drums: In mix"] {
+      recordedDrumsButton.removeAllItems(); recordedDrumsButton.addItem(withTitle: "Recorded drums: In mix")
+    }
     audioMixLabel.stringValue = mix.status
     audioMixLabel.toolTip = mix.status
+    updateSampleSuppression()
   }
-  @objc private func toggleRecordedDrums() {
+  private func updateSampleSuppression() {
+    // Full mixes always use their original recording. The disabled In mix
+    // control must not inherit invisible sample behavior from a previous song.
+    let embeddedDrums = !inLibrary && prepared.map {
+      !DrumxSongStemMix(stems: $0.stems).hasSeparateDrums
+    } == true
+    io.setSongSampleSuppressed(isActive && (audioMode != .practice || embeddedDrums))
+  }
+  @objc private func changeRecordedDrums() {
     guard let prepared, DrumxSongStemMix(stems: prepared.stems).hasSeparateDrums else { return }
-    audioMode = audioMode == .practice ? .reference : .practice
-    UserDefaults.standard.set(audioMode.rawValue, forKey: "drumx.songs.audioMode")
+    let index = recordedDrumsButton.indexOfSelectedItem
+    guard DrumxSongAudioMode.allCases.indices.contains(index) else { return }
+    audioMode = DrumxSongAudioMode.allCases[index]
+    UserDefaults.standard.set(audioMode.rawValue, forKey: "drumx.songs.recordedDrumsMode")
     transport.setMode(audioMode)
     updateAudioMix()
   }

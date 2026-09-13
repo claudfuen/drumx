@@ -303,6 +303,7 @@ final class DrumxSampler {
     private var voicePads = Array(repeating: -1, count: voiceLimit)
     private var nextVoice = 0
     private var enabled = false
+    private var songSampleSuppressed = false
     private var volume: Float = 0.7
     private var noteToPad = Array(repeating: -1, count: 128)
     private var midiGeneration: UInt64 = 0
@@ -396,6 +397,18 @@ final class DrumxSampler {
                 self.enabled = false
                 self.report("Drum sound could not start: \(error.localizedDescription)")
             }
+        }
+    }
+
+    /// Songs can use the original recorded performance without layering live
+    /// samples over it. This temporary gate never changes the sound preference.
+    func setSongSampleSuppressed(_ suppressed: Bool) {
+        let cutoff = DrumxIO.hostNowSeconds()
+        queue.async { [weak self] in
+            guard let self, self.songSampleSuppressed != suppressed else { return }
+            self.songSampleSuppressed = suppressed
+            self.inputCutoff = cutoff
+            if suppressed { self.silenceVoices(restart: self.enabled) }
         }
     }
 
@@ -531,7 +544,8 @@ final class DrumxSampler {
                 self.staleHits &+= 1
                 return
             }
-            guard self.enabled, !self.midiLearnActive, arrival >= self.inputCutoff else { return }
+            guard self.enabled, !self.songSampleSuppressed, !self.midiLearnActive,
+                arrival >= self.inputCutoff else { return }
             let resolvedPad: Int
             if let note, let generation {
                 guard generation == self.midiGeneration, (0..<128).contains(note) else { return }

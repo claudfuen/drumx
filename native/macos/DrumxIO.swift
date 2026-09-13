@@ -359,6 +359,7 @@ final class DrumxIO {
     }
 
     func setMonitoring(enabled: Bool) { sampler.setEnabled(enabled) }
+    func setSongSampleSuppressed(_ suppressed: Bool) { sampler.setSongSampleSuppressed(suppressed) }
     func setMonitorVolume(_ volume: Float) { sampler.setVolume(volume) }
     func setMIDIMapping(_ notesByPad: [[Int]]) { sampler.setMapping(notesByPad) }
     func setMIDILearnActive(_ active: Bool) { sampler.setLearnActive(active) }

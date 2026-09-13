@@ -7,14 +7,20 @@ notes omitted from easier charts and passages between targets.
 
 ## Choose what you hear
 
-- **Recorded drums: Off** is the default for song practice. Separate `drums`
-  and `drums_1` through `drums_4` stems are silent. Other backing recordings keep
-  playing, including during rests and misses.
-- **Recorded drums: On** restores the original recorded performance for
-  listening or playing along. Its volume does not depend on your hits.
+- **Follow my playing** is the default in Songs. Separate `drums` and
+  `drums_1` through `drums_4` stems start audible. A missed chart note mutes that
+  drum family, and a successful hit restores it. Extra strikes do not change
+  the recording's gain. Backing stems keep playing throughout.
+- **Always on** keeps the original recorded performance audible regardless of
+  your hits. Use it for reference or unrestricted play-along.
+- **Off** silences separate drum stems throughout the take. Use it to play your
+  own module's sounds or the enabled Drumx live samples against the backing.
 - **Drumx drum sounds** in Sound settings controls the acoustic samples triggered
   by your physical MIDI or keyboard strikes. You can use your module's own sound
-  instead. Turning recorded drums off does not enable live monitoring.
+  instead. Follow my playing and Always on temporarily suppress these samples
+  in Songs, so they do not layer over the original recorded performance. Off
+  and leaving Songs restore the monitoring preference without overwriting it.
+  Drumx cannot mute sound produced by the physical module itself.
 - Library previews always use the full recorded mix.
 
 The recorded-drums preference persists, changes live without resetting the
@@ -22,13 +28,28 @@ transport, and survives pause/resume and restart. It never alters the chart,
 scoring clock, source media, or lesson progress. The importer retains stem
 identity even when an Ogg/Opus recording is decoded to a numbered WAV cache.
 
+A successful hit restores a continuous recording rather than triggering or
+stretching an isolated sample. Before the first miss, between targets, and
+through rests, the current gate remains in effect. An easier chart can therefore
+play drum sounds that have no target. A missed part of a chord closes the drum
+family when its hit window expires; the next successful hit opens it again.
+
+Gate decisions use captured hit times and the same per-pad miss deadlines as
+scoring, including shortened windows between dense notes. Delayed corrections
+recompute the latest valid decision. Overhits do not enter this audio gate,
+although they still break score combos. Gain changes use short fades and never
+reschedule stems or alter the song epoch. Pause/resume retains the gate; restart
+begins with the drums audible again.
+
 A single `song` or `guitar` file can contain the complete mix. Drumx cannot
 silence its embedded drums independently: the control displays **In mix** and
 explains the limitation. Some separate backing stems can also contain drum
-bleed. This control does not perform source separation. A drum-only package
+bleed. Full mixes also suppress live hit samples, consistently using their
+original recording regardless of the previous song's mode. This control does
+not perform source separation. A drum-only package
 becomes silent with recorded drums off because there is no backing recording.
 
-## How YARG differs
+## What we learned from YARG
 
 YARG also plays continuous recordings. In the source revision checked on
 2026-09-12, its default **Mute On Miss** setting is `MultitrackOnly`. A hit
@@ -47,8 +68,10 @@ audible. This does not apply to every package. Sources:
 [source condition](https://github.com/YARC-Official/YARG.Core/blob/3beb94e526558134145bcd3e409428f759001a40/YARG.Core/Song/Entries/Ini/SongEntry.UnpackedIni.cs#L33-L37),
 [gain floor](https://github.com/YARC-Official/YARG.Core/blob/3beb94e526558134145bcd3e409428f759001a40/YARG.Core/Audio/StemChannel.cs#L61-L71).
 
-Drumx's practice control keeps separate recorded drums at zero for the entire
-take. It does not implement YARG's hit/miss volume gating. The full-kit sampler
-plays your own strikes independently, with recorded velocity layers and alternate
-takes. Physical module behavior and end-to-end latency still need hardware
-auditioning.
+Drumx follows this continuous-performance model for ordinary song play. Its
+short gain fades are a local click-prevention choice. Unlike YARG's optional
+freestyle hit effects around chart boundaries, Drumx suppresses hit samples
+throughout its recorded-performance modes. It does not add a source-specific
+volume floor or imply that a full mix can be separated. The full-kit sampler
+remains available for lessons and the Off recording mode. Physical module
+behavior and end-to-end latency still need hardware auditioning.

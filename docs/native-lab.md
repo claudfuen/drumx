@@ -247,7 +247,7 @@ closing waits for pending writes. [Scoring rules](song-scoring.md)
 | **Space** | Kick |
 | **Shift + a pad key** | Softer strike |
 | **Scroll speed** | Change visual note spacing from 0.70× to 1.80×; the default is 1.25×. Audio tempo and scoring stay unchanged. |
-| **Recorded drums** | Switch between playing your drums with backing stems and hearing the recorded drums. Library previews use the full mix. |
+| **Recorded drums** | Follow my playing restores drum stems on hits and mutes them on misses. Always on keeps the full recording; Off uses your own kit sound. Library previews use the full mix. |
 | **P** or **Pause / Resume** | Pause or resume audio and the scoring clock together |
 | **Enter** or **Restart** | Restart the song with a fresh count-in and results |
 | **Escape** or **Library** | Stop playback and choose a song |
@@ -262,13 +262,20 @@ china, splash, or ride-bell recordings. In lessons, unlearned notes for those
 articulations remain silent; Songs maps its broader crash/ride aliases to those
 sampled sounds. Learned lesson aliases retain priority over full-kit defaults.
 
-**Recorded drums** defaults to **Off** for song play. It silences separate
-`drums` and `drums_1` through `drums_4` recordings while the backing continues.
-Switch it **On** to hear the recorded performance. The preference is retained
-between sessions and takes effect without restarting the song. Browsing previews
-always use the full mix. A song with no separate drum stems displays **In mix**
-and explains that its embedded drums remain audible. This is independent of
-live Drumx monitoring, your module's sound, and note scoring.
+**Recorded drums** defaults to **Follow my playing**. The original drum recording
+stays in time with the song. Missed chart notes mute the whole `drums` and
+`drums_1` through `drums_4` family; a successful hit restores it. Extra strikes
+still affect your score but do not mute the recording. Short gain fades avoid
+abrupt switches. Simplified charts can include audible drum notes omitted from
+their targets because the recording remains continuous.
+
+**Always on** keeps the full recorded performance. **Off** silences separate
+drum stems throughout the take so you can use your module or enabled Drumx hit
+sounds. The other modes temporarily suppress Drumx hit samples, without changing
+your lesson sound preference. The selection persists and changes live without
+restarting the song. Browsing previews always use the full mix. A song with no
+separate drum stems displays **In mix** and explains that its embedded drums
+remain audible. Drumx cannot silence a physical module's own audio output.
 [Stem behavior and the YARG comparison](song-audio.md)
 
 The importer requires Python 3.10+; decoding Opus and Ogg stems requires FFmpeg.

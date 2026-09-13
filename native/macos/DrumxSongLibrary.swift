@@ -609,26 +609,83 @@ final class DrumxSongAudioTransport {
   private var nodes: [AVAudioPlayerNode] = []
   private var stems: [String] = []
   private var observer: NSObjectProtocol?
+  private let gainQueue = DispatchQueue(label: "org.drumx.song-stem-gains", qos: .userInteractive)
+  private let gainQueueKey = DispatchSpecificKey<Bool>()
+  private var gainRamp: DispatchSourceTimer?
+  private var gainRevision = 0
+  private(set) var mode: DrumxSongAudioMode = .performance
+  private(set) var performanceMuted = false
   private(set) var epoch: Double = 0
   private(set) var outputLatency: Double = 0
   var onInterrupted: ((String) -> Void)?
   var isRunning: Bool { engine?.isRunning == true }
-  var stemVolumes: [Float] { nodes.map(\.volume) }
+  var stemVolumes: [Float] { onGainQueue { nodes.map(\.volume) } }
   func setVolume(_ value: Float) { engine?.mainMixerNode.outputVolume = min(1, max(0, value)) }
 
+  init() { gainQueue.setSpecific(key: gainQueueKey, value: true) }
+
+  private func onGainQueue<T>(_ action: () -> T) -> T {
+    DispatchQueue.getSpecific(key: gainQueueKey) == true ? action() : gainQueue.sync(execute: action)
+  }
+
   func setMode(_ mode: DrumxSongAudioMode) {
-    let mix = DrumxSongStemMix(stems: stems, mode: mode)
-    for (node, gain) in zip(nodes, mix.gains) { node.volume = gain }
+    guard self.mode != mode else { return }
+    self.mode = mode
+    updateStemGains()
+  }
+
+  func setPerformanceMuted(_ muted: Bool) {
+    guard performanceMuted != muted else { return }
+    performanceMuted = muted
+    updateStemGains()
+  }
+
+  private func updateStemGains() {
+    let targets = DrumxSongStemMix(stems: stems, mode: mode, performanceMuted: performanceMuted).gains
+    let activeNodes = nodes
+    onGainQueue {
+      cancelGainRampOnQueue()
+      guard !activeNodes.isEmpty else { return }
+      let starts = activeNodes.map(\.volume)
+      guard starts != targets else { return }
+      let revision = gainRevision
+      let started = DispatchTime.now().uptimeNanoseconds
+      let timer = DispatchSource.makeTimerSource(queue: gainQueue)
+      timer.schedule(deadline: .now(), repeating: .milliseconds(2), leeway: .microseconds(250))
+      timer.setEventHandler { [weak self] in
+        guard let self, self.gainRevision == revision else { return }
+        // Twelve milliseconds avoids an abrupt waveform discontinuity. Every
+        // drum stem uses the same ramp fraction; scheduling and epoch stay put.
+        let elapsed = DispatchTime.now().uptimeNanoseconds - started
+        let fraction = min(1, Float(elapsed) / 12_000_000)
+        for index in activeNodes.indices {
+          activeNodes[index].volume = fraction == 1 ? targets[index]
+            : starts[index] + (targets[index] - starts[index]) * fraction
+        }
+        if fraction == 1 { self.cancelGainRampOnQueue() }
+      }
+      gainRamp = timer
+      timer.resume()
+    }
+  }
+
+  /// Called only on gainQueue. Its revision also invalidates already-enqueued
+  /// timer callbacks when a hit reverses a miss ramp or playback stops.
+  private func cancelGainRampOnQueue() {
+    gainRevision += 1
+    gainRamp?.cancel(); gainRamp = nil
   }
 
   func start(_ prepared: DrumxSongPreparedAudio, position: Double,
-             audioLead: Double, countdown: Double, mode: DrumxSongAudioMode = .practice) throws {
+             audioLead: Double, countdown: Double, mode: DrumxSongAudioMode = .performance,
+             performanceMuted: Bool = false) throws {
     stop()
     guard prepared.stems.count == prepared.files.count else {
       throw DrumxSongError.message("The song's audio files do not match their stem metadata. Reimport the song.")
     }
     stems = prepared.stems
-    let mix = DrumxSongStemMix(stems: stems, mode: mode)
+    self.mode = mode; self.performanceMuted = performanceMuted
+    let mix = DrumxSongStemMix(stems: stems, mode: mode, performanceMuted: performanceMuted)
     let next = AVAudioEngine()
     for (index, file) in prepared.files.enumerated() {
       let node = AVAudioPlayerNode()
@@ -661,6 +718,7 @@ final class DrumxSongAudioTransport {
   }
 
   func stop() {
+    onGainQueue { cancelGainRampOnQueue() }
     if let observer { NotificationCenter.default.removeObserver(observer) }
     observer = nil
     nodes.forEach { $0.stop() }; nodes.removeAll()

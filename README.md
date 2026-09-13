@@ -101,7 +101,7 @@ Python 3 runs the bundled importer. Opus and Ogg audio require **FFmpeg** (`brew
 
 Lessons score **hi-hat, snare, and kick**; native song play scores the full eight-part kit. The built-in monitor covers that kit plus open and pedal hi-hats using 80 original acoustic recordings, with four velocity layers and two recorded variations per sound. Enable **Drumx drum sounds** in Sound settings to hear your MIDI strikes, or listen through your module. [Sample license and provenance](native/assets/BigRusty/README.md)
 
-In Songs, **Recorded drums** defaults to **Off**, muting separate drum stems while the backing track plays. Turn it **On** to hear the recorded performance for reference. Library previews use the full mix. Songs with drums embedded in a single mix cannot mute those drums separately. This control is independent of your live pad sounds and scoring. [How song stems work](docs/song-audio.md)
+In Songs, **Recorded drums** defaults to **Follow my playing**: successful hits restore the original drum recording, and missed notes mute its drum stems while the backing continues. Live hit samples are suppressed in this mode, so the performance sounds like the song. Choose **Always on** for the full recorded performance or **Off** to use your kit and any enabled Drumx hit sounds. Library previews use the full mix. Songs with embedded drums cannot mute them separately. Your lesson sound preference is preserved. [How song stems work](docs/song-audio.md)
 
 [First MIDI session](docs/first-kit-session.md) · [Controls and troubleshooting](docs/native-lab.md) · [Shared desktop build instructions](docs/desktop-preview.md)
 

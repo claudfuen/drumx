@@ -4,6 +4,12 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Play songs through their recorded drum performance
+
+- Make Follow my playing the normal recorded-drum mode: chart misses mute separate drum stems, successful hits restore them, and backing recordings continue on the same clock. Keep Always on and Off choices, full-mix previews, and an honest fallback for embedded drums.
+- Suppress live hit samples during recorded-performance modes without changing the user's lesson monitoring preference. Restore their sound behavior on leaving Songs or choosing Off.
+- Derive the gate from authoritative captured hits and native miss deadlines, including dense same-pad notes, partial chords, and delayed input corrections. Fade gain changes without rescheduling audio or resetting playback.
+
 ### Browse large libraries and play for a personal best
 
 - Load lightweight song summaries off the main thread, retain note arrays only for play, and reuse unchanged reference imports through source fingerprints. Repair missing intensity metadata in the background with visible loading and failure states.

@@ -17,6 +17,7 @@ struct DrumxSongInputLedger {
   private var received = Set<UInt64>()
   private var credited: [Int: (id: UInt64, time: Double)] = [:]
   private(set) var extraTimes: [Double] = []
+  var creditedHitTimes: [Int: Double] { credited.mapValues { $0.time } }
 
   mutating func receive(id: UInt64, eventID: Int, time: Double, isExtra: Bool) {
     guard id > 0, time.isFinite, received.insert(id).inserted else { return }

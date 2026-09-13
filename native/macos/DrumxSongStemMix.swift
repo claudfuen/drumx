@@ -1,13 +1,15 @@
 import Foundation
 
 enum DrumxSongAudioMode: String, CaseIterable {
-  case practice
+  case performance
   case reference
+  case practice
 
   var title: String {
     switch self {
-    case .practice: return "Play your drums"
-    case .reference: return "Hear recorded drums"
+    case .performance: return "Follow my playing"
+    case .reference: return "Always on"
+    case .practice: return "Off"
     }
   }
 }
@@ -16,17 +18,19 @@ enum DrumxSongAudioMode: String, CaseIterable {
 /// monitoring. Stem names come from the manifest, never the decoded cache name.
 struct DrumxSongStemMix {
   let mode: DrumxSongAudioMode
+  let performanceMuted: Bool
   let gains: [Float]
   let hasSeparateDrums: Bool
   let hasBacking: Bool
   private let hasAudio: Bool
 
-  init(stems: [String], mode: DrumxSongAudioMode = .practice) {
+  init(stems: [String], mode: DrumxSongAudioMode = .performance, performanceMuted: Bool = false) {
     self.mode = mode
+    self.performanceMuted = performanceMuted
     hasAudio = !stems.isEmpty
     hasSeparateDrums = stems.contains(where: Self.isDrumStem)
     hasBacking = stems.contains { !Self.isDrumStem($0) }
-    gains = stems.map { Self.gain(for: $0, mode: mode) }
+    gains = stems.map { Self.gain(for: $0, mode: mode, performanceMuted: performanceMuted) }
   }
 
   static func isDrumStem(_ name: String) -> Bool {
@@ -36,8 +40,9 @@ struct DrumxSongStemMix {
     }
   }
 
-  static func gain(for stem: String, mode: DrumxSongAudioMode) -> Float {
-    mode == .practice && isDrumStem(stem) ? 0 : 1
+  static func gain(for stem: String, mode: DrumxSongAudioMode, performanceMuted: Bool = false) -> Float {
+    guard isDrumStem(stem) else { return 1 }
+    return mode == .practice || (mode == .performance && performanceMuted) ? 0 : 1
   }
 
   var status: String {
@@ -46,6 +51,9 @@ struct DrumxSongStemMix {
       return "No separate drum stems. Drums embedded in the song remain audible."
     }
     switch mode {
+    case .performance:
+      return performanceMuted ? "Recorded drums are silent. A correct hit restores them."
+        : "Correct hits keep recorded drums playing. Misses silence the drum stems."
     case .practice:
       return hasBacking ? "Recorded drum stems are off. Play with the backing track."
         : "Recorded drums are off. This song has no separate backing track."

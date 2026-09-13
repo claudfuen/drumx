@@ -42,12 +42,20 @@ struct DrumxSongStemTransportChecks {
   }
 
   static func startSilently(_ transport: DrumxSongAudioTransport, _ audio: DrumxSongPreparedAudio,
-                            position: Double = 0, mode: DrumxSongAudioMode = .practice) throws {
-    try transport.start(audio, position: position, audioLead: 0, countdown: silentCountdown, mode: mode)
+                            position: Double = 0, mode: DrumxSongAudioMode = .performance,
+                            performanceMuted: Bool = false) throws {
+    try transport.start(audio, position: position, audioLead: 0, countdown: silentCountdown,
+      mode: mode, performanceMuted: performanceMuted)
     transport.setVolume(0)
     check(transport.isRunning, "the real AVAudioEngine starts")
     check(transport.epoch + position > DrumxIO.hostNowSeconds() + 3500,
       "all scheduled audio remains far in the future")
+  }
+
+  static func waitForGains(_ transport: DrumxSongAudioTransport, _ expected: [Float], _ message: String) {
+    let deadline = Date().addingTimeInterval(0.5)
+    while transport.stemVolumes != expected && Date() < deadline { Thread.sleep(forTimeInterval: 0.002) }
+    check(transport.stemVolumes == expected, message)
   }
 
   static func main() throws {
@@ -82,43 +90,73 @@ struct DrumxSongStemTransportChecks {
     defer { transport.stop() }
     try startSilently(transport, prepared)
     let originalEpoch = transport.epoch
-    check(transport.stemVolumes == [1, 0, 1, 0, 0, 0, 1],
-      "actual player nodes suppress all numbered drums while preserving backing without any hits")
+    let audible: [Float] = [1, 1, 1, 1, 1, 1, 1]
+    let gated: [Float] = [1, 0, 1, 0, 0, 0, 1]
+    check(transport.stemVolumes == audible && transport.mode == .performance && !transport.performanceMuted,
+      "actual player nodes begin with recorded drums audible in follow-my-playing mode")
+    transport.setPerformanceMuted(true)
+    waitForGains(transport, gated, "a miss silences every recorded drum node while backing remains audible")
+    check(transport.epoch == originalEpoch && transport.isRunning, "a miss changes gains without changing the playback clock")
+    transport.setPerformanceMuted(false)
+    waitForGains(transport, audible, "a correct hit restores all four recorded drum nodes")
+    transport.setPerformanceMuted(true)
+    waitForGains(transport, gated, "later misses close the gate again")
     transport.setMode(.reference)
-    check(transport.stemVolumes == [1, 1, 1, 1, 1, 1, 1], "live reference mode restores the actual drum nodes")
+    waitForGains(transport, audible, "always-on mode restores the actual drum nodes")
+    check(transport.performanceMuted, "switching modes preserves the underlying performance gate")
     check(transport.isRunning && transport.epoch == originalEpoch, "changing the mix neither restarts nor shifts playback")
+    transport.setMode(.performance)
+    waitForGains(transport, gated, "returning to performance restores its existing muted gate")
     transport.setMode(.practice)
-    check(transport.stemVolumes == [1, 0, 1, 0, 0, 0, 1] && transport.epoch == originalEpoch,
-      "returning to practice preserves timeline and backing node gains")
+    transport.setPerformanceMuted(false)
+    waitForGains(transport, gated, "a correct hit cannot override explicitly-off recordings")
+    transport.setMode(.performance)
+    waitForGains(transport, audible, "returning from off to performance uses the current open gate")
+    transport.setPerformanceMuted(true)
+    Thread.sleep(forTimeInterval: 0.004)
+    let intermediate = transport.stemVolumes
+    check(intermediate[0] == 1 && intermediate[2] == 1 && intermediate[6] == 1,
+      "gain ramps leave all backing nodes unchanged")
+    check([1, 3, 4, 5].allSatisfy { intermediate[$0] == intermediate[1] && (0...1).contains(intermediate[$0]) },
+      "all numbered drums share a bounded ramp fraction")
+    transport.setPerformanceMuted(false)
+    waitForGains(transport, audible, "a hit can reverse an in-progress miss ramp")
+    Thread.sleep(forTimeInterval: 0.03)
+    check(transport.stemVolumes == audible && transport.epoch == originalEpoch,
+      "cancelled miss ramps cannot later overwrite restored gains or shift playback")
+    transport.setPerformanceMuted(true)
     transport.stop()
     check(!transport.isRunning && transport.stemVolumes.isEmpty, "stop releases the engine and all stem nodes")
     transport.setMode(.reference)
     check(transport.stemVolumes.isEmpty, "changing mode while stopped cannot revive stale nodes")
-    try startSilently(transport, prepared, position: 0.5, mode: .practice)
-    check(transport.stemVolumes == [1, 0, 1, 0, 0, 0, 1], "resume rebuilds nodes with recorded drums still off")
+    try startSilently(transport, prepared, position: 0.5, mode: .performance, performanceMuted: true)
+    Thread.sleep(forTimeInterval: 0.03)
+    check(transport.stemVolumes == gated, "resume retains the closed performance gate and cancels old-node ramps")
     transport.stop()
-    try startSilently(transport, prepared, position: 0.5, mode: .reference)
-    check(transport.stemVolumes == [1, 1, 1, 1, 1, 1, 1], "reference selection survives a stop and resume")
+    try startSilently(transport, prepared, position: 0.5, mode: .reference, performanceMuted: true)
+    check(transport.stemVolumes == audible, "always-on selection survives a stop and resume regardless of the gate")
 
     for fullAudio in [Optional<DrumxSongPreparedAudio>.none, prepared] {
       let preview = try DrumxSongPreparedAudio.preparePreview(fixture, fullAudio: fullAudio)
       check(preview.audio.stems == stems, "direct and reused previews preserve original manifest stem identities")
       check(preview.playbackStart == 0.25 && abs(preview.duration - 0.65) < 0.00001,
         "stem metadata does not alter the authored preview excerpt")
-      try startSilently(transport, preview.audio, position: preview.playbackStart, mode: .reference)
-      check(transport.stemVolumes == [1, 1, 1, 1, 1, 1, 1], "reference previews include every recorded instrument")
+      try startSilently(transport, preview.audio, position: preview.playbackStart, mode: .reference, performanceMuted: true)
+      check(transport.stemVolumes == audible, "reference previews include every instrument even if performance was muted")
     }
 
     let combined = try DrumxSongPreparedAudio.prepare(song(stems: ["song", "drums"], files: Array(files.prefix(2))))
     try startSilently(transport, combined)
-    check(transport.stemVolumes == [1, 0], "combined drum recordings are muted as well as numbered recordings")
+    check(transport.stemVolumes == [1, 1], "combined drum recordings start audible")
+    transport.setPerformanceMuted(true)
+    waitForGains(transport, [1, 0], "combined drum recordings follow the same gate as numbered recordings")
     for name in ["song", "guitar"] {
       let mixed = try DrumxSongPreparedAudio.prepare(song(stems: [name], files: [files[0]]))
-      try startSilently(transport, mixed)
+      try startSilently(transport, mixed, performanceMuted: true)
       check(transport.stemVolumes == [1], "a single mixed recording stays audible even with a misleading filename")
     }
     let drumsOnly = try DrumxSongPreparedAudio.prepare(song(stems: ["drums"], files: [files[1]]))
-    try startSilently(transport, drumsOnly)
+    try startSilently(transport, drumsOnly, mode: .practice)
     check(transport.stemVolumes == [0], "a drum-only recording keeps a running silent timeline in practice")
 
     for invalidStems in [Array(stems.dropLast()), stems + ["drums"]] {
