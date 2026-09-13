@@ -4,6 +4,11 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Add a full-kit song scoring contract
+
+- Accept imported tempo-map timestamps for up to eight drum parts and full-length songs through a portable song API. Preserve the lesson API and snapshot layout; total results include every song pad.
+- Validate song boundaries, chords, dense charts, invalid-input rollback, and returning to three-pad lessons. All existing native contracts and the added song checks pass.
+
 ### Publish the first automated versioned desktop release
 
 - Publish [preview-9ddcab48cd71](https://github.com/claudfuen/drumx/releases/tag/preview-9ddcab48cd71) automatically after both exported applications pass 10,781 checks and same-commit verification in [CI](https://github.com/claudfuen/drumx/actions/runs/34728349618). The Git tag resolves to the complete verified commit and both permanent download assets have verified hashes.

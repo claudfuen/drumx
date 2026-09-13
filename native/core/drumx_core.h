@@ -45,6 +45,19 @@ typedef struct DXChartEvent {
     double beat;
 } DXChartEvent;
 
+/* Song mode preserves the legacy first three pad IDs and adds the full kit.
+   The lesson API and DXSnapshot layout remain unchanged. */
+typedef enum DXSongPad {
+    DX_SONG_HIHAT = 0, DX_SONG_SNARE = 1, DX_SONG_KICK = 2,
+    DX_SONG_TOM1 = 3, DX_SONG_TOM2 = 4, DX_SONG_TOM3 = 5,
+    DX_SONG_CRASH = 6, DX_SONG_RIDE = 7, DX_SONG_PAD_COUNT = 8
+} DXSongPad;
+
+typedef struct DXSongEvent {
+    int pad;
+    double time_seconds;
+} DXSongEvent;
+
 typedef struct DXHitResult {
     uint64_t id;
     int pad;
@@ -108,6 +121,13 @@ int dx_core_reset(DXCore* core, double bpm, int bars);
    input or allocation failure. No audio or rendering work is performed. */
 int dx_core_load_chart(DXCore* core, double bpm, double duration_beats,
                        const DXChartEvent* events, int event_count);
+/* Absolute song times already include the chart's tempo map and offset.
+   Valid: duration (0, 7200] seconds, 1..200000 events, pads 0..7, unique
+   same-pad times in [0, duration). Invalid input leaves the take unchanged.
+   Snapshot total covers the entire kit; legacy pads/bias cover IDs 0..2.
+   bpm is reported as 120 in song mode; render with the imported tempo map. */
+int dx_core_load_song(DXCore* core, double duration_seconds,
+                     const DXSongEvent* events, int event_count);
 void dx_core_set_guidance(DXCore* core, int guidance);
 double dx_core_duration(const DXCore* core);
 

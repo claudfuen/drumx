@@ -78,6 +78,7 @@ struct DXCore {
     double cutoff = 10;
     bool finished = false;
     int guidance = DX_FOLLOW;
+    int pad_count = DX_PAD_COUNT;
     uint64_t next_id = 1;
     std::vector<Event> events;
     std::vector<Extra> extras;
@@ -211,10 +212,67 @@ int dx_core_load_chart(DXCore* core, double bpm, double duration_beats,
         core->events.swap(events);
         core->extras.clear();
         core->bpm = bpm;
+        core->pad_count = DX_PAD_COUNT;
         core->duration = duration;
         core->cutoff = core->duration;
         core->now = 0;
         core->finished = false;
+        core->next_id = 1;
+        core->last_hit = ignored(-1, 0, 0);
+        return 1;
+    } catch (...) {
+        return 0;
+    }
+}
+
+int dx_core_load_song(DXCore* core, double duration_seconds,
+                      const DXSongEvent* source, int event_count) {
+    if (!core || !std::isfinite(duration_seconds) || duration_seconds <= 0
+        || duration_seconds > 7200 || !source || event_count < 1
+        || event_count > 200000) return 0;
+    for (int index = 0; index < event_count; ++index) {
+        const auto& event = source[index];
+        if (event.pad < 0 || event.pad >= DX_SONG_PAD_COUNT
+            || !std::isfinite(event.time_seconds) || event.time_seconds < 0
+            || event.time_seconds >= duration_seconds) return 0;
+    }
+    try {
+        std::vector<DXSongEvent> chart(source, source + event_count);
+        std::sort(chart.begin(), chart.end(), [](const DXSongEvent& a, const DXSongEvent& b) {
+            return a.time_seconds < b.time_seconds
+                || (a.time_seconds == b.time_seconds && a.pad < b.pad);
+        });
+        std::array<double, DX_SONG_PAD_COUNT> last_times;
+        last_times.fill(-std::numeric_limits<double>::infinity());
+        std::vector<Event> events;
+        events.reserve(chart.size());
+        for (const auto& authored : chart) {
+            if (authored.time_seconds - last_times[authored.pad] <= kEpsilon) return 0;
+            last_times[authored.pad] = authored.time_seconds;
+            Event event;
+            event.view.id = static_cast<int>(events.size());
+            event.view.pad = authored.pad;
+            event.view.time_seconds = authored.time_seconds;
+            event.deadline = authored.time_seconds + kMatchWindow;
+            events.push_back(event);
+        }
+        std::array<double, DX_SONG_PAD_COUNT> next_times;
+        next_times.fill(std::numeric_limits<double>::infinity());
+        for (auto event = events.rbegin(); event != events.rend(); ++event) {
+            const int pad = event->view.pad;
+            event->deadline = std::min(event->deadline,
+                (event->view.time_seconds + next_times[pad]) / 2);
+            next_times[pad] = event->view.time_seconds;
+        }
+        core->events.swap(events);
+        core->extras.clear();
+        core->bpm = 120;
+        core->pad_count = DX_SONG_PAD_COUNT;
+        core->duration = duration_seconds;
+        core->cutoff = duration_seconds;
+        core->now = 0;
+        core->finished = false;
+        core->guidance = DX_FOLLOW;
         core->next_id = 1;
         core->last_hit = ignored(-1, 0, 0);
         return 1;
@@ -247,7 +305,7 @@ void dx_core_advance(DXCore* core, double time) {
 
 DXHitResult dx_core_input(DXCore* core, int pad, double time, double velocity) {
     DXHitResult result = ignored(pad, time, velocity);
-    if (!core || pad < 0 || pad >= DX_PAD_COUNT || !std::isfinite(time)
+    if (!core || pad < 0 || pad >= core->pad_count || !std::isfinite(time)
         || !std::isfinite(velocity) || velocity <= 0 || core->cutoff < 0
         || time < -kMatchWindow - kEpsilon
         || time >= core->duration || time > core->cutoff) return result;
@@ -333,12 +391,13 @@ void dx_core_snapshot(const DXCore* core, DXSnapshot* output) {
     output->finished = core->finished;
     output->guidance = core->guidance;
     output->last_hit = core->last_hit;
-    std::array<double, DX_PAD_COUNT> sums{};
-    std::array<double, DX_PAD_COUNT> absolutes{};
+    std::array<DXMetrics, DX_SONG_PAD_COUNT> pad_metrics{};
+    std::array<double, DX_SONG_PAD_COUNT> sums{};
+    std::array<double, DX_SONG_PAD_COUNT> absolutes{};
     std::vector<Outcome> outcomes;
     outcomes.reserve(core->events.size() + core->extras.size());
     for (const auto& event : core->events) {
-        auto& metrics = output->pads[event.view.pad];
+        auto& metrics = pad_metrics[event.view.pad];
         ++metrics.expected;
         if (!event.view.resolved) continue;
         const bool good = event.view.hit && std::abs(event.offset_ms) <= kOnTimeMs + kEpsilon;
@@ -351,7 +410,7 @@ void dx_core_snapshot(const DXCore* core, DXSnapshot* output) {
         outcomes.push_back({event.view.time_seconds, event.view.id, event.view.pad, good});
     }
     for (const auto& extra : core->extras) {
-        ++output->pads[extra.pad].extra;
+        ++pad_metrics[extra.pad].extra;
         outcomes.push_back({extra.time, -1, extra.pad, false});
     }
     std::sort(outcomes.begin(), outcomes.end(), [](const Outcome& a, const Outcome& b) {
@@ -359,15 +418,15 @@ void dx_core_snapshot(const DXCore* core, DXSnapshot* output) {
         return a.tie < b.tie;
     });
     for (const auto& outcome : outcomes) {
-        auto& pad = output->pads[outcome.pad];
+        auto& pad = pad_metrics[outcome.pad];
         output->total.streak = outcome.good ? output->total.streak + 1 : 0;
         pad.streak = outcome.good ? pad.streak + 1 : 0;
         output->total.best_streak = std::max(output->total.best_streak, output->total.streak);
         pad.best_streak = std::max(pad.best_streak, pad.streak);
     }
     double sum = 0, absolute = 0;
-    for (int pad = 0; pad < DX_PAD_COUNT; ++pad) {
-        auto& metrics = output->pads[pad];
+    for (int pad = 0; pad < core->pad_count; ++pad) {
+        auto& metrics = pad_metrics[pad];
         finish_metrics(metrics, sums[pad], absolutes[pad]);
         output->total.expected += metrics.expected;
         output->total.matched += metrics.matched;
@@ -376,7 +435,10 @@ void dx_core_snapshot(const DXCore* core, DXSnapshot* output) {
         output->total.on_time += metrics.on_time;
         sum += sums[pad];
         absolute += absolutes[pad];
-        output->bias[pad] = make_bias(*core, pad);
+        if (pad < DX_PAD_COUNT) {
+            output->pads[pad] = metrics;
+            output->bias[pad] = make_bias(*core, pad);
+        }
     }
     finish_metrics(output->total, sum, absolute);
 }

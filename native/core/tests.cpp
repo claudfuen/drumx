@@ -453,6 +453,55 @@ void custom_chart_limits() {
 }
 }
 
+static void song_charts() {
+    auto engine = core();
+    // A real song need not have a fixed tempo or repeat an authored bar.
+    const DXSongEvent chart[] = {{7, 240.125}, {6, 1.11}, {5, 1.11},
+        {4, 0.83}, {3, 0.55}, {2, 0}, {1, 0.25}, {0, 0}};
+    check(dx_core_load_song(engine.get(), 248, chart, 8) == 1,
+        "song loads all eight pads, chords and absolute tempo-map times");
+    const auto sorted = events(engine);
+    check(sorted.size() == 8 && sorted.front().pad == 0
+        && near(sorted.back().time_seconds, 240.125), "song events sort by time and pad");
+    for (const auto& event : sorted) {
+        check(dx_core_input(engine.get(), event.pad, event.time_seconds, 1).judgment == DX_CENTERED,
+            "all eight song pads accept timestamped input");
+    }
+    dx_core_advance(engine.get(), 248);
+    auto result = snapshot(engine);
+    check(result.total.expected == 8 && result.total.matched == 8 && result.total.missed == 0
+        && result.total.best_streak == 8 && near(result.total.hit_rate_percent, 100),
+        "legacy snapshot totals safely include the full song kit");
+    check(result.pads[0].matched == 1 && result.pads[1].matched == 1 && result.pads[2].matched == 1,
+        "legacy per-pad snapshot keeps the original ABI");
+    const auto before = result;
+    const DXSongEvent duplicate[] = {{7, 0.2}, {7, 0.2}};
+    const DXSongEvent invalid[] = {{8, 0.2}};
+    const DXSongEvent negative[] = {{0, -0.2}};
+    const DXSongEvent end[] = {{0, 248}};
+    const DXSongEvent nan[] = {{0, std::numeric_limits<double>::quiet_NaN()}};
+    check(dx_core_load_song(engine.get(), 248, duplicate, 2) == 0
+        && dx_core_load_song(engine.get(), 248, invalid, 1) == 0
+        && dx_core_load_song(engine.get(), 248, negative, 1) == 0
+        && dx_core_load_song(engine.get(), 248, end, 1) == 0
+        && dx_core_load_song(engine.get(), 248, nan, 1) == 0
+        && dx_core_load_song(engine.get(), 0, chart, 8) == 0
+        && dx_core_load_song(engine.get(), 7201, chart, 8) == 0
+        && dx_core_load_song(engine.get(), 248, nullptr, 8) == 0
+        && dx_core_load_song(engine.get(), 248, chart, 200001) == 0,
+        "malformed or oversized songs reject atomically");
+    same_snapshot(before, snapshot(engine), "invalid song preserves completed results");
+    std::vector<DXSongEvent> long_song;
+    for (int i = 0; i < 10000; ++i) long_song.push_back({i % 8, i * 0.2});
+    check(dx_core_load_song(engine.get(), 2001, long_song.data(), 10000) == 1,
+        "whole songs exceed lesson count and duration limits");
+    dx_core_finish(engine.get(), 0.41);
+    check(snapshot(engine).total.missed == 3, "song partial stop does not miss future targets");
+    check(dx_core_reset(engine.get(), 96, 4) == 1
+        && dx_core_input(engine.get(), 7, 0, 1).judgment == DX_IGNORED,
+        "returning to lessons restores original three-pad input contract");
+}
+
 int main() {
     phrase_and_validation();
     matching_and_spam();
@@ -468,5 +517,6 @@ int main() {
     custom_dense_and_delayed();
     custom_invalid_is_atomic();
     custom_chart_limits();
+    song_charts();
     std::cout << "Drumx scoring core: " << checks << " checks passed.\n";
 }
