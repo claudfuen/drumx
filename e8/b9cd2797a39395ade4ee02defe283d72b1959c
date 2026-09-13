@@ -1,0 +1,32 @@
+.github/workflows/desktop-preview.yml
+  s_f983bef49b9fee::t_ca479d56f73a2e 8-10,19,30-32,41,76,124-132,161,186-207
+scripts/build-macos-lab.sh
+  s_f983bef49b9fee::t_5a8a9d3bd12a4a 13-17
+scripts/publish-game-preview.py
+  s_f983bef49b9fee::t_f341b848b99ec0 74
+  s_f983bef49b9fee::t_d5aca5d60043d6 2,11,13,18-19,34-35,44-45,47-58,60,62,64-65,70-73,75-83,86-89,91-93,95-98,100,102-158,161-238
+scripts/tests/test_game_package_content.py
+  s_f983bef49b9fee::t_1129c4bad0d6b6 95-121
+scripts/tests/test_publish_game_preview.py
+  s_f983bef49b9fee::t_1129c4bad0d6b6 10,22-28,32-44,56,67-68,98-126,128-245
+  s_f983bef49b9fee::t_f341b848b99ec0 19,60-61,127
+scripts/package-game.py
+  s_f983bef49b9fee::t_5a8a9d3bd12a4a 27,74-90,133-136,147-153,157-161,177,180,183-190,197-198
+  s_f983bef49b9fee::t_f341b848b99ec0 154-156,196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e8b9cd2797a39395ade4ee02defe283d72b1959c",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
