@@ -1,0 +1,23 @@
+native/macos/DrumxSongViews.swift
+  s_1d8d824485c606::t_3e9d29858504dc 49-55,276-279
+native/macos/DrumxSongController.swift
+  s_1d8d824485c606::t_3e9d29858504dc 114,249
+CHANGELOG.md
+  s_1d8d824485c606::t_3e9d29858504dc 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7560177dd7389a2acc8d698246e6b4cc7475019c",
+  "prompts": {},
+  "sessions": {
+    "s_1d8d824485c606": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0982f-e570-77e3-b321-473ae71d79a3",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
