@@ -458,10 +458,10 @@ final class DrumxSongHighwayView: NSView {
       }
     }
     roadLine.withAlphaComponent(0.48).setFill()
-    polygon([DrumxProjectedPoint(x: center - nearWidth / 2, y: nowY),
-      DrumxProjectedPoint(x: center + nearWidth / 2, y: nowY),
-      DrumxProjectedPoint(x: center + nearWidth / 2 - 8, y: nowY + 7),
-      DrumxProjectedPoint(x: center - nearWidth / 2 + 8, y: nowY + 7)]).fill()
+    polygon([DrumxProjectedPoint(x: Double(center) - Double(nearWidth) / 2, y: Double(nowY)),
+      DrumxProjectedPoint(x: Double(center) + Double(nearWidth) / 2, y: Double(nowY)),
+      DrumxProjectedPoint(x: Double(center) + Double(nearWidth) / 2 - 8, y: Double(nowY) + 7),
+      DrumxProjectedPoint(x: Double(center) - Double(nearWidth) / 2 + 8, y: Double(nowY) + 7)]).fill()
     line(projection.project(lateral: -0.5, beatDistance: 0), projection.project(lateral: 0.5, beatDistance: 0),
       color: DrumxSongInk.paper.withAlphaComponent(0.78), width: 1.5)
     DrumxSongInk.draw("NOW", in: NSRect(x: center - nearWidth / 2 - 50, y: nowY - 7, width: 39, height: 18),
