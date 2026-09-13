@@ -24,6 +24,7 @@ spec.loader.exec_module(fetch)
 content_spec = importlib.util.spec_from_file_location("verify_game_content", ROOT / "scripts/verify-game-content.py")
 content = importlib.util.module_from_spec(content_spec)
 content_spec.loader.exec_module(content)
+PROJECT_NOTICES = ["LICENSE", "NOTICE", "LICENSE-GUIDE.md"]
 
 
 def run(command: list[str], log: Path, timeout: int = 180) -> str:
@@ -70,6 +71,23 @@ def write_third_party_notices(package: Path) -> Path:
     return notices
 
 
+def write_project_notices(package: Path, mac_app: Path | None = None) -> dict[str, str]:
+    """Keep project terms beside either app and inside a movable Mac app bundle."""
+    hashes = {}
+    embedded = mac_app / "Contents/Resources/Drumx licensing" if mac_app else None
+    if embedded:
+        embedded.mkdir(parents=True, exist_ok=True)
+    for name in PROJECT_NOTICES:
+        source = ROOT / name
+        if not source.is_file() or not source.read_bytes().strip():
+            raise RuntimeError(f"Required project notice is missing or empty: {name}")
+        shutil.copy2(source, package / name)
+        if embedded:
+            shutil.copy2(source, embedded / name)
+        hashes[name] = fetch.sha256(source)
+    return hashes
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", required=True, choices=["macos-arm64", "windows-x86_64"])
@@ -112,6 +130,10 @@ def main() -> None:
     mac = args.target == "macos-arm64"
     destination = package / ("Drumx.app" if mac else "Drumx.exe")
     run([*common, "--export-release", "macOS" if mac else "Windows Desktop", str(destination)], logs / "export.log", 300)
+    project_license_hashes = write_project_notices(package, destination if mac else None)
+    signing = "ad-hoc, not notarized" if mac else "unsigned"
+    signing_details = {"signed": False, "notarized": False,
+                       "signature_type": "ad-hoc" if mac else "unsigned"}
     exported_library = list(package.rglob(library_name))
     if len(exported_library) != 1:
         raise RuntimeError(f"Expected one packaged {library_name}, got {len(exported_library)}")
@@ -122,8 +144,21 @@ def main() -> None:
         thinned = executable.with_suffix(".arm64")
         run(["lipo", str(executable), "-thin", "arm64", "-output", str(thinned)], logs / "thin.log")
         thinned.replace(executable)
-        run(["codesign", "--force", "--deep", "--sign", "-", "--preserve-metadata=entitlements,requirements,flags",
-             str(destination)], logs / "sign.log")
+        if os.environ.get("MACOS_SIGNING_ENABLED") == "true":
+            signing_path = work / "macos-signing.json"
+            run([sys.executable, str(ROOT / "scripts/sign-macos-release.py"), "--app", str(destination),
+                 "--metadata", str(signing_path)], logs / "sign.log", 1500)
+            signing_details = json.loads(signing_path.read_text(encoding="utf-8"))
+            if (signing_details.get("signed") is not True or signing_details.get("notarized") is not True
+                    or signing_details.get("stapled") is not True
+                    or signing_details.get("gatekeeper_verified") is not True
+                    or signing_details.get("signature_type") != "developer-id"
+                    or signing_details.get("notarization_status") != "Accepted"):
+                raise RuntimeError("Developer ID signing did not confirm notarization and Gatekeeper verification.")
+            signing = "Developer ID signed, notarized and stapled"
+        else:
+            run(["codesign", "--force", "--deep", "--sign", "-", "--preserve-metadata=entitlements,requirements,flags",
+                 str(destination)], logs / "sign.log")
         for binary, log_name in [(executable, "app-architecture.log"), (exported_library[0], "extension-architecture.log")]:
             if run(["lipo", "-archs", str(binary)], logs / log_name).strip() != "arm64":
                 raise RuntimeError(f"The Mac preview must contain only arm64: {binary}")
@@ -139,22 +174,28 @@ def main() -> None:
                 "target": args.target, "godot": reported, "built_at": datetime.now(timezone.utc).isoformat(),
                 "sample_manifest_sha256": sample_hash, "native_extension_sha256": fetch.sha256(exported_library[0]),
                 "font_provenance_sha256": font_hash,
+                "project_license_sha256": project_license_hashes,
                 "verified": ["24 original samples and provenance", "pinned Inter font and OFL license", "source headless smoke", "packaged headless smoke"],
                 "not_verified": ["full visual parity", "physical MIDI kit", "audible output latency", "Windows graphics on a physical PC"],
-                "signing": "ad-hoc, not notarized" if mac else "unsigned"}
+                "signing": signing, "signing_details": signing_details}
     (package / "build-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     write_third_party_notices(package)
-    instructions = ("Open Drumx.app. This preview is ad-hoc signed and not notarized.\n"
-                    "If macOS blocks it, use System Settings > Privacy & Security > Open Anyway for this app.\n"
-                    if mac else "Extract the whole ZIP into one folder, then open Drumx.exe.\n"
-                    "Keep Drumx.pck and the native DLL beside it. This preview is unsigned.\n")
+    if mac and signing_details["notarized"]:
+        instructions = "Open Drumx.app. This build is Developer ID signed, notarized, and stapled.\n"
+    elif mac:
+        instructions = ("Open Drumx.app. This preview is ad-hoc signed and not notarized.\n"
+                        "If macOS blocks it, use System Settings > Privacy & Security > Open Anyway for this app.\n")
+    else:
+        instructions = ("Extract the whole ZIP into one folder, then open Drumx.exe.\n"
+                        "Keep Drumx.pck and the native DLL beside it. This preview is unsigned.\n")
     (package / "START-HERE.txt").write_text(
         f"DRUMX SHARED PREVIEW\nCommit: {commit}\n\n{instructions}\n"
         "Keyboard: A hi-hat, S snare, Space kick. Set up your MIDI source before playing.\n"
         "This preview has its own local saves and does not import the AppKit lab's progress.\n"
         "Headless checks pass on the build host. Real kit, audio latency, and physical Windows display testing remain open.\n"
-        "Guide and known limits: https://github.com/claudfuen/drumx/blob/main/docs/desktop-preview.md\n"
-        "Godot, Inter font, sample and native dependency notices are included. No project-wide source license has been selected.\n")
+        f"Guide and known limits: https://github.com/claudfuen/drumx/blob/{commit}/docs/desktop-preview.md\n"
+        "Free noncommercial use is covered by the included project license. Commercial use requires a separate paid license.\n"
+        "Read LICENSE, NOTICE and LICENSE-GUIDE.md. Godot, Inter, sample and native dependency notices are also included.\n")
 
     output = ROOT / ".build/preview"
     output.mkdir(exist_ok=True)

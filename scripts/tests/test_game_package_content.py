@@ -92,6 +92,33 @@ class PackageContentChecks(unittest.TestCase):
                 self.assertEqual(archive.read(f"Drumx-fixture/Third-party notices/{relative}"), original.read_bytes())
         self.assertFalse((notices / "Inter/Inter.ttf").exists(), "The notice folder need not duplicate the bundled font")
 
+    def test_project_terms_ship_beside_apps_and_inside_movable_mac_bundle(self):
+        source = self.directory / "source"
+        source.mkdir()
+        for name in packager.PROJECT_NOTICES:
+            (source / name).write_text(f"Original project terms: {name}\n")
+        package = self.directory / "Drumx-fixture"
+        package.mkdir()
+        app = package / "Drumx.app"
+        with patch.object(packager, "ROOT", source):
+            hashes = packager.write_project_notices(package, app)
+        for name in packager.PROJECT_NOTICES:
+            self.assertEqual((package / name).read_bytes(), (source / name).read_bytes())
+            self.assertEqual((app / "Contents/Resources/Drumx licensing" / name).read_bytes(), (source / name).read_bytes())
+            self.assertEqual(hashes[name], packager.fetch.sha256(source / name))
+
+    def test_packaging_refuses_missing_or_empty_project_terms(self):
+        source = self.directory / "source"
+        source.mkdir()
+        package = self.directory / "package"
+        package.mkdir()
+        with patch.object(packager, "ROOT", source):
+            with self.assertRaisesRegex(RuntimeError, "missing or empty"):
+                packager.write_project_notices(package)
+            (source / "LICENSE").write_text("")
+            with self.assertRaisesRegex(RuntimeError, "missing or empty"):
+                packager.write_project_notices(package)
+
     def test_visual_baseline_comparison_ignores_json_formatting(self):
         baseline = json.loads((ROOT / "apps/game/data/visual-baseline.json").read_text())
         generated = self.directory / "regenerated.json"

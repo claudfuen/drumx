@@ -5,6 +5,9 @@ on:
     branches: [main]
     paths:
       - ".gitattributes"
+      - "LICENSE"
+      - "NOTICE"
+      - "LICENSE-GUIDE.md"
       - "apps/game/**"
       - "native/core/**"
       - "CMakeLists.txt"
@@ -13,6 +16,7 @@ on:
       - "native/assets/BigRusty/**"
       - "scripts/*game*.py"
       - "scripts/fetch-godot.py"
+      - "scripts/sign-macos-release.py"
       - "scripts/build-macos-lab.sh"
       - "scripts/test-tempo-adapter.sh"
       - "scripts/test-settings-controls.sh"
@@ -23,6 +27,9 @@ on:
   pull_request:
     paths:
       - ".gitattributes"
+      - "LICENSE"
+      - "NOTICE"
+      - "LICENSE-GUIDE.md"
       - "apps/game/**"
       - "native/core/**"
       - "CMakeLists.txt"
@@ -31,6 +38,7 @@ on:
       - "native/assets/BigRusty/**"
       - "scripts/*game*.py"
       - "scripts/fetch-godot.py"
+      - "scripts/sign-macos-release.py"
       - "scripts/build-macos-lab.sh"
       - "scripts/test-tempo-adapter.sh"
       - "scripts/test-settings-controls.sh"
@@ -65,7 +73,7 @@ jobs:
             target: windows-x86_64
             cmake_args: -A x64
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 35
+    timeout-minutes: 55
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -113,6 +121,15 @@ jobs:
       - name: Test native backend
         run: ctest --test-dir .build/game-native -C Release --output-on-failure
       - name: Export and execute packaged app smoke test
+        env:
+          # Secrets are only exposed to the authorized main-repository Mac build.
+          MACOS_SIGNING_ENABLED: ${{ runner.os == 'macOS' && github.repository == 'claudfuen/drumx' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.MACOS_SIGNING_ENABLED == 'true' && 'true' || 'false' }}
+          MACOS_CERTIFICATE_P12_BASE64: ${{ runner.os == 'macOS' && github.repository == 'claudfuen/drumx' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.MACOS_CERTIFICATE_P12_BASE64 || '' }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ runner.os == 'macOS' && github.repository == 'claudfuen/drumx' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.MACOS_CERTIFICATE_PASSWORD || '' }}
+          MACOS_SIGNING_IDENTITY: ${{ runner.os == 'macOS' && github.repository == 'claudfuen/drumx' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.MACOS_SIGNING_IDENTITY || '' }}
+          APPLE_TEAM_ID: ${{ runner.os == 'macOS' && github.repository == 'claudfuen/drumx' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.APPLE_TEAM_ID || '' }}
+          APPLE_ID: ${{ runner.os == 'macOS' && github.repository == 'claudfuen/drumx' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.APPLE_ID || '' }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ runner.os == 'macOS' && github.repository == 'claudfuen/drumx' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
         run: python3 scripts/package-game.py --target "${{ matrix.target }}"
       - name: Retain verified package
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -141,7 +158,7 @@ jobs:
           retention-days: 14
 
   verify_pair:
-    name: Verify experimental pair (no public release)
+    name: Verify experimental pair
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -154,8 +171,6 @@ jobs:
           pattern: experimental-app-*
           path: .build/preview
           merge-multiple: true
-      # Public publication is deliberately absent. Visual and journey parity must
-      # be accepted explicitly before a separate release change is authorized.
       - name: Verify same-commit packages without publishing
         run: python3 scripts/publish-game-preview.py --commit "$GITHUB_SHA" --verify-only
       - name: Retain paired manifest and checksums
@@ -168,3 +183,25 @@ jobs:
           if-no-files-found: error
           include-hidden-files: true
           retention-days: 14
+
+  publish_preview:
+    name: Publish versioned experimental prerelease
+    needs: [build, verify_pair]
+    if: github.repository == 'claudfuen/drumx' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    permissions:
+      contents: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: experimental-app-*
+          path: .build/preview
+          merge-multiple: true
+      - name: Reverify exact pair and publish immutable commit tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/publish-game-preview.py --commit "$GITHUB_SHA"

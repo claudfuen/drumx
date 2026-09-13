@@ -10,6 +10,11 @@ DRUMX_TARGET="$(uname -m)-apple-macosx15.0"
 python3 "$DRUMX_ROOT/scripts/fetch-samples.py" --check
 mkdir -p "$DRUMX_APP/Contents/MacOS"
 mkdir -p "$DRUMX_APP/Contents/Resources"
+mkdir -p "$DRUMX_APP/Contents/Resources/Drumx licensing"
+for DRUMX_NOTICE in LICENSE NOTICE LICENSE-GUIDE.md; do
+  test -s "$DRUMX_ROOT/$DRUMX_NOTICE"
+  cp "$DRUMX_ROOT/$DRUMX_NOTICE" "$DRUMX_APP/Contents/Resources/Drumx licensing/$DRUMX_NOTICE"
+done
 cp -R "$DRUMX_ROOT/native/assets/BigRusty" "$DRUMX_APP/Contents/Resources/"
 xcrun clang++ -target "$DRUMX_TARGET" -std=c++17 -O2 -Wall -Wextra -pedantic -c "$DRUMX_ROOT/native/core/drumx_core.cpp" -o "$DRUMX_BUILD/drumx_core.o"
 xcrun clang++ -target "$DRUMX_TARGET" -std=c++17 -O2 -Wall -Wextra -pedantic -c "$DRUMX_ROOT/native/core/drumx_tempo.cpp" -o "$DRUMX_BUILD/drumx_tempo.o"
