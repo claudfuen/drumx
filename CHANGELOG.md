@@ -4,6 +4,21 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Expand the curriculum and strengthen checkpoints
+
+- Expand from 12 to 20 lessons in five chapters, adding slow doubles, paradiddles, kit applications, and groove/coordination studies. Preserve every original lesson ID, version, and event; name the existing alternating-hands study Single Stroke Roll.
+- Keep three chapter columns per page with keyboard traversal and automatic reveal. Add suggested sticking beneath the notation counts, explicit listening/repair guidance, and a curriculum review with open C1 and next C2 phrasing/literacy gates.
+- Require repeated comparable non-pulse 16-bar takes at authored tempos, with coverage and timing on each required instrument. Preserve earlier access, validate per-pad archives, and withhold checkpoints until results save successfully.
+- Pass 10,781 shared source and exported Mac checks, 1,748 authored course checks, 2,419 audio/scoring integration checks, 194 readiness checks, and the native regression suite. Full visual and physical-kit acceptance remain open.
+
+### License noncommercial use and prepare versioned releases
+
+- Add the unmodified PolyForm Noncommercial 1.0.0 license, required attribution, and a separate paid-commercial-license route. Preserve third-party licenses and include all project notices in desktop packages and the native Mac bundle.
+- Automate immutable commit tags and experimental GitHub prereleases after paired Mac/Windows verification, including both ZIPs, manifests, hashes, and licensing files. Fail on conflicting existing tags or assets.
+- Prepare Developer ID signing, notarization, stapling, and Gatekeeper checks for the selected Leap Labs account. Real signing remains pending the correct certificate and credentials; unsigned/ad-hoc status is explicit.
+- Replace the README's promotional copy with gameplay images, a course overview, downloads, controls, and concise gate links. Label reproducible native render fixtures accurately.
+- Pass 41 Python packaging, publisher, content, and signing-contract tests. Hosted execution and the first automatic release follow from the committed candidate.
+
 ### Verify and link the premium-polish desktop pair
 
 - Both source and exported applications pass 8,027 checks at `1ce2060` in [paired CI](https://github.com/claudfuen/drumx/actions/runs/34718163923). Verify clean matching commits, archive checksums, sample/font provenance, backend recovery, and archive ownership on Mac and Windows.

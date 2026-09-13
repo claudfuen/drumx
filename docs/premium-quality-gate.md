@@ -20,6 +20,12 @@ The native Mac app remains the presentation baseline. The shared Mac/Windows por
 
 These frame budgets are acceptance targets, not measurements already achieved. Subjective latency reports are useful, but pad-to-sound/display latency needs a separate measurement method before a numerical claim.
 
+## Curriculum expansion alongside polish
+
+[C1: a substantial, honest foundation](curriculum-review.md) extends this gate to the 20-lesson course. Distinct outcomes, named rudiments, kit applications, suggested sticking, faithful notation/audio events, per-instrument checkpoint evidence, preserved progress, and a focused paged browser must agree. Whole-app visual and learner acceptance remain open. More lessons do not lower Q1-Q7 or close M1.
+
+The next structural curriculum gate is **C2: phrasing and sixteenth-note literacy**. Teach a sustained groove, a deliberate fill in the last bar, and a return to one with explicit two-/four-bar authored phrases. Sixteenth notes must work consistently in notation, demonstration, highway, grading, and tests before lessons can depend on them.
+
 ## Severity and closure
 
 - **Blocking:** crash, lost/corrupted progress, incorrect score/unlock, hidden or inaccessible primary action, clipped essential information, unintended input or transport action, or a major presentation regression.
@@ -36,9 +42,13 @@ The gate closes only with **zero open blocking or major issues**, all seven rows
 | Native Mac models and controls | The full native suite passes locally. CI passes 446 history, 57 tempo adapter, and 20 settings-control checks and compiles the native Mac app. [Control detail](images/settings-controls-detail.png) was rendered directly from native views into a bitmap and inspected. It is a component fixture, not an app screenshot. | Inspect the complete app interactively. |
 | Save and device recovery | 29 isolated shared save-recovery checks and 31 additional native history checks pass; native backend checks cover lost/failed inputs and audio interruption. | Verify UI recovery and quit choices in the actual applications. |
 | Concurrent archive writers | 27 native ownership checks and 8 shared binding checks pass on both platforms in CI, including separate-process exclusion, abrupt-exit release, and Unicode paths. A second copy cannot practise or write that history. Native Mac and shared stores remain separate. | Exercise the protected-progress screen during the full app review. |
-| Distribution integrity | Both packages use clean commit `1ce2060`; paired CI verifies archive hashes, assets, licenses, and actual exported execution. [Download manifest](https://github.com/claudfuen/drumx/actions/runs/34718163923/artifacts/10305291588). | Player download/launch and visual acceptance remain required before public release. |
+| Distribution integrity | Both packages use clean commit `1ce2060`; paired CI verifies archive hashes, assets, licenses, and actual exported execution. [Download manifest](https://github.com/claudfuen/drumx/actions/runs/34718163923/artifacts/10305291588). | Player download/launch and visual acceptance remain required before stable release. |
 | Complete rendered journey | **Pending.** The slides remain in the foreground at the user's request. Offscreen component inspection is available. | Interactive window review once the display is available, plus physical Windows graphics/scaling. |
 | Frame pacing and physical kit/audio | **Pending.** No qualifying 10/30-minute measurement or observation recorded. | Run the stated sessions and attach concise results. |
 | Beginner/experienced-player journey | **Pending.** | Observe the loop without developer intervention. |
 
 Keep this ledger and the README current. Record failures as well as passes; preserve raw player history outside the repository. This gate strengthens M1 and does not mark the full beginner milestone complete by itself.
+
+## Distribution during the open gate
+
+The authorized CI pipeline publishes explicitly experimental, commit-tagged prereleases after both packages verify. This provides durable test downloads while the quality gate remains open. Stable-release promotion still requires the stated visual, physical-device, and learner evidence. Developer ID signing is prepared for Leap Labs but is not verified until the real certificate, credentials, and Apple receipt are present.
