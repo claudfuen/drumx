@@ -61,6 +61,7 @@ final class LessonRootView: NSView {
   override func cancelOperation(_ sender: Any?) { controller?.dismissOrStop() }
   override func keyDown(with event: NSEvent) {
     guard !event.isARepeat else { return }
+    if controller?.currentPage == .songs, controller?.songController.handleKey(event) == true { return }
     if event.keyCode == 53 {
       controller?.dismissOrStop()
       return
@@ -85,6 +86,7 @@ final class LessonRootView: NSView {
 
 final class LabController: NSObject, NSWindowDelegate {
   let io = DrumxIO()
+  lazy var songController = DrumxSongController(io: io, onBack: { [weak self] in self?.goMainMenu() })
   let core: OpaquePointer
   let scene = PracticeView()
   let root = LessonRootView()
@@ -270,6 +272,7 @@ final class LabController: NSObject, NSWindowDelegate {
     io.onConnectionChanged = { [weak self] in
       guard let self else { return }
       self.stopTake()
+      self.songController.interrupt(reason: "MIDI input changed. Check your kit, then resume the song.")
       self.kitSetup.selectSource(self.io.selectedSourceID)
       self.kitSetup.invalidateInput()
       self.learning = nil; self.io.setMIDILearnActive(false)
@@ -280,6 +283,7 @@ final class LabController: NSObject, NSWindowDelegate {
     io.onStatusChanged = { [weak self] message in self?.setStatus(message) }
     io.onAudioInterrupted = { [weak self] message in
       self?.stopTake()
+      self?.songController.interrupt(reason: message)
       self?.setStatus(message)
     }
     updateSources(io.sources)
@@ -289,7 +293,8 @@ final class LabController: NSObject, NSWindowDelegate {
       updateSources(io.sources)
     }
     resetCore()
-    showPage(progress.selectedProfile.hasCompletedWelcome ? .mainMenu : .welcome)
+    showPage(CommandLine.arguments.contains("--songs") ? .songs
+      : progress.selectedProfile.hasCompletedWelcome ? .mainMenu : .welcome)
     timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 120.0, repeats: true) { [weak self] _ in
       self?.tick()
     }
@@ -406,10 +411,11 @@ final class LabController: NSObject, NSWindowDelegate {
       main.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 20),
       main.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -20),
     ])
-    for page in [welcomeView, mainMenuView, courseView, prepareView, scene, reviewView, settingsView, pauseView] { anchor(page, in: main) }
+    for page in [welcomeView, mainMenuView, courseView, prepareView, scene, reviewView, settingsView, pauseView, songController.view] { anchor(page, in: main) }
     buildWelcome()
     mainMenuView.onContinue = { [weak self] in self?.openCurrentLesson() }
     mainMenuView.onExplore = { [weak self] in self?.backToCourse() }
+    mainMenuView.onSongs = { [weak self] in self?.showPage(.songs) }
     mainMenuView.onSettings = { [weak self] in self?.showSetup() }
     courseView.onSelect = { [weak self] id in self?.selectLesson(id) }
     courseView.onContinue = { [weak self] in self?.openCurrentLesson() }
@@ -520,26 +526,34 @@ final class LabController: NSObject, NSWindowDelegate {
     center(stack, in: reviewView)
   }
 
-  enum Page { case welcome, mainMenu, course, prepare, stage, review, settings, pause }
+  enum Page { case welcome, mainMenu, course, prepare, stage, review, settings, pause, songs }
   func showPage(_ page: Page) {
     let previousPage = currentPage
+    if previousPage == .songs && page != .songs { songController.stop() }
     currentPage = page
     showingReview = page == .review
     for (view, destination) in [(welcomeView, Page.welcome), (mainMenuView, .mainMenu),
       (courseView, .course), (prepareView, .prepare), (scene, .stage), (reviewView, .review),
-      (settingsView, .settings), (pauseView, .pause)] { view.isHidden = destination != page }
+      (settingsView, .settings), (pauseView, .pause), (songController.view, .songs)] { view.isHidden = destination != page }
     playerButton.isHidden = page != .mainMenu
     backButton.isHidden = ![Page.course, .prepare, .review, .settings].contains(page)
     courseButton.isHidden = [.welcome, .mainMenu, .stage, .pause].contains(page)
-    kitButton.isHidden = ![Page.course, .prepare, .review].contains(page)
+    kitButton.isHidden = ![Page.course, .prepare, .review, .songs].contains(page)
     play.isHidden = page != .stage
     runScoreHUD.isHidden = page != .stage
     results.isHidden = true
     keyboardLegend.stringValue = page == .stage ? "A  hi-hat    S  snare    SPACE  kick    ESC  pause"
+      : page == .songs ? "A  hi-hat    W  crash    S  snare    D / F / G  toms    H  ride    SPACE  kick"
       : page == .mainMenu ? "↑ ↓  choose    RETURN  select"
       : page == .welcome ? "A / S / SPACE  try the drums"
       : "ESC  main menu"
     switch page {
+    case .songs:
+      songController.setMIDIMapping(mappings)
+      songController.inputOffsetMilliseconds = calibrationMS
+      songController.showLibrary()
+      pageTitle.stringValue = "SONGS"; window.title = "Drumx · Songs"
+      setStatus("Choose a song and difficulty. Your full kit shares one timing line.")
     case .mainMenu:
       let state = unlockState
       mainMenuView.update(lesson: lesson, player: progress.selectedProfile.name,
@@ -572,7 +586,7 @@ final class LabController: NSObject, NSWindowDelegate {
     focusStage()
   }
   func focusStage() {
-    if playerWindow == nil && checkWindow == nil { window.makeFirstResponder(transportActive ? scene : root) }
+    if playerWindow == nil && checkWindow == nil { window.makeFirstResponder(currentPage == .songs ? songController.view : transportActive ? scene : root) }
   }
   func setStatus(_ text: String) {
     status.stringValue = text
@@ -714,6 +728,7 @@ final class LabController: NSObject, NSWindowDelegate {
     UserDefaults.standard.set(volumeSlider.doubleValue, forKey: "drumx.lab.volume")
   }
   func dismissOrStop() {
+    if currentPage == .songs { songController.stop(); goMainMenu(); return }
     if checkWindow != nil { closeLearningCheck() }
     else if playerWindow != nil { closePlayers() }
     else if transportActive { pausePractice() }
@@ -877,6 +892,7 @@ final class LabController: NSObject, NSWindowDelegate {
         : "Take stopped. Partial takes don't set personal bests.")
   }
   private func midi(note: Int, velocity: Int, time: Double) {
+    if currentPage == .songs { songController.handleMIDI(note: note, velocity: velocity, hostTime: time); return }
     guard let source = io.selectedSourceID else { return }
     guard let receipt = kitSetup.receiveMIDI(note: note, velocity: velocity, sourceID: source, at: time) else { return }
     learning = kitSetup.pendingPad
@@ -1078,7 +1094,10 @@ final class LabController: NSObject, NSWindowDelegate {
     return true
   }
 
-  func windowShouldClose(_ sender: NSWindow) -> Bool { confirmApplicationClose() }
+  func windowShouldClose(_ sender: NSWindow) -> Bool {
+    songController.stop()
+    return confirmApplicationClose()
+  }
 
   private func tick() {
     let now = DrumxIO.hostNowSeconds()
@@ -1159,6 +1178,7 @@ final class LabAppDelegate: NSObject, NSApplicationDelegate {
   func applicationWillTerminate(_ notification: Notification) {
     if controller?.currentPage == .settings { controller?.leaveSettings() }
     controller?.saveResume()
+    controller?.songController.stop()
     controller?.io.stopClick()
     controller?.io.stopDemo()
   }

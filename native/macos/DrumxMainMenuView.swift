@@ -224,6 +224,7 @@ private final class MainMenuDrumArtwork: NSView {
 final class DrumxMainMenuView: NSView {
   var onContinue: (() -> Void)?
   var onExplore: (() -> Void)?
+  var onSongs: (() -> Void)?
   var onSettings: (() -> Void)?
 
   private let content = NSView()
@@ -236,9 +237,10 @@ final class DrumxMainMenuView: NSView {
   private let progressLabel = MainMenuInk.label("", size: 11, color: MainMenuInk.muted)
   private let continueButton = MainMenuAction(title: "Continue", target: nil, action: nil)
   private let exploreButton = MainMenuAction(title: "Learn", target: nil, action: nil)
+  private let songsButton = MainMenuAction(title: "Songs", target: nil, action: nil)
   private let settingsButton = MainMenuAction(title: "Settings", target: nil, action: nil)
   private var selectedIndex = 0
-  private var actions: [MainMenuAction] { [continueButton, exploreButton, settingsButton] }
+  private var actions: [MainMenuAction] { [continueButton, exploreButton, songsButton, settingsButton] }
 
   override init(frame: NSRect) {
     super.init(frame: frame)
@@ -251,11 +253,13 @@ final class DrumxMainMenuView: NSView {
     headline.isSelectable = false
     artwork.setAccessibilityElement(false)
     for view in [playerLabel, headline, invitation, chapterLabel, continueButton,
-                 exploreButton, settingsButton, progressLabel, artwork] {
+                 exploreButton, songsButton, settingsButton, progressLabel, artwork] {
       content.addSubview(view)
     }
     continueButton.primary = true
     exploreButton.subtitle = "Explore foundations · \(DrumxCourse.lessons.count) lessons"
+    songsButton.subtitle = "Your song library · Full-kit drums"
+    songsButton.target = self; songsButton.action = #selector(openSongs)
     continueButton.target = self; continueButton.action = #selector(continuePractice)
     exploreButton.target = self; exploreButton.action = #selector(exploreFoundations)
     settingsButton.target = self; settingsButton.action = #selector(openSettings)
@@ -266,9 +270,11 @@ final class DrumxMainMenuView: NSView {
       button.onFocus = { [weak self] in self?.select(index) }
     }
     continueButton.nextKeyView = exploreButton
-    exploreButton.nextKeyView = settingsButton
+    exploreButton.nextKeyView = songsButton
+    songsButton.nextKeyView = settingsButton
     settingsButton.nextKeyView = continueButton
     exploreButton.setAccessibilityLabel("Learn. Explore foundations, \(DrumxCourse.lessons.count) drum lessons.")
+    songsButton.setAccessibilityLabel("Songs. Browse imported songs and choose your drum difficulty.")
     settingsButton.setAccessibilityLabel("Settings. Configure your kit, sound, and player preferences.")
     select(0)
   }
@@ -304,10 +310,11 @@ final class DrumxMainMenuView: NSView {
     place(headline, 0, 366, 432, 164)
     place(invitation, 4, 333, 422, 26)
     place(chapterLabel, 4, 276, 416, 20)
-    place(continueButton, 0, 182, 424, 86)
-    place(exploreButton, 0, 119, 424, 54)
-    place(settingsButton, 0, 61, 424, 54)
-    place(progressLabel, 4, 16, 424, 20)
+    place(continueButton, 0, 196, 424, 80)
+    place(exploreButton, 0, 140, 424, 50)
+    place(songsButton, 0, 84, 424, 50)
+    place(settingsButton, 0, 28, 424, 50)
+    place(progressLabel, 4, 0, 424, 20)
     artwork.frame = NSRect(x: width - artWidth, y: (height - artHeight) / 2,
                            width: artWidth, height: artHeight)
     artwork.needsDisplay = true
@@ -354,5 +361,6 @@ final class DrumxMainMenuView: NSView {
   }
   @objc private func continuePractice() { select(0); onContinue?() }
   @objc private func exploreFoundations() { select(1); onExplore?() }
-  @objc private func openSettings() { select(2); onSettings?() }
+  @objc private func openSongs() { select(2); onSongs?() }
+  @objc private func openSettings() { select(3); onSettings?() }
 }

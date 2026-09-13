@@ -66,6 +66,14 @@ open .build/DrumxLab.app
 
 Use **Continue** to resume, **Learn** to browse lessons, or **Settings** to configure the kit and sound. On a new profile, Find the pulse starts at 60 BPM with a coached path to its 72 BPM checkpoint. Other lessons offer **Use checkpoint settings** to prepare their authored tempo and 16 guided bars.
 
+### Songs on the native Mac app
+
+Open **Songs** to browse your local library, import a song or scan a song directory, choose an authored drum difficulty, and play the complete song. The native player supports Clone Hero / YARG song folders, ZIPs, and SNG packages containing `song.ini`, `notes.mid` or `notes.chart`, and audio stems. Easy, Medium, Hard, and Expert appear when the chart supplies them.
+
+Song play enables hi-hat, snare, kick, three toms, crash, and ride. It preserves chart tempo changes, song offsets, and pro-drum cymbal/tom distinctions. Songs use a separate library and do not award curriculum checkpoints. The shared Godot desktop preview does not yet expose this native Songs section.
+
+Python 3 runs the bundled importer. Opus and Ogg audio require **FFmpeg** (`brew install ffmpeg`); decoded audio is cached locally. Imported charts and audio live in `~/Library/Application Support/Drumx/Songs`, outside the repository. Your original downloads remain in place. A chart without drums cannot be played as a drum song. [Song formats, mappings, and command-line import](docs/song-format.md)
+
 | Input | Action |
 | --- | --- |
 | **A / S / Space** | Hi-hat / snare / kick; Shift makes a softer strike |
@@ -74,7 +82,7 @@ Use **Continue** to resume, **Learn** to browse lessons, or **Settings** to conf
 | **Settings → Your kit** | Select MIDI input, inspect incoming notes, and map pad aliases |
 | **Settings → Playing** | Enable optional drum navigation in supported menus |
 
-The current scored kit is **hi-hat, snare, and kick**. App sounds use 24 acoustic recordings with four velocity layers and two variations per instrument. [Sample license and provenance](native/assets/BigRusty/README.md)
+Lessons score **hi-hat, snare, and kick**; native song play scores the full eight-part kit. The built-in monitor sounds cover the three lesson instruments using 24 acoustic recordings with four velocity layers and two variations per instrument. Use your kit's own sound for the additional pads. [Sample license and provenance](native/assets/BigRusty/README.md)
 
 [First MIDI session](docs/first-kit-session.md) · [Controls and troubleshooting](docs/native-lab.md) · [Shared desktop build instructions](docs/desktop-preview.md)
 

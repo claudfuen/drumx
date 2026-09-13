@@ -99,3 +99,4 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse
 "$DRUMX_BUILD/tempo-coach-checks"
 
 "$DRUMX_ROOT/scripts/test-settings-controls.sh"
+bash "$DRUMX_ROOT/scripts/test-song-player.sh"

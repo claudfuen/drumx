@@ -4,7 +4,7 @@ DRUMX_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if [ -d /Applications/Xcode.app/Contents/Developer ]; then
   export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 fi
-DRUMX_BUILD="$DRUMX_ROOT/.build"
+DRUMX_BUILD="${DRUMX_BUILD_DIR:-$DRUMX_ROOT/.build}"
 DRUMX_APP="$DRUMX_BUILD/DrumxLab.app"
 DRUMX_TARGET="$(uname -m)-apple-macosx15.0"
 python3 "$DRUMX_ROOT/scripts/fetch-samples.py" --check
@@ -16,6 +16,7 @@ for DRUMX_NOTICE in LICENSE NOTICE LICENSE-GUIDE.md; do
   cp "$DRUMX_ROOT/$DRUMX_NOTICE" "$DRUMX_APP/Contents/Resources/Drumx licensing/$DRUMX_NOTICE"
 done
 cp -R "$DRUMX_ROOT/native/assets/BigRusty" "$DRUMX_APP/Contents/Resources/"
+cp "$DRUMX_ROOT/scripts/import_song.py" "$DRUMX_APP/Contents/Resources/import_song.py"
 xcrun clang++ -target "$DRUMX_TARGET" -std=c++17 -O2 -Wall -Wextra -pedantic -c "$DRUMX_ROOT/native/core/drumx_core.cpp" -o "$DRUMX_BUILD/drumx_core.o"
 xcrun clang++ -target "$DRUMX_TARGET" -std=c++17 -O2 -Wall -Wextra -pedantic -c "$DRUMX_ROOT/native/core/drumx_tempo.cpp" -o "$DRUMX_BUILD/drumx_tempo.o"
 xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -O -parse-as-library \
@@ -36,6 +37,7 @@ xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -O -parse-as-library \
   "$DRUMX_ROOT/native/macos/DrumxKitController.swift" \
   "$DRUMX_ROOT/native/macos/DrumxControls.swift" \
   "$DRUMX_ROOT/native/macos/DrumxMainMenuView.swift" \
+  "$DRUMX_ROOT"/native/macos/DrumxSong*.swift \
   "$DRUMX_ROOT/native/macos/DrumxSettingsController.swift" \
   "$DRUMX_ROOT/native/macos/DrumxCourseViews.swift" \
   "$DRUMX_ROOT/native/macos/DrumxNotationView.swift" \

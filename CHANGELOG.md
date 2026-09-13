@@ -4,6 +4,12 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Play imported songs on the native perspective highway
+
+- Add Songs to the Mac main menu with directory scanning, search, authored difficulty selection, drag-and-drop import, synchronized audio stems, and separate song results. Restore the established perspective road, projected drums and cymbals, hit effects, and one shared NOW line across eight drum parts.
+- Preserve captured input timing through pause, resume, device interruption, and negative song offsets. Decode Opus/Vorbis audio into a private cache with FFmpeg; package the Python importer with the native app.
+- Build and inspect The Kill in the running app. Pass 5,577 song timing/replay checks across its four MIDI difficulties and a separate .chart arrangement, plus the existing native and portable scoring checks. Song playback currently ships in the native Mac app; the shared desktop preview retains its existing course.
+
 ### Import Clone Hero and YARG drum song packages
 
 - Read song folders, ZIPs, and SNG packages with MIDI or .chart notes, all authored drum difficulties, tempo maps, pro-drum cymbal/tom markers, metadata, and backing stems. Scan song directories, deduplicate packages, and keep copied media in a private library.

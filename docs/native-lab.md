@@ -191,6 +191,51 @@ The app stores its practice archives under `~/Library/Application Support/Drumx/
 
 Captured MIDI can arrive after a display update or the end of a take. The core can correct an expired miss using the original timestamp, and history updates the existing attempt instead of creating a duplicate, including corrections to points, stars, and best combo. Older saved backbeat attempts retain their lesson identity and receive points from their recorded counts; their missing best-combo data remains unknown. Dated practice/recall checkpoints persist separately from individual attempts and remain scoped to the player and lesson version.
 
+## Songs
+
+The native Mac app's **Songs** menu opens a separate local song library. Use
+**Import song** for a folder, ZIP, or SNG, or **Add song directory** to scan a
+collection. Search by title, artist, or charter, then choose one of the drum
+difficulties supplied by the chart. A package can offer any subset of Easy,
+Medium, Hard, and Expert. Guitar, bass, and vocal recordings play as backing
+stems; their note charts are not drum parts.
+
+The song highway uses the same perspective projection as practice, with stable
+instrument positions and one shared NOW line. Song notes retain their original
+timing through tempo changes. Background road divisions are visual spacing,
+not a fixed 4/4 bar count. The complete recording plays, including its intro and
+outro. Input uses captured host timestamps; audio stems share one scheduled
+start. Rendering never schedules audio.
+
+| Song control | Action |
+| --- | --- |
+| **A / W / S** | Hi-hat / crash / snare |
+| **D / F / G / H** | High tom / mid tom / floor tom / ride |
+| **Space** | Kick |
+| **Shift + a pad key** | Softer strike |
+| **P** or **Pause / Resume** | Pause or resume audio and the scoring clock together |
+| **Enter** or **Restart** | Restart the song with a fresh count-in and results |
+| **Escape** or **Library** | Stop playback and choose a song |
+
+Songs inherit the configured hi-hat, snare, and kick MIDI aliases. Additional GM
+defaults are high tom 48/50, mid tom 45/47, floor tom 41/43, crash 49/52/55/57,
+and ride 51/53/59. Configured lesson aliases take precedence over these defaults.
+The existing built-in monitor samples cover hi-hat, snare, and kick; use the
+module's own sound for the other physical pads.
+
+The importer requires Python 3.10+; decoding Opus and Ogg stems requires FFmpeg.
+Imported media and decoded caches live under
+`~/Library/Application Support/Drumx/Songs`. Reimport repairs missing managed
+media, and equivalent SNG/ZIP downloads create one entry. Song results are
+shown after play and do not write lesson checkpoints or practice history.
+[Format details and limitations](song-format.md)
+
+```sh
+bash scripts/test-song-player.sh
+# Optional: replay every difficulty from a local imported song manifest.
+bash scripts/test-song-player.sh "/path/to/library/song-id/song.json"
+```
+
 ## Troubleshooting
 
 | Symptom | Check |
