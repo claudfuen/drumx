@@ -1,0 +1,19 @@
+README.md
+  s_f983bef49b9fee::t_b4854d0e283ad5 4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "96435fe42b5e0a629b6e110743ddfd6319bee59b",
+  "prompts": {},
+  "sessions": {
+    "s_f983bef49b9fee": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0958f-f976-7563-be64-d83e4e4d3c96",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Claudio Fuentes <imclaudfuen@gmail.com>"
+    }
+  }
+}
