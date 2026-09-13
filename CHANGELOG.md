@@ -4,6 +4,14 @@ A record of playable milestones and product decisions. These entries describe re
 
 ## 2026-09-12
 
+### Give each desktop release a visible version
+
+- Introduce a shared product VERSION and numbered `0.1.0-preview.N` GitHub releases. Embed the same version, workflow run, commit, and source state in both desktop packages; expose copyable build details in the native and shared main menus.
+- Require the source and exported applications to report the exact packaged identity. Stamp OS metadata in a disposable export project, preserving a clean source checkout and signing the final resources.
+- Add README build/release/download/license badges and update its download links automatically after verified publication. Preserve concurrent documentation edits and prevent older runs from replacing newer links. Include generated release notes.
+- Make the native chord fixture use captured timestamps so CI scheduler delays cannot turn two simultaneous hits into false misses; retain separate checks for public keyboard timestamps and the live transport worker.
+- Pass 87 Python tests, 126 native control checks, and 10,824 local source/exported shared checks. Hosted paired publication remains part of the release gate.
+
 ### Play imported songs on the native perspective highway
 
 - Add Songs to the Mac main menu with directory scanning, search, authored difficulty selection, drag-and-drop import, synchronized audio stems, and separate song results. Restore the established perspective road, projected drums and cymbals, hit effects, and one shared NOW line across eight drum parts.

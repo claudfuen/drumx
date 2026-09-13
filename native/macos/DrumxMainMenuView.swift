@@ -1,5 +1,36 @@
 import AppKit
 
+private struct MainMenuBuildIdentity: Decodable {
+  let version: String
+  let commit: String
+  let dirty: Bool
+
+  static let current: MainMenuBuildIdentity? = {
+    guard let url = Bundle.main.url(forResource: "build-info", withExtension: "json"),
+      let data = try? Data(contentsOf: url),
+      let identity = try? JSONDecoder().decode(MainMenuBuildIdentity.self, from: data),
+      !identity.version.isEmpty,
+      identity.commit.range(of: "^[0-9a-f]{40}$", options: .regularExpression) != nil else { return nil }
+    return identity
+  }()
+
+  var caption: String {
+    let readableVersion = version.split(separator: "+").first.map(String.init) ?? version
+    return "v\(readableVersion) · \(commit.prefix(12))" + (dirty ? " · modified" : "")
+  }
+  var details: String {
+    "Native macOS\nVersion: \(version)\nCommit: \(commit)\nSource: \(dirty ? "Local changes" : "Clean checkout")"
+  }
+}
+
+private final class MainMenuBuildButton: NSButton {
+  override var acceptsFirstResponder: Bool { isEnabled }
+  override func keyDown(with event: NSEvent) {
+    if event.keyCode == 36 || event.keyCode == 76 { performClick(nil); return }
+    super.keyDown(with: event)
+  }
+}
+
 private enum MainMenuInk {
   static let background = NSColor(calibratedRed: 0.047, green: 0.063, blue: 0.071, alpha: 1)
   static let paper = NSColor(calibratedRed: 0.94, green: 0.95, blue: 0.91, alpha: 1)
@@ -228,6 +259,7 @@ final class DrumxMainMenuView: NSView {
   var onSettings: (() -> Void)?
 
   private let content = NSView()
+  private let buildButton = MainMenuBuildButton(title: "", target: nil, action: nil)
   private let headline = NSTextField(wrappingLabelWithString: "Find your\nrhythm.")
   private let invitation = MainMenuInk.label("Build a rhythm that stays with you.", size: 16,
                                               color: MainMenuInk.muted)
@@ -245,6 +277,14 @@ final class DrumxMainMenuView: NSView {
   override init(frame: NSRect) {
     super.init(frame: frame)
     addSubview(content)
+    addSubview(buildButton)
+    buildButton.title = MainMenuBuildIdentity.current?.caption ?? "Development build · version unavailable"
+    buildButton.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+    buildButton.contentTintColor = MainMenuInk.muted
+    buildButton.isBordered = false
+    buildButton.target = self; buildButton.action = #selector(showBuildDetails)
+    buildButton.setAccessibilityLabel("Build details. \(buildButton.title)")
+    buildButton.toolTip = "View and copy the version for a bug report"
     headline.maximumNumberOfLines = 2
     headline.lineBreakMode = .byWordWrapping
     // Wrapping labels default to selectable. This title must never enter the
@@ -272,7 +312,8 @@ final class DrumxMainMenuView: NSView {
     continueButton.nextKeyView = exploreButton
     exploreButton.nextKeyView = songsButton
     songsButton.nextKeyView = settingsButton
-    settingsButton.nextKeyView = continueButton
+    settingsButton.nextKeyView = buildButton
+    buildButton.nextKeyView = continueButton
     exploreButton.setAccessibilityLabel("Learn. Explore foundations, \(DrumxCourse.lessons.count) drum lessons.")
     songsButton.setAccessibilityLabel("Songs. Browse imported songs and choose your drum difficulty.")
     settingsButton.setAccessibilityLabel("Settings. Configure your kit, sound, and player preferences.")
@@ -290,6 +331,8 @@ final class DrumxMainMenuView: NSView {
     super.layout()
     guard bounds.width > 0, bounds.height > 0 else { return }
     let margin = max(24, min(120, bounds.width * 0.045))
+    buildButton.frame = NSRect(x: max(margin, bounds.width - margin - 400), y: 0,
+                              width: min(400, bounds.width - margin * 2), height: 36)
     let usableWidth = max(1, bounds.width - margin * 2)
     let usableHeight = max(1, bounds.height - 32)
     let scale = min(1.55, max(0.85, min(usableWidth / 920, usableHeight / 580)))
@@ -348,18 +391,38 @@ final class DrumxMainMenuView: NSView {
   }
 
   func moveSelection(_ offset: Int) {
+    guard window?.attachedSheet == nil else { return }
     let count = actions.count
     select((selectedIndex + offset % count + count) % count)
     window?.makeFirstResponder(actions[selectedIndex])
   }
 
-  func activateSelection() { actions[selectedIndex].performClick(nil) }
+  func activateSelection() {
+    guard window?.attachedSheet == nil else { return }
+    if window?.firstResponder === buildButton { buildButton.performClick(nil) }
+    else { actions[selectedIndex].performClick(nil) }
+  }
 
   private func select(_ index: Int) {
     selectedIndex = index
     for (offset, button) in actions.enumerated() { button.selected = offset == index }
   }
   @objc private func continuePractice() { select(0); onContinue?() }
+  @objc private func showBuildDetails() {
+    guard let window, window.attachedSheet == nil else { return }
+    let details = MainMenuBuildIdentity.current?.details ?? "Development build\nVersion metadata is unavailable. Rebuild with scripts/build-macos-lab.sh."
+    let panel = NSAlert()
+    panel.messageText = "Drumx build details"
+    panel.informativeText = details
+    panel.addButton(withTitle: "Done").keyEquivalent = "\u{1b}"
+    panel.addButton(withTitle: "Copy details")
+    panel.beginSheetModal(for: window) { response in
+      if response == .alertSecondButtonReturn {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(details, forType: .string)
+      }
+    }
+  }
   @objc private func exploreFoundations() { select(1); onExplore?() }
   @objc private func openSongs() { select(2); onSongs?() }
   @objc private func openSettings() { select(3); onSettings?() }

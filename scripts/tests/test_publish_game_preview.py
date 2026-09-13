@@ -14,10 +14,18 @@ spec = importlib.util.spec_from_file_location("publisher", Path(__file__).resolv
 publisher = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(publisher)
 COMMIT = "a" * 40
+IDENTITY = {"schema": 1, "base_version": "0.1.0", "version": "0.1.0-preview.42",
+            "build_number": 42, "channel": "preview", "commit": COMMIT,
+            "short_commit": COMMIT[:12], "dirty": False,
+            "workflow_run": "https://github.com/claudfuen/drumx/actions/runs/123",
+            "release_tag": "v0.1.0-preview.42"}
 
 
 class PairFixture:
     def setUp(self):
+        self.identity_patch = patch.object(publisher.versioning, "build_identity", return_value=dict(IDENTITY))
+        self.identity_mock = self.identity_patch.start()
+        self.addCleanup(self.identity_patch.stop)
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name) / "source"
         self.output = Path(self.temporary.name) / "output"
@@ -29,6 +37,7 @@ class PairFixture:
         for target in publisher.TARGETS:
             archive = self.output / f"Drumx-{target}.zip"
             value = {"commit": COMMIT, "dirty": False, "target": target, "archive": archive.name,
+                     "build_identity": IDENTITY,
                      "godot": "4.7.2.stable.official.fixture", "sample_manifest_sha256": "same-samples",
                      "font_provenance_sha256": "same-font", "project_license_sha256": self.license_hashes,
                      "signing": "ad-hoc, not notarized" if target == "macos-arm64" else "unsigned",
@@ -36,6 +45,7 @@ class PairFixture:
             with zipfile.ZipFile(archive, "w") as bundle:
                 prefix = f"Drumx-{target}/"
                 bundle.writestr(prefix + "build-manifest.json", json.dumps(value))
+                bundle.writestr(prefix + "build-info.json", json.dumps(IDENTITY))
                 for name in publisher.PROJECT_NOTICES:
                     bundle.writestr(prefix + name, (self.root / name).read_bytes())
                     if target == "macos-arm64":
@@ -64,7 +74,9 @@ class PairGateChecks(PairFixture, unittest.TestCase):
         value = json.loads((self.output / "build-manifest.json").read_text())
         self.assertEqual(value["commit"], COMMIT)
         self.assertEqual({entry["target"] for entry in value["packages"]}, set(publisher.TARGETS))
-        self.assertEqual(value["release_tag"], f"preview-{COMMIT[:12]}")
+        self.assertEqual(value["release_tag"], "v0.1.0-preview.42")
+        self.assertEqual(value["version"], "0.1.0-preview.42")
+        self.assertEqual(value["build_identity"], IDENTITY)
         self.assertEqual(len((self.output / "SHA256SUMS.txt").read_text().splitlines()), 6)
 
     def test_other_commit_is_rejected(self):
@@ -74,6 +86,34 @@ class PairGateChecks(PairFixture, unittest.TestCase):
     def test_dirty_build_is_rejected(self):
         self.change(dirty=True)
         with self.assertRaises(RuntimeError): self.verify()
+
+    def test_pair_cannot_mix_versions_or_workflow_runs(self):
+        for key, value in [("version", "0.1.0-preview.43"), ("build_number", 43),
+                           ("workflow_run", "https://github.com/claudfuen/drumx/actions/runs/124")]:
+            with self.subTest(key=key):
+                self.change(build_identity={**IDENTITY, key: value})
+                with self.assertRaisesRegex(RuntimeError, "Unverified or mismatched package"):
+                    self.verify()
+
+    def test_source_identity_cannot_be_dirty_local_or_from_another_commit(self):
+        for key, value in [("schema", 2), ("dirty", True), ("channel", "dev"),
+                           ("commit", "b" * 40), ("build_number", 0),
+                           ("release_tag", "preview-legacy")]:
+            with self.subTest(key=key):
+                self.identity_mock.return_value = {**IDENTITY, key: value}
+                with self.assertRaisesRegex(RuntimeError, "clean numbered CI preview identity"):
+                    self.verify()
+
+    def test_embedded_identity_is_checked_even_if_archive_checksum_is_updated(self):
+        path = self.output / "Drumx-windows-x86_64.zip"
+        with zipfile.ZipFile(path) as archive:
+            entries = {name: archive.read(name) for name in archive.namelist()}
+        entries["Drumx-windows-x86_64/build-info.json"] = json.dumps({**IDENTITY, "version": "0.1.0-preview.1"})
+        with zipfile.ZipFile(path, "w") as archive:
+            for name, data in entries.items(): archive.writestr(name, data)
+        self.change(sha256=publisher.digest(path))
+        with self.assertRaisesRegex(RuntimeError, "Packaged build identity disagrees"):
+            self.verify()
 
     def test_changed_archive_is_rejected(self):
         (self.output / "Drumx-windows-x86_64.zip").write_bytes(b"altered")
@@ -128,7 +168,8 @@ class PublicationChecks(PairFixture, unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.environment = {"GITHUB_REPOSITORY": publisher.REPOSITORY, "GITHUB_REF": "refs/heads/main",
-                            "GITHUB_EVENT_NAME": "push", "GITHUB_SHA": COMMIT, "GITHUB_RUN_ID": "123"}
+                            "GITHUB_EVENT_NAME": "push", "GITHUB_SHA": COMMIT, "GITHUB_RUN_ID": "123",
+                            "GITHUB_RUN_NUMBER": "42"}
         self.tag_commit = None
         self.release = None
         self.calls = []
@@ -175,7 +216,8 @@ class PublicationChecks(PairFixture, unittest.TestCase):
 
     def test_new_pair_publishes_only_after_asset_readback(self):
         url = self.publish()
-        self.assertTrue(url.endswith("preview-" + COMMIT[:12]))
+        self.assertTrue(url.endswith("v0.1.0-preview.42"))
+        self.assertEqual(self.release["name"], "Drumx 0.1.0-preview.42")
         self.assertEqual(self.tag_commit, COMMIT)
         self.assertFalse(self.release["draft"])
         self.assertTrue(self.release["prerelease"])
@@ -184,6 +226,7 @@ class PublicationChecks(PairFixture, unittest.TestCase):
         self.assertIn("Commercial use requires a separate paid license", self.release["body"])
 
     def test_identical_rerun_has_no_mutations(self):
+        self.environment["GITHUB_RUN_ATTEMPT"] = "2"
         self.publish()
         before = len(self.mutations())
         self.publish()

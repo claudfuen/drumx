@@ -119,6 +119,125 @@ class PackageContentChecks(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "missing or empty"):
                 packager.write_project_notices(package)
 
+    def build_identity(self):
+        return {"schema": 1, "base_version": "0.1.0", "version": "0.1.0-preview.42",
+                "build_number": 42, "channel": "preview", "commit": "a" * 40,
+                "short_commit": "a" * 12, "dirty": False,
+                "workflow_run": "https://github.com/claudfuen/drumx/actions/runs/123",
+                "release_tag": "v0.1.0-preview.42"}
+
+    def test_export_staging_keeps_checkout_unchanged_and_preserves_runtime_content(self):
+        source = self.directory / "source"
+        source.mkdir()
+        for name in ["project.godot", "export_presets.cfg"]:
+            shutil.copy2(ROOT / "apps/game" / name, source / name)
+        for name, data in {"bin/drumx_engine.dylib": b"native extension",
+                           "assets/BigRusty/snare.flac": b"drum sample",
+                           "scripts/player.gd": b"extends Node\n",
+                           ".godot/editor/cache": b"stale editor cache"}.items():
+            path = source / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        original = {path.relative_to(source): path.read_bytes() for path in source.rglob("*") if path.is_file()}
+        identity = self.build_identity()
+        destination = packager.stage_project(source, self.directory / "staged", identity)
+        self.assertEqual(original, {path.relative_to(source): path.read_bytes() for path in source.rglob("*") if path.is_file()})
+        self.assertFalse((destination / ".godot").exists())
+        self.assertEqual((destination / "bin/drumx_engine.dylib").read_bytes(), b"native extension")
+        self.assertEqual((destination / "assets/BigRusty/snare.flac").read_bytes(), b"drum sample")
+        self.assertEqual((destination / "scripts/player.gd").read_bytes(), b"extends Node\n")
+        self.assertEqual(json.loads((destination / "build-info.json").read_text()), identity)
+        self.assertIn('config/version="0.1.0-preview.42"', (destination / "project.godot").read_text())
+
+    def test_build_identity_is_readable_beside_both_apps_and_inside_mac_bundle(self):
+        identity = self.build_identity()
+        for target in ["macos-arm64", "windows-x86_64"]:
+            with self.subTest(target=target):
+                package = self.directory / target
+                package.mkdir()
+                app = package / "Drumx.app" if target == "macos-arm64" else None
+                packager.write_build_info(package, identity, app)
+                self.assertEqual(json.loads((package / "build-info.json").read_text()), identity)
+                if app:
+                    self.assertEqual((app / "Contents/Resources/build-info.json").read_bytes(),
+                                     (package / "build-info.json").read_bytes())
+                else:
+                    self.assertFalse((package / "Drumx.app").exists())
+
+    def test_running_app_must_report_the_exact_package_identity_and_pass_smoke(self):
+        identity = self.build_identity()
+        report = "DRUMX_BUILD_INFO " + json.dumps(identity) + "\n"
+        packager.verify_smoke_identity("Engine startup\n" + report + "DRUMX_SMOKE_OK checks=10\n", identity)
+        cases = [
+            ("DRUMX_SMOKE_OK\n", "exactly one"),
+            (report + report + "DRUMX_SMOKE_OK\n", "exactly one"),
+            (report, "did not confirm success"),
+            ("DRUMX_BUILD_INFO broken JSON\nDRUMX_SMOKE_OK\n", "malformed"),
+            ("DRUMX_BUILD_INFO " + json.dumps({**identity, "version": "0.1.0-preview.41"}) + "\nDRUMX_SMOKE_OK\n", "differs"),
+            ("DRUMX_BUILD_INFO " + json.dumps({**identity, "commit": "b" * 40}) + "\nDRUMX_SMOKE_OK\n", "differs"),
+        ]
+        for output, error in cases:
+            with self.subTest(error=error, output=output):
+                with self.assertRaisesRegex(RuntimeError, error):
+                    packager.verify_smoke_identity(output, identity)
+
+    def test_package_manifest_archive_and_running_app_share_one_identity(self):
+        source = self.directory / "source"
+        project = source / "apps/game"
+        (project / "bin").mkdir(parents=True)
+        for name in ["project.godot", "export_presets.cfg"]:
+            shutil.copy2(ROOT / "apps/game" / name, project / name)
+        (project / "bin/drumx_engine.dll").write_bytes(b"native extension")
+        for name in packager.PROJECT_NOTICES:
+            (source / name).write_text(f"Project terms {name}\n")
+        cache = self.directory / "toolchain"
+        cache.mkdir()
+        editor = cache / "godot.exe"
+        (cache / "toolchain.json").write_text(json.dumps({"editor": str(editor)}))
+        identity = self.build_identity()
+        stages = []
+
+        def execute(command, log, timeout=180):
+            if "--path" in command:
+                staged = Path(command[command.index("--path") + 1])
+                self.assertNotEqual(staged, project)
+                self.assertEqual(json.loads((staged / "build-info.json").read_text()), identity)
+            stages.append(log.name)
+            if "--export-release" in command:
+                destination = Path(command[-1])
+                destination.write_bytes(b"exported executable")
+                (destination.parent / "Drumx.pck").write_bytes(b"exported resources")
+                (destination.parent / "drumx_engine.dll").write_bytes(b"native extension")
+            if "--smoke-test" in command:
+                return "DRUMX_BUILD_INFO " + json.dumps(identity) + "\nDRUMX_SMOKE_OK\n"
+            return ""
+
+        with patch.object(packager, "ROOT", source), patch.object(packager, "PROJECT", project), \
+             patch.object(packager.fetch, "CACHE", cache), \
+             patch.object(packager.platform, "system", return_value="Windows"), \
+             patch.object(packager.subprocess, "check_output", return_value=f"{packager.fetch.VERSION}.stable.official.fixture"), \
+             patch.object(packager.version, "build_identity", return_value=identity), \
+             patch.object(packager, "validate_assets", return_value="a" * 64), \
+             patch.object(packager.content, "verify_font_assets", return_value="b" * 64), \
+             patch.object(packager, "write_third_party_notices"), \
+             patch.object(packager, "run", side_effect=execute), \
+             patch.object(sys, "argv", ["package-game.py", "--target", "windows-x86_64"]):
+            packager.main()
+
+        self.assertEqual(stages, ["import.log", "source-smoke.log", "export.log", "packaged-smoke.log"])
+        self.assertFalse((project / "build-info.json").exists())
+        output = source / ".build/preview"
+        outer = json.loads((output / "windows-x86_64.json").read_text())
+        self.assertEqual(outer["build_identity"], identity)
+        self.assertEqual(outer["commit"], identity["commit"])
+        with zipfile.ZipFile(output / outer["archive"]) as archive:
+            prefix = "Drumx-windows-x86_64/"
+            inner = json.loads(archive.read(prefix + "build-manifest.json"))
+            self.assertEqual(inner["build_identity"], identity)
+            self.assertEqual(json.loads(archive.read(prefix + "build-info.json")), identity)
+            self.assertIn("Version: 0.1.0-preview.42", archive.read(prefix + "START-HERE.txt").decode())
+        self.assertEqual(outer["sha256"], packager.fetch.sha256(output / outer["archive"]))
+
     def test_visual_baseline_comparison_ignores_json_formatting(self):
         baseline = json.loads((ROOT / "apps/game/data/visual-baseline.json").read_text())
         generated = self.directory / "regenerated.json"

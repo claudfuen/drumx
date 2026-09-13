@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - ".gitattributes"
+      - "VERSION"
       - "LICENSE"
       - "NOTICE"
       - "LICENSE-GUIDE.md"
@@ -17,9 +18,13 @@ on:
       - "scripts/*game*.py"
       - "scripts/fetch-godot.py"
       - "scripts/sign-macos-release.py"
+      - "scripts/build-version.py"
+      - "scripts/update-release-readme.py"
       - "scripts/build-macos-lab.sh"
       - "scripts/test-tempo-adapter.sh"
       - "scripts/test-settings-controls.sh"
+      - "scripts/test-song-player.sh"
+      - "scripts/import_song.py"
       - "scripts/fetch-samples.py"
       - "scripts/distribution/**"
       - "scripts/tests/**"
@@ -27,6 +32,7 @@ on:
   pull_request:
     paths:
       - ".gitattributes"
+      - "VERSION"
       - "LICENSE"
       - "NOTICE"
       - "LICENSE-GUIDE.md"
@@ -39,9 +45,13 @@ on:
       - "scripts/*game*.py"
       - "scripts/fetch-godot.py"
       - "scripts/sign-macos-release.py"
+      - "scripts/build-version.py"
+      - "scripts/update-release-readme.py"
       - "scripts/build-macos-lab.sh"
       - "scripts/test-tempo-adapter.sh"
       - "scripts/test-settings-controls.sh"
+      - "scripts/test-song-player.sh"
+      - "scripts/import_song.py"
       - "scripts/fetch-samples.py"
       - "scripts/distribution/**"
       - "scripts/tests/**"
@@ -78,6 +88,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Record numbered build identity
+        run: python3 scripts/build-version.py
       - name: Validate shared course and original sample bank
         run: python3 scripts/verify-game-content.py
       - name: Check packaging, content, and paired artifact validation
@@ -90,6 +102,9 @@ jobs:
       - name: Check native settings controls without showing a window
         if: runner.os == 'macOS'
         run: bash scripts/test-settings-controls.sh 2>&1 | tee .build/settings-controls.log
+      - name: Check native song playback contracts
+        if: runner.os == 'macOS'
+        run: bash scripts/test-song-player.sh 2>&1 | tee .build/song-player.log
       - name: Compile native Mac app without launching
         if: runner.os == 'macOS'
         run: bash scripts/build-macos-lab.sh 2>&1 | tee .build/native-macos-build.log
@@ -152,6 +167,7 @@ jobs:
             .build/portable/Testing/Temporary/LastTest.log
             .build/tempo-adapter.log
             .build/settings-controls.log
+            .build/song-player.log
             .build/native-macos-build.log
           if-no-files-found: ignore
           include-hidden-files: true
@@ -201,7 +217,13 @@ jobs:
           pattern: experimental-app-*
           path: .build/preview
           merge-multiple: true
-      - name: Reverify exact pair and publish immutable commit tag
+      - name: Reverify exact pair and publish numbered immutable prerelease
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/publish-game-preview.py --commit "$GITHUB_SHA"
+      - name: Update README downloads to the verified numbered release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Only the marked README region changes. README is outside build paths,
+        # and commits made with GITHUB_TOKEN do not recursively start workflows.
+        run: python3 scripts/update-release-readme.py --commit "$GITHUB_SHA"

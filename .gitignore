@@ -2,4 +2,5 @@
 .DS_Store
 /apps/game/.godot/
 /apps/game/bin/
+/apps/game/build-info.json
 __pycache__/

@@ -10,6 +10,7 @@ DRUMX_TARGET="$(uname -m)-apple-macosx15.0"
 python3 "$DRUMX_ROOT/scripts/fetch-samples.py" --check
 mkdir -p "$DRUMX_APP/Contents/MacOS"
 mkdir -p "$DRUMX_APP/Contents/Resources"
+python3 "$DRUMX_ROOT/scripts/build-version.py" --output "$DRUMX_APP/Contents/Resources/build-info.json"
 mkdir -p "$DRUMX_APP/Contents/Resources/Drumx licensing"
 for DRUMX_NOTICE in LICENSE NOTICE LICENSE-GUIDE.md; do
   test -s "$DRUMX_ROOT/$DRUMX_NOTICE"
@@ -69,5 +70,8 @@ cat > "$DRUMX_APP/Contents/Info.plist" <<'PLIST'
 <key>NSPrincipalClass</key><string>NSApplication</string>
 </dict></plist>
 PLIST
+python3 "$DRUMX_ROOT/scripts/build-version.py" \
+  --identity-file "$DRUMX_APP/Contents/Resources/build-info.json" \
+  --stamp-macos-plist "$DRUMX_APP/Contents/Info.plist"
 codesign --force --sign - "$DRUMX_APP"
 echo "$DRUMX_APP"

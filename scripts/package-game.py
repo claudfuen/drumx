@@ -24,6 +24,9 @@ spec.loader.exec_module(fetch)
 content_spec = importlib.util.spec_from_file_location("verify_game_content", ROOT / "scripts/verify-game-content.py")
 content = importlib.util.module_from_spec(content_spec)
 content_spec.loader.exec_module(content)
+version_spec = importlib.util.spec_from_file_location("build_version", ROOT / "scripts/build-version.py")
+version = importlib.util.module_from_spec(version_spec)
+version_spec.loader.exec_module(version)
 PROJECT_NOTICES = ["LICENSE", "NOTICE", "LICENSE-GUIDE.md"]
 
 
@@ -88,6 +91,39 @@ def write_project_notices(package: Path, mac_app: Path | None = None) -> dict[st
     return hashes
 
 
+def stage_project(source: Path, destination: Path, identity: dict) -> Path:
+    """Stamp an isolated export tree while keeping the checked-out project intact."""
+    shutil.copytree(source, destination, ignore=shutil.ignore_patterns(".godot"))
+    version.stamp_godot_project(destination, identity)
+    return destination
+
+
+def write_build_info(package: Path, identity: dict, mac_app: Path | None = None) -> None:
+    """Make the same build identity readable without unpacking the game's PCK."""
+    encoded = json.dumps(identity, indent=2) + "\n"
+    (package / "build-info.json").write_text(encoded, encoding="utf-8")
+    if mac_app:
+        resources = mac_app / "Contents/Resources"
+        resources.mkdir(parents=True, exist_ok=True)
+        (resources / "build-info.json").write_text(encoded, encoding="utf-8")
+
+
+def verify_smoke_identity(output: str, identity: dict) -> None:
+    """Check the running app, not just the adjacent package metadata, identifies itself."""
+    if "DRUMX_SMOKE_OK" not in output:
+        raise RuntimeError("Smoke did not confirm success.")
+    reports = [line.removeprefix("DRUMX_BUILD_INFO ") for line in output.splitlines()
+               if line.startswith("DRUMX_BUILD_INFO ")]
+    if len(reports) != 1:
+        raise RuntimeError("Smoke must report exactly one embedded build identity.")
+    try:
+        embedded = json.loads(reports[0])
+    except json.JSONDecodeError as error:
+        raise RuntimeError("Smoke reported malformed embedded build identity.") from error
+    if embedded != identity:
+        raise RuntimeError("Running app build identity differs from the package build identity.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", required=True, choices=["macos-arm64", "windows-x86_64"])
@@ -104,8 +140,9 @@ def main() -> None:
     reported = subprocess.check_output([str(editor), "--version"], text=True).strip()
     if not reported.startswith(f"{fetch.VERSION}.stable.official."):
         raise RuntimeError(f"Expected pinned Godot {fetch.VERSION}, got {reported}")
-    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip())
+    identity = version.build_identity(ROOT)
+    commit = identity["commit"]
+    dirty = identity["dirty"]
     if dirty and not args.allow_dirty:
         raise RuntimeError("Commit the source before creating a release package, or use --allow-dirty locally.")
     sample_hash = validate_assets()
@@ -120,10 +157,10 @@ def main() -> None:
     work.mkdir(parents=True)
     logs = work / "logs"
     logs.mkdir()
-    common = [str(editor), "--headless", "--path", str(PROJECT)]
+    staged_project = stage_project(PROJECT, work / "project", identity)
+    common = [str(editor), "--headless", "--path", str(staged_project)]
     run([*common, "--import"], logs / "import.log")
-    if "DRUMX_SMOKE_OK" not in run([*common, "--", "--smoke-test"], logs / "source-smoke.log"):
-        raise RuntimeError("Source smoke did not confirm success.")
+    verify_smoke_identity(run([*common, "--", "--smoke-test"], logs / "source-smoke.log"), identity)
 
     package = work / f"Drumx-{args.target}"
     package.mkdir()
@@ -131,6 +168,8 @@ def main() -> None:
     destination = package / ("Drumx.app" if mac else "Drumx.exe")
     run([*common, "--export-release", "macOS" if mac else "Windows Desktop", str(destination)], logs / "export.log", 300)
     project_license_hashes = write_project_notices(package, destination if mac else None)
+    # Embed this before sealing the Mac bundle. Nothing writes inside it after signing.
+    write_build_info(package, identity, destination if mac else None)
     signing = "ad-hoc, not notarized" if mac else "unsigned"
     signing_details = {"signed": False, "notarized": False,
                        "signature_type": "ad-hoc" if mac else "unsigned"}
@@ -167,15 +206,15 @@ def main() -> None:
         executable = destination
         if not (package / "Drumx.pck").is_file():
             raise RuntimeError("The Windows package is missing Drumx.pck.")
-    if "DRUMX_SMOKE_OK" not in run([str(executable), "--headless", "--", "--smoke-test"], logs / "packaged-smoke.log"):
-        raise RuntimeError("Packaged smoke did not confirm success.")
+    verify_smoke_identity(run([str(executable), "--headless", "--", "--smoke-test"], logs / "packaged-smoke.log"), identity)
 
     manifest = {"schema": 1, "application": "Drumx shared preview", "commit": commit, "dirty": dirty,
+                "build_identity": identity,
                 "target": args.target, "godot": reported, "built_at": datetime.now(timezone.utc).isoformat(),
                 "sample_manifest_sha256": sample_hash, "native_extension_sha256": fetch.sha256(exported_library[0]),
                 "font_provenance_sha256": font_hash,
                 "project_license_sha256": project_license_hashes,
-                "verified": ["24 original samples and provenance", "pinned Inter font and OFL license", "source headless smoke", "packaged headless smoke"],
+                "verified": ["24 original samples and provenance", "pinned Inter font and OFL license", "source headless smoke", "packaged headless smoke", "source and packaged app build identity"],
                 "not_verified": ["full visual parity", "physical MIDI kit", "audible output latency", "Windows graphics on a physical PC"],
                 "signing": signing, "signing_details": signing_details}
     (package / "build-manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
@@ -189,7 +228,8 @@ def main() -> None:
         instructions = ("Extract the whole ZIP into one folder, then open Drumx.exe.\n"
                         "Keep Drumx.pck and the native DLL beside it. This preview is unsigned.\n")
     (package / "START-HERE.txt").write_text(
-        f"DRUMX SHARED PREVIEW\nCommit: {commit}\n\n{instructions}\n"
+        f"DRUMX SHARED PREVIEW\nVersion: {identity['version']}\nBuild: {identity['build_number']}\n"
+        f"Channel: {identity['channel']}\nCommit: {commit}\n\n{instructions}\n"
         "Keyboard: A hi-hat, S snare, Space kick. Set up your MIDI source before playing.\n"
         "This preview has its own local saves and does not import the AppKit lab's progress.\n"
         "Headless checks pass on the build host. Real kit, audio latency, and physical Windows display testing remain open.\n"

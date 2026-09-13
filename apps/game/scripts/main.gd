@@ -16,6 +16,7 @@ const SettingsPanel = preload("res://scripts/settings_panel.gd")
 const SettingsContract = preload("res://scripts/settings_contract.gd")
 const RecoveryContract = preload("res://scripts/recovery_contract.gd")
 const ReadinessContract = preload("res://scripts/readiness_contract.gd")
+const BuildIdentity = preload("res://scripts/build_identity.gd")
 const INK = Color("0c1012")
 const PAPER = Color("f0f2e8")
 const MUTED = Color("92a5a3")
@@ -37,6 +38,12 @@ var snapshot: Dictionary = {}
 var root_stack: VBoxContainer
 var content: VBoxContainer
 var footer: Label
+var build_info: Dictionary = {}
+var build_button: Button
+var build_overlay: Control
+var build_overlay_focus: Array = []
+var build_return_focus: Control
+var build_details_text: TextEdit
 var page_label: Label
 var back: Button
 var settings_button: Button
@@ -95,6 +102,7 @@ var saved_fingerprint := ""
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
+	build_info = BuildIdentity.load_info()
 	smoke = "--smoke-test" in OS.get_cmdline_user_args() or "--ui-smoke-test" in OS.get_cmdline_user_args()
 	if not model.load_course():
 		push_error("The authored course could not be loaded.")
@@ -221,6 +229,25 @@ func build_shell() -> void:
 	footer_margin.add_child(footer_row)
 	footer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer_row.add_child(footer)
+	build_button = Button.new()
+	build_button.text = BuildIdentity.footer_label(build_info)
+	build_button.accessibility_name = "Build details. " + build_button.text
+	build_button.tooltip_text = "Open or copy this build's version and commit."
+	build_button.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	build_button.add_theme_font_size_override("font_size", 11)
+	build_button.add_theme_font_override("font", MainMenu.make_font(400))
+	build_button.add_theme_color_override("font_color", MUTED)
+	build_button.add_theme_color_override("font_hover_color", PAPER)
+	build_button.add_theme_color_override("font_focus_color", PAPER)
+	for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+		var treatment := StyleBoxFlat.new()
+		treatment.bg_color = Color.TRANSPARENT
+		treatment.border_color = LIME if state == "focus" else Color(PAPER, 0.3)
+		treatment.border_width_bottom = 1 if state in ["hover", "focus"] else 0
+		for side in ["left", "right", "top", "bottom"]: treatment.set("content_margin_" + side, 0)
+		build_button.add_theme_stylebox_override(state, treatment)
+	build_button.pressed.connect(show_build_details)
+	footer_row.add_child(build_button)
 	stop_button = button("Stop", stop_take)
 	stop_button.custom_minimum_size.y = 43
 	stop_button.visible = false
@@ -276,6 +303,7 @@ func gap(parent: Container, minimum: float = 0, expand: bool = false) -> void:
 	parent.add_child(item)
 
 func clear_page(destination: String) -> void:
+	if build_overlay != null: close_build_details()
 	if engine != null and page == "stage" and destination != "result":
 		engine.stop()
 	if engine != null and page == "settings":
@@ -307,6 +335,7 @@ func clear_page(destination: String) -> void:
 	settings_button.visible = destination not in ["main", "stage", "settings"]
 	score_hud.visible = destination == "stage"
 	stop_button.visible = destination == "stage"
+	build_button.visible = destination in ["main", "settings"]
 	page_label.text = {"main": "MAIN MENU", "learn": "FOUNDATIONS", "prepare": "LESSON", "stage": "PRACTICE", "result": "REVIEW", "pause": "PAUSED", "settings": "SETTINGS"}.get(destination, destination.to_upper())
 	update_footer()
 
@@ -322,6 +351,68 @@ func update_footer() -> void:
 		hint = "A hi-hat · S snare · SPACE kick" + (" · SHIFT softer · ESC pause" if page == "stage" else " · ESC main menu")
 	footer.text = message if message != "" else identity + "  /  " + hint
 	footer.tooltip_text = footer.text
+
+func show_build_details() -> void:
+	if build_overlay != null or check_overlay != null or quit_overlay != null or page not in ["main", "settings"]: return
+	build_return_focus = get_viewport().gui_get_focus_owner()
+	build_overlay_focus.clear()
+	for control in find_children("*", "Control", true, false):
+		if control.focus_mode != Control.FOCUS_NONE:
+			build_overlay_focus.append([control, control.focus_mode])
+			control.focus_mode = Control.FOCUS_NONE
+	build_overlay = ColorRect.new()
+	build_overlay.color = Color(0.015, 0.023, 0.026, 0.9)
+	build_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(build_overlay)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	build_overlay.add_child(center)
+	var panel := PanelContainer.new()
+	var background := StyleBoxFlat.new()
+	background.bg_color = Color("11191b")
+	background.border_color = Color(PAPER, 0.12)
+	background.set_border_width_all(1)
+	background.set_corner_radius_all(18)
+	for side in ["left", "right", "top", "bottom"]: background.set("content_margin_" + side, 28)
+	panel.add_theme_stylebox_override("panel", background)
+	center.add_child(panel)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 16)
+	panel.add_child(stack)
+	stack.add_child(label("DRUMX", 11, LIME))
+	stack.add_child(label("Build details", 28, PAPER))
+	build_details_text = TextEdit.new()
+	build_details_text.text = BuildIdentity.details(build_info)
+	build_details_text.editable = false
+	build_details_text.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	build_details_text.custom_minimum_size = Vector2(620, 230)
+	build_details_text.add_theme_font_size_override("font_size", 13)
+	build_details_text.add_theme_color_override("font_readonly_color", PAPER)
+	build_details_text.accessibility_name = "Build version, source commit, and release details. Read only; text can be selected and copied."
+	var text_background := StyleBoxFlat.new()
+	text_background.bg_color = Color(PAPER, 0.025)
+	text_background.set_corner_radius_all(8)
+	for side in ["left", "right", "top", "bottom"]: text_background.set("content_margin_" + side, 12)
+	build_details_text.add_theme_stylebox_override("read_only", text_background)
+	stack.add_child(build_details_text)
+	var actions := row()
+	stack.add_child(actions)
+	actions.add_child(button("Copy details", func():
+		DisplayServer.clipboard_set(BuildIdentity.details(build_info))))
+	var done := button("Done", close_build_details, true)
+	actions.add_child(done)
+	if not smoke: done.call_deferred("grab_focus")
+
+func close_build_details() -> void:
+	if build_overlay == null: return
+	build_overlay.queue_free()
+	build_overlay = null
+	build_details_text = null
+	for item in build_overlay_focus:
+		if is_instance_valid(item[0]): item[0].focus_mode = item[1]
+	build_overlay_focus.clear()
+	if is_instance_valid(build_return_focus) and build_return_focus.is_visible_in_tree(): build_return_focus.grab_focus()
+	build_return_focus = null
 
 func _header_back() -> void:
 	if page != "settings":
@@ -1119,6 +1210,11 @@ func timing_feedback(now: float) -> String:
 	return "   ·   ".join(messages) if not messages.is_empty() else "Listen to the click. Keep the spaces even."
 
 func _input(event: InputEvent) -> void:
+	if build_overlay != null:
+		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
+			close_build_details()
+			get_viewport().set_input_as_handled()
+		return
 	if quit_overlay != null: return
 	if page != "stage" or engine == null or source_id != "" or input_choice_required or bool(snapshot.get("source_lost", false)) or not event is InputEventKey or not event.pressed or event.echo:
 		return
@@ -1128,6 +1224,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _unhandled_key_input(event: InputEvent) -> void:
+	if build_overlay != null: return
 	if quit_overlay != null:
 		if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_ESCAPE:
 			close_pending_quit()
@@ -1176,6 +1273,7 @@ func request_quit() -> void:
 
 func show_pending_quit() -> void:
 	if quit_overlay != null: return
+	if build_overlay != null: close_build_details()
 	if check_overlay != null: close_learning_check()
 	quit_return_focus = get_viewport().gui_get_focus_owner()
 	quit_focus.clear()
@@ -1244,6 +1342,10 @@ func smoke_test() -> void:
 	# Explicit checks and side effects run in release exports. This path never
 	# loads or writes real progress, selects a MIDI source, or opens audio output.
 	model.blocked = true
+	print("DRUMX_BUILD_INFO " + JSON.stringify(BuildIdentity.smoke_payload(build_info)))
+	var build_checks := BuildIdentity.run_checks()
+	smoke_checks += int(build_checks.checks)
+	for failure in build_checks.failures: verify(false, "Build identity: " + str(failure))
 	var native_required := "--smoke-test" in OS.get_cmdline_user_args()
 	for index in range(model.course.lessons.size()):
 		var authored: Array = model.course.lessons[index].events
@@ -1402,6 +1504,19 @@ func smoke_test() -> void:
 		_process(0)
 		smoke = true
 	verify(root_stack.get_combined_minimum_size().y <= size.y - 48 and root_stack.get_combined_minimum_size().x <= size.x - 88, "main content fits default viewport")
+	verify(build_button.visible and build_button.text == BuildIdentity.footer_label(build_info), "Main menu displays the executable's build identity")
+	build_button.grab_focus()
+	show_build_details()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	verify(build_overlay != null and not build_overlay_focus.is_empty() and build_overlay_focus.all(func(item): return item[0].focus_mode == Control.FOCUS_NONE), "Build details isolate focus from the menu")
+	verify(build_details_text.text == BuildIdentity.details(build_info) and not build_details_text.editable, "Build details expose selectable exact identity without editing")
+	verify(get_global_rect().encloses(build_overlay.get_child(0).get_child(0).get_global_rect()), "Build details fit the supported viewport")
+	var build_escape := InputEventKey.new()
+	build_escape.pressed = true
+	build_escape.keycode = KEY_ESCAPE
+	_input(build_escape)
+	verify(build_overlay == null and page == "main" and build_button.has_focus(), "Escape dismisses build details and restores menu focus")
 	show_learn(0)
 	await get_tree().process_frame
 	if engine != null:
@@ -1411,6 +1526,7 @@ func smoke_test() -> void:
 	verify(root_stack.get_combined_minimum_size().y <= size.y - 48 and root_stack.get_combined_minimum_size().x <= size.x - 88, "learn content fits default viewport")
 	build_prepare()
 	await get_tree().process_frame
+	verify(not build_button.visible, "Build version stays out of lesson preparation")
 	if engine != null:
 		smoke = false
 		_process(0)

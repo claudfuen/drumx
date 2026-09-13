@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +19,10 @@ OUTPUT = ROOT / ".build/preview"
 TARGETS = ["macos-arm64", "windows-x86_64"]
 PROJECT_NOTICES = ["LICENSE", "NOTICE", "LICENSE-GUIDE.md"]
 REPOSITORY = "claudfuen/drumx"
+sys.dont_write_bytecode = True
+version_spec = importlib.util.spec_from_file_location("build_version", ROOT / "scripts/build-version.py")
+versioning = importlib.util.module_from_spec(version_spec)
+version_spec.loader.exec_module(versioning)
 
 
 def digest(path: Path) -> str:
@@ -41,14 +47,31 @@ def gh(*args: str, data=None, allow_missing=False):
     return json.loads(result.stdout) if result.stdout.strip().startswith(("{", "[")) else result.stdout.strip()
 
 
-def preview_tag(commit: str) -> str:
+def preview_identity(commit: str) -> dict:
     if not re.fullmatch(r"[0-9a-f]{40}", commit):
         raise RuntimeError("A full commit SHA is required.")
-    return f"preview-{commit[:12]}"
+    identity = versioning.build_identity(root=ROOT)
+    number = identity.get("build_number")
+    base = identity.get("base_version", "")
+    if (identity.get("schema") != 1 or identity.get("commit") != commit
+            or identity.get("short_commit") != commit[:12]
+            or identity.get("dirty") is not False or identity.get("channel") != "preview"
+            or type(number) is not int or number < 1
+            or not re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", base)
+            or identity.get("version") != f"{base}-preview.{number}"
+            or identity.get("release_tag") != f"v{base}-preview.{number}"
+            or not identity.get("workflow_run")):
+        raise RuntimeError("A clean numbered CI preview identity for this commit is required.")
+    return identity
+
+
+def preview_tag(commit: str) -> str:
+    return preview_identity(commit)["release_tag"]
 
 
 def verify_pair(commit: str) -> list[Path]:
-    tag = preview_tag(commit)
+    identity = preview_identity(commit)
+    tag = identity["release_tag"]
     license_hashes = {}
     for name in PROJECT_NOTICES:
         path = ROOT / name
@@ -61,6 +84,7 @@ def verify_pair(commit: str) -> list[Path]:
         filename = f"Drumx-{target}.zip"
         if (value.get("commit") != commit or value.get("dirty") is not False
                 or value.get("target") != target or value.get("archive") != filename
+                or value.get("build_identity") != identity
                 or "packaged headless smoke" not in value.get("verified", [])
                 or value.get("project_license_sha256") != license_hashes):
             raise RuntimeError(f"Unverified or mismatched package: {target}")
@@ -70,10 +94,12 @@ def verify_pair(commit: str) -> list[Path]:
         with zipfile.ZipFile(path) as archive:
             prefix = f"Drumx-{target}/"
             inner = json.loads(archive.read(prefix + "build-manifest.json"))
-            for key in ["commit", "dirty", "target", "godot", "sample_manifest_sha256",
+            for key in ["commit", "dirty", "target", "build_identity", "godot", "sample_manifest_sha256",
                         "font_provenance_sha256", "project_license_sha256", "verified", "signing", "signing_details"]:
                 if inner.get(key) != value.get(key):
                     raise RuntimeError(f"Packaged manifest disagrees about {key}: {target}")
+            if json.loads(archive.read(prefix + "build-info.json")) != identity:
+                raise RuntimeError(f"Packaged build identity disagrees with the verified version: {target}")
             for name, expected in license_hashes.items():
                 if hashlib.sha256(archive.read(prefix + name)).hexdigest() != expected:
                     raise RuntimeError(f"Packaged project notice mismatch: {target}/{name}")
@@ -86,9 +112,10 @@ def verify_pair(commit: str) -> list[Path]:
     for key in ["godot", "sample_manifest_sha256", "font_provenance_sha256"]:
         if not manifests[0].get(key) or len({m.get(key) for m in manifests}) != 1:
             raise RuntimeError(f"The pair does not share the same {key}.")
-    run_url = workflow_run_url()
+    run_url = identity["workflow_run"]
     manifest_path = OUTPUT / "build-manifest.json"
     manifest_path.write_text(json.dumps({"schema": 1, "commit": commit, "release_tag": tag,
+        "version": identity["version"], "build_identity": identity,
         "workflow_run": run_url, "project_license_sha256": license_hashes,
         "packages": manifests}, indent=2) + "\n", encoding="utf-8")
     files.append(manifest_path)
@@ -103,17 +130,13 @@ def verify_pair(commit: str) -> list[Path]:
     return files
 
 
-def workflow_run_url() -> str | None:
-    repository, run_id = os.environ.get("GITHUB_REPOSITORY"), os.environ.get("GITHUB_RUN_ID")
-    return f"https://github.com/{repository}/actions/runs/{run_id}" if repository and run_id else None
-
-
 def require_publication_context(commit: str) -> None:
     if (os.environ.get("GITHUB_REPOSITORY") != REPOSITORY
             or os.environ.get("GITHUB_REF") != "refs/heads/main"
             or os.environ.get("GITHUB_EVENT_NAME") not in ("push", "workflow_dispatch")
             or os.environ.get("GITHUB_SHA") != commit
-            or not os.environ.get("GITHUB_RUN_ID")):
+            or not os.environ.get("GITHUB_RUN_ID")
+            or not re.fullmatch(r"[1-9][0-9]*", os.environ.get("GITHUB_RUN_NUMBER", ""))):
         raise RuntimeError("Publication is restricted to this commit's Drumx main-branch workflow.")
 
 
@@ -171,7 +194,8 @@ def release_body(commit: str) -> str:
     signing = {item["target"]: item.get("signing", "unverified") for item in manifest["packages"]}
     source = f"https://github.com/{REPOSITORY}/blob/{commit}"
     return (
-        f"Experimental paired desktop preview from commit [`{commit[:12]}`](https://github.com/{REPOSITORY}/commit/{commit}).\n\n"
+        f"**Drumx {manifest['version']}** is an experimental paired desktop preview from commit "
+        f"[`{commit[:12]}`](https://github.com/{REPOSITORY}/commit/{commit}).\n\n"
         "Download **Drumx-macos-arm64.zip** for Apple Silicon Mac or **Drumx-windows-x86_64.zip** for 64-bit Windows. "
         "Extract the whole archive before opening the app. Both packages use the same source revision.\n\n"
         f"Native builds, content contracts, and actual exported-app headless checks passed in [the build workflow]({manifest['workflow_run']}). "
@@ -197,12 +221,13 @@ def publish(commit: str, files: list[Path]) -> str:
         missing = missing_assets(existing, files)
         if not existing.get("draft") and missing:
             raise RuntimeError("Published release is missing assets; refusing to change a published version.")
-    # This never updates an existing tag, including abbreviated-SHA collisions.
+    # Reusing a workflow version cannot move its original commit or assets.
     ensure_tag(commit)
     if existing is None:
         existing = gh("api", "--method", "POST", f"{endpoint}/releases", data={
             "tag_name": tag, "target_commitish": commit, "draft": True, "prerelease": True,
-            "make_latest": "false", "name": f"Experimental desktop preview {tag}",
+            "generate_release_notes": True,
+            "make_latest": "false", "name": f"Drumx {tag.removeprefix('v')}",
             "body": release_body(commit)})
         missing = files
     if missing:

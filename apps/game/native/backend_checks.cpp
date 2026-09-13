@@ -5,8 +5,20 @@
 #include <thread>
 
 namespace drumx {
-// Test-only friend manipulates connection identity, never exposed through Godot.
+// Test-only friend supplies explicit capture/transport times and device state.
+// The real worker is tested separately; these hooks are never exposed to Godot.
 struct BackendTestAccess {
+  static void pause_worker(Backend &b) {
+    b.quitting.store(true);
+    if (b.worker.joinable()) b.worker.join();
+  }
+  static void keyboard_hit_at(Backend &b, int pad, int velocity, double captured) {
+    b.receive(-1, pad, velocity, captured, false);
+  }
+  static void stop_at(Backend &b, double now) {
+    std::lock_guard<std::mutex> lock(b.mutex);
+    b.stop_locked(now);
+  }
   static uint64_t source(Backend &b) {
     std::lock_guard<std::mutex> lock(b.mutex);
     b.state.source_id = "test-only:driver";
@@ -29,6 +41,7 @@ int main(int argc, char **argv) {
   int checks=0, failures=0;
   auto check=[&](bool ok,const char *name){++checks;if(!ok){++failures;std::cerr<<"FAIL "<<name<<"\n";}};
   drumx::Backend backend(false);
+  drumx::BackendTestAccess::pause_worker(backend);
   check(std::isfinite(drumx::host_time()) && drumx::host_time()>0,"native monotonic clock");
   check(backend.load_chart(240,1,{{0,0},{2,0},{1,1},{0,1.5},{2,2},{1,3}}),"authored simultaneous chart");
   auto before=backend.events();
@@ -45,24 +58,45 @@ int main(int argc, char **argv) {
   check(backend.snapshot().source_lost&&backend.snapshot().lost_source_id=="unavailable"&&backend.start(0)<0,"failed first MIDI choice cannot silently start a keyboard take");
   check(backend.connect_source("")&&!backend.snapshot().source_lost,"explicit keyboard choice recovers failed first MIDI selection");
   check(backend.start(-1)<0,"invalid count-in rejected");
-  double first=backend.start(0); check(first>drumx::host_time(),"native start is scheduled in future");
+  const double before_start=drumx::host_time();
+  double first=backend.start(0); check(first>=before_start+.15,"native start schedules its lead-in from the monotonic clock");
   check(!backend.load_chart(72,1,{{0,0}}),"cannot replace playing chart");
   check(!backend.set_mapping(mapping),"cannot remap during take");
   check(backend.start(0)<0,"cannot restart active take");
-  std::this_thread::sleep_until(std::chrono::steady_clock::now()+std::chrono::duration<double>(std::max(0.0,first-drumx::host_time())));
-  backend.keyboard_hit(0,100); backend.keyboard_hit(2,100);
+  // sleep_until cannot guarantee waking inside the 125 ms grading window on a
+  // loaded runner. Exercise the production receive path with two captures on the
+  // exact same beat instead of turning this chord check into a scheduler test.
+  drumx::BackendTestAccess::keyboard_hit_at(backend,0,100,first);
+  drumx::BackendTestAccess::keyboard_hit_at(backend,2,100,first);
   auto score=backend.snapshot(); check(score.score.total.matched==2,"same-beat chord preserves two inputs");
   auto hits=backend.poll_hits(); check(hits.size()==2,"per-hit observations preserve chord");
+  check(hits.size()==2 && hits[0].pad==0 && hits[1].pad==2 &&
+        hits[0].host_time==first && hits[1].host_time==first &&
+        hits[0].result.judgment==DX_CENTERED && hits[1].result.judgment==DX_CENTERED &&
+        hits[0].result.event_id!=hits[1].result.event_id,
+        "simultaneous captures match distinct centered targets");
   check(backend.poll_hits().empty(),"poll drains once");
   check(hits.size()==2 && hits[0].source_id.empty() && hits[0].note==-1,"keyboard receipt is labeled separately");
-  backend.stop(); check(!backend.snapshot().running && backend.snapshot().completed,"manual stop closes take");
+  drumx::BackendTestAccess::stop_at(backend,first+.01);
+  check(!backend.snapshot().running && backend.snapshot().completed,"manual stop closes take");
   check(!backend.snapshot().naturally_completed,"partial take not called complete");
-  auto matched=backend.snapshot().score.total.matched; backend.keyboard_hit(1,100);
+  auto matched=backend.snapshot().score.total.matched;
+  drumx::BackendTestAccess::keyboard_hit_at(backend,1,100,first+.02);
   check(backend.snapshot().score.total.matched==matched,"post-stop keyboard cannot alter grade");
   check(backend.load_chart(240,1,{{0,0}}),"replace stopped chart");
-  first=backend.start(0); (void)first;
+  const double before_key=drumx::host_time();
+  backend.keyboard_hit(1,100);
+  const double after_key=drumx::host_time();
+  hits=backend.poll_hits();
+  check(hits.size()==1 && hits[0].pad==1 && hits[0].velocity==100 &&
+        hits[0].note==-1 && hits[0].source_id.empty() &&
+        hits[0].host_time>=before_key && hits[0].host_time<=after_key,
+        "public keyboard input preserves pad and native receipt timestamp");
+  drumx::Backend autonomous(false);
+  check(autonomous.load_chart(240,1,{{0,0}}),"live worker completion chart");
+  first=autonomous.start(0); (void)first;
   std::this_thread::sleep_for(std::chrono::milliseconds(1350));
-  score=backend.snapshot();
+  score=autonomous.snapshot();
   check(!score.running && score.completed && score.naturally_completed,"native worker finishes with no UI polling");
   check(score.score.total.missed==1,"native worker resolves unplayed targets");
   for(int i=0;i<300;++i) backend.keyboard_hit(0,90);
@@ -150,8 +184,8 @@ int main(int argc, char **argv) {
   drumx::BackendTestAccess::phrase_boundary(boundary_loss);
   boundary_loss.sources();
   check(boundary_loss.snapshot().source_lost&&!boundary_loss.snapshot().naturally_completed,"loss detected in completion grace cannot become a natural take");
-  drumx::BackendTestAccess::source(backend); backend.sources();
-  check(backend.snapshot().source_lost&&backend.snapshot().naturally_completed,"later input loss does not revoke an already completed take");
+  drumx::BackendTestAccess::source(autonomous); autonomous.sources();
+  check(autonomous.snapshot().source_lost&&autonomous.snapshot().naturally_completed,"later input loss does not revoke an already completed take");
 
   drumx::AudioDeviceStatus lifecycle;
   check(!lifecycle.ready()&&!lifecycle.interrupted(),"audio lifecycle starts unopened without interruption");

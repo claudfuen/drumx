@@ -1,8 +1,13 @@
 # drumx
 
+[![Desktop CI](https://github.com/claudfuen/drumx/actions/workflows/desktop-preview.yml/badge.svg)](https://github.com/claudfuen/drumx/actions/workflows/desktop-preview.yml)
+[![Release](https://img.shields.io/github/v/release/claudfuen/drumx?include_prereleases&sort=semver&color=c9e87c)](https://github.com/claudfuen/drumx/releases)
+[![Downloads](https://img.shields.io/github/downloads/claudfuen/drumx/total?color=8acacd)](https://github.com/claudfuen/drumx/releases)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm_Noncommercial-c9e87c)](LICENSE-GUIDE.md)
+
 A MIDI drum trainer for macOS and Windows. Practise timing, coordination, rudiments, and playing from memory with a rhythm-game highway and conventional drum notation.
 
-[Downloads](https://github.com/claudfuen/drumx/releases) · [Build locally](#build-locally) · [Curriculum](docs/curriculum.md) · [Roadmap](docs/learning-milestones.md) · [Changelog](CHANGELOG.md)
+[Latest downloads](#downloads) · [Build locally](#build-locally) · [Curriculum](docs/curriculum.md) · [Roadmap](docs/learning-milestones.md) · [Changelog](CHANGELOG.md)
 
 ![Native Drumx gameplay: eighth-note hi-hat, snare backbeat, and full-width kick](docs/images/gameplay-highway.png)
 
@@ -41,15 +46,19 @@ Checkpoints use repeated comparable takes at a lesson's prescribed tempo. Each r
 
 ## Downloads
 
+<!-- drumx:downloads:start -->
 [**Current release: preview-9ddcab48cd71**](https://github.com/claudfuen/drumx/releases/tag/preview-9ddcab48cd71) · [All releases](https://github.com/claudfuen/drumx/releases)
-
-CI builds both platforms from the same commit, executes the exported applications' checks, verifies the pair, and publishes an experimental prerelease with a commit-bound tag, ZIPs, checksums, and a build manifest. Release downloads persist independently of expiring CI logs. Both exported apps passed **10,781 checks** in the [current verified run](https://github.com/claudfuen/drumx/actions/runs/34728349618).
 
 | Package | Status |
 | --- | --- |
 | [**Download Mac / Apple Silicon**](https://github.com/claudfuen/drumx/releases/download/preview-9ddcab48cd71/Drumx-macos-arm64.zip) | Experimental shared app; ad-hoc signed, not notarized |
 | [**Download Windows / x64**](https://github.com/claudfuen/drumx/releases/download/preview-9ddcab48cd71/Drumx-windows-x86_64.zip) | Experimental shared app; unsigned |
 | **Native macOS app** | Current presentation baseline; build locally below |
+<!-- drumx:downloads:end -->
+
+CI publishes numbered versions such as **0.1.0-preview.34** after both platforms pass, then updates the download links above automatically. Every release includes immutable Git tags, ZIPs, checksums, and a build manifest. Downloads persist independently of expiring CI logs. Native Mac remains the presentation baseline and can be built locally below.
+
+The main-menu version opens **Build details**, including the complete Git commit and a copy action for bug reports. Both desktop packages share that exact version and commit. Local builds identify themselves as development builds and mark uncommitted changes. [Versioning and releases](docs/versioning.md)
 
 Extract the complete package before launching. License files and third-party notices are included. The native Mac and shared apps use separate progress stores; the shared app still has [known feature and presentation gaps](docs/desktop-preview.md). Apple Developer ID signing and notarization require the Leap Labs credentials described in the [signing guide](docs/apple-signing.md).
 
