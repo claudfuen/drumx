@@ -1,7 +1,7 @@
 # drumx
 
 [![Desktop CI](https://github.com/claudfuen/drumx/actions/workflows/desktop-preview.yml/badge.svg)](https://github.com/claudfuen/drumx/actions/workflows/desktop-preview.yml)
-[![Release](https://img.shields.io/github/v/release/claudfuen/drumx?include_prereleases&sort=semver&color=c9e87c)](https://github.com/claudfuen/drumx/releases)
+[![Release](https://img.shields.io/github/v/release/claudfuen/drumx?include_prereleases&sort=date&color=c9e87c)](https://github.com/claudfuen/drumx/releases)
 [![Downloads](https://img.shields.io/github/downloads/claudfuen/drumx/total?color=8acacd)](https://github.com/claudfuen/drumx/releases)
 [![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm_Noncommercial-c9e87c)](LICENSE-GUIDE.md)
 
