@@ -10,6 +10,8 @@ mkdir -p "$DRUMX_BUILD"
 xcrun swiftc -target "$DRUMX_TARGET" -swift-version 5 -warnings-as-errors -parse-as-library \
   "$DRUMX_ROOT/native/macos/DrumxControls.swift" \
   "$DRUMX_ROOT/native/macos/DrumxSettingsViews.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxCourse.swift" \
+  "$DRUMX_ROOT/native/macos/DrumxCourseViews.swift" \
   "$DRUMX_ROOT/native/macos/tests/DrumxSettingsControlChecks.swift" \
   -framework AppKit -o "$DRUMX_BUILD/settings-control-checks"
 # The fixture prohibits app activation and never orders its layout window.

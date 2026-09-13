@@ -29,8 +29,8 @@ struct DrumxLessonDefinition {
   let readingAnswer: Int
 }
 
-/// A small foundation unit. Access rules are owned by the progression model.
-/// Suggested practice adds up to 96 minutes across repeated short sessions.
+/// Foundations, introductory rudiments, and three-instrument coordination.
+/// Suggested practice totals 174 minutes across repetitions, not unique content.
 /// Playback, scoring, and notation should consume these same one-bar events.
 /// Guidance, tempo changes, attempt evidence, and readiness belong to the caller.
 enum DrumxCourse {
@@ -38,11 +38,15 @@ enum DrumxCourse {
     "Pulse and counts",
     "Build your backbeat",
     "Read, vary, and remember",
+    "Hands and rudiments",
+    "Make the groove your own",
   ]
 
   private static let quarterBeats: [Double] = [0, 1, 2, 3]
   private static let eighthBeats: [Double] = [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5]
   private static let eighthCounts = "1 & 2 & 3 & 4 &"
+  private static let doubles = ["R", "R", "L", "L", "R", "R", "L", "L"]
+  private static let paradiddle = ["R", "L", "R", "R", "L", "R", "L", "L"]
 
   private static func snare(_ beats: [Double], hand: String = "L") -> [DrumxLessonNote] {
     beats.map { DrumxLessonNote(beat: $0, pad: 1, hand: hand, velocity: 108) }
@@ -63,6 +67,16 @@ enum DrumxCourse {
     beats.enumerated().map { index, beat in
       DrumxLessonNote(beat: beat, pad: 1, hand: index.isMultiple(of: 2) ? "R" : "L",
         velocity: 100)
+    }
+  }
+
+  /// An original slow study of a conventional sticking. Moving suggested R to
+  /// hi-hat and L to snare makes the orchestration audible, not hand-verifiable.
+  private static func stickingStudy(_ hands: [String], orchestrated: Bool = false) -> [DrumxLessonNote] {
+    precondition(hands.count == eighthBeats.count)
+    return zip(eighthBeats, hands).map { beat, hand in
+      let pad = orchestrated && hand == "R" ? 0 : 1
+      return DrumxLessonNote(beat: beat, pad: pad, hand: hand, velocity: pad == 0 ? 88 : 100)
     }
   }
 
@@ -167,11 +181,11 @@ enum DrumxCourse {
 
     DrumxLessonDefinition(
       id: "alternating-eighths", version: "alternating-eighths-v1", chapter: 2,
-      title: "Let your hands take turns", subtitle: "Snare eighth notes, R then L.",
-      objective: "Play eight evenly spaced snare strokes with suggested alternating sticking.",
-      explanation: "Move the eighth-note rhythm to the snare. Play R L R L R L R L while counting 1 & 2 & 3 & 4 &. Each hand supplies every other note. This prepares a short fill; deeper rudiment technique comes in later units.",
+      title: "Single Stroke Roll", subtitle: "Let your hands take turns.",
+      objective: "Name the Single Stroke Roll and play eight even strokes with suggested alternating hands.",
+      explanation: "The Single Stroke Roll alternates R L. Here, play R L R L R L R L as snare eighth notes while counting 1 & 2 & 3 & 4 &. The sticking names the rudiment; eighth notes describe this exercise's spacing. This slow introduction also prepares a short fill.",
       counts: eighthCounts, suggestedBPM: 60, practiceMinutes: "Suggested 8 min",
-      techniqueTip: "Match the sound and spacing of the two hands. R/L is a self-check: the same snare MIDI note cannot tell the app which hand struck it.",
+      techniqueTip: "Listen for matching sound and spacing from both hands. R/L is a self-check, not a MIDI measurement. If the ands become uneven, revisit Find the and before adding speed.",
       events: alternatingSnare(eighthBeats),
       readingQuestion: "Following R L sticking, which hand plays the & of 1?",
       readingChoices: ["Right", "Both", "Left"], readingAnswer: 2),
@@ -209,6 +223,94 @@ enum DrumxCourse {
         alternatingSnare([2, 2.5, 3, 3.5])),
       readingQuestion: "Where does the snare fill begin in this one-bar exercise?",
       readingChoices: ["On beat 1", "On the & of 2", "On beat 3"], readingAnswer: 2),
+
+    DrumxLessonDefinition(
+      id: "double-stroke-open-roll", version: "double-stroke-open-roll-v1", chapter: 3,
+      title: "Double Stroke Open Roll", subtitle: "Two even strokes from each hand.",
+      objective: "Keep each pair evenly spaced in a slow introduction to double strokes.",
+      explanation: "The Double Stroke Open Roll repeats R R L L. Here, play R R L L R R L L as snare eighth notes, with two distinct strokes per hand. Each number and & gets one note. The timing stays like the Single Stroke Roll; the suggested hand sequence changes.",
+      counts: eighthCounts, suggestedBPM: 60, practiceMinutes: "Suggested 8 min",
+      techniqueTip: "Listen to each pair's second stroke: keep it clear and even. If the pulse slips, revisit Single Stroke Roll. Self-check the hands or ask a teacher; MIDI cannot verify sticking or controlled rebound. This is not a buzz-roll exercise.",
+      events: stickingStudy(doubles),
+      readingQuestion: "With R R L L eighths, which counts use the first left-hand pair?",
+      readingChoices: ["1 and the & of 1", "2 and the & of 2", "Only beat 4"], readingAnswer: 1),
+
+    DrumxLessonDefinition(
+      id: "move-the-doubles", version: "move-the-doubles-v1", chapter: 3,
+      title: "Move the doubles", subtitle: "One sticking, two sounds.",
+      objective: "Move the double-stroke pattern between hi-hat and snare without changing its spacing.",
+      explanation: "Keep R R L L R R L L in eighth notes. Place the suggested R strokes on closed hi-hat and L strokes on snare. Hear two hat notes, then two snare notes, repeated. This is orchestration: placing a rhythm on different instruments. Leave the foot out for this study.",
+      counts: eighthCounts, suggestedBPM: 60, practiceMinutes: "Suggested 8 min",
+      techniqueTip: "Listen for even spacing when the sound changes. If switching surfaces adds a gap, return to Double Stroke Open Roll on snare. Use a comfortable reach. The pad score checks instruments, not which hand played them.",
+      events: stickingStudy(doubles, orchestrated: true),
+      readingQuestion: "Which instrument plays both eighth notes on count 2 and its &?",
+      readingChoices: ["Hi-hat", "Bass drum", "Snare"], readingAnswer: 2),
+
+    DrumxLessonDefinition(
+      id: "single-paradiddle", version: "single-paradiddle-v1", chapter: 3,
+      title: "Single Paradiddle", subtitle: "Two singles, then a double.",
+      objective: "Learn R L R R L R L L while keeping every snare eighth note evenly spaced.",
+      explanation: "A Single Paradiddle combines singles and doubles: R L R R, then L R L L. In this slow study, one full sequence fills the bar in eighth notes. The first group starts on 1 and the second on 3. Keep the beat unchanged when one hand plays twice.",
+      counts: eighthCounts, suggestedBPM: 60, practiceMinutes: "Suggested 10 min",
+      techniqueTip: "Say the sticking, then listen for even notes through each double. Revisit Single Stroke Roll or Double Stroke Open Roll if needed. No accents are required here. Self-check your hands; a perfect MIDI timing score cannot verify the sticking.",
+      events: stickingStudy(paradiddle),
+      readingQuestion: "In this eighth-note paradiddle, where does the L R L L group begin?",
+      readingChoices: ["On beat 3", "On the & of 1", "On beat 4"], readingAnswer: 0),
+
+    DrumxLessonDefinition(
+      id: "move-the-paradiddle", version: "move-the-paradiddle-v1", chapter: 3,
+      title: "Move the paradiddle", subtitle: "Hear the sticking across the kit.",
+      objective: "Play the paradiddle's rhythm across hi-hat and snare with no gaps at the changes.",
+      explanation: "Use R L R R L R L L again, with suggested R on closed hi-hat and L on snare. The staff now shows which surface plays each eighth note. Listen for the different sounds revealing the two singles and the double. This coordination study is not the usual snare-on-2-and-4 backbeat.",
+      counts: eighthCounts, suggestedBPM: 60, practiceMinutes: "Suggested 10 min",
+      techniqueTip: "Keep each sound in its place without speeding up the doubles. If the surface changes distract you, revisit Single Paradiddle on snare. MIDI can check the surface sequence; hand choice and movement remain self or teacher checks.",
+      events: stickingStudy(paradiddle, orchestrated: true),
+      readingQuestion: "Which two counts contain the final pair of snare notes?",
+      readingChoices: ["1 and the & of 1", "3 and the & of 3", "4 and the & of 4"], readingAnswer: 2),
+
+    DrumxLessonDefinition(
+      id: "foot-under-paradiddle", version: "foot-under-paradiddle-v1", chapter: 4,
+      title: "Foot beneath the paradiddle", subtitle: "Same hands, add the downbeats.",
+      objective: "Add kick on 1 and 3 without disturbing the orchestrated paradiddle.",
+      explanation: "Keep the hi-hat and snare sequence from Move the paradiddle. Add bass drum on 1 and 3. On 1, kick meets hi-hat; on 3, it meets snare. The suggested leading hand changes while your foot keeps the same two counts. Read those aligned notes as simultaneous sounds.",
+      counts: eighthCounts, suggestedBPM: 60, practiceMinutes: "Suggested 12 min",
+      techniqueTip: "Listen for kick and snare arriving together on 3, then an even next hi-hat. If adding the foot disrupts your hands, revisit Move the paradiddle. MIDI checks the note arrivals, not hand choice, balance, or pedal technique.",
+      events: phrase(stickingStudy(paradiddle, orchestrated: true), kick([0, 2])),
+      readingQuestion: "Which two instruments are vertically aligned on beat 3?",
+      readingChoices: ["Hi-hat and snare", "Snare and bass drum", "Hi-hat and bass drum"], readingAnswer: 1),
+
+    DrumxLessonDefinition(
+      id: "four-on-the-floor", version: "four-on-the-floor-v1", chapter: 4,
+      title: "Four on the floor", subtitle: "A bass-drum note on every beat.",
+      objective: "Keep hi-hat eighths and the snare backbeat over four steady quarter-note kicks.",
+      explanation: "Return to the familiar eighth-note hi-hat and snare on 2 and 4. This time the kick plays all four numbered beats. Four on the floor names that steady bass-drum pattern. On 2 and 4, hi-hat, snare, and kick arrive together; the hat still plays each & between them.",
+      counts: eighthCounts, suggestedBPM: 60, practiceMinutes: "Suggested 8 min",
+      techniqueTip: "Listen for one aligned attack from all three instruments on the backbeats. Keep the intervening hats even. If the extra kicks interrupt your hands, revisit Your first backbeat. Stay balanced; pedal technique remains a self or teacher check.",
+      events: phrase(hat(eighthBeats), snare([1, 3]), kick(quarterBeats)),
+      readingQuestion: "How many different instruments play together on beat 2?",
+      readingChoices: ["Three", "One", "Two"], readingAnswer: 0),
+
+    DrumxLessonDefinition(
+      id: "lead-into-one", version: "lead-into-one-v1", chapter: 4,
+      title: "Lead into one", subtitle: "An extra kick before the barline.",
+      objective: "Place a kick on the & of 4 and land the next downbeat without rushing.",
+      explanation: "Play the basic groove with hi-hat eighths, snare on 2 and 4, and kick on 1 and 3. Add a kick on the & of 4. That extra note anticipates the next bar's 1. Count 4 and 1 evenly: the barline does not shorten the space between the two kick strokes.",
+      counts: eighthCounts, suggestedBPM: 60, practiceMinutes: "Suggested 10 min",
+      techniqueTip: "Listen to the gap from the last kick to the next first beat. Keep it one eighth note long. If the pedal pair feels crowded, revisit Kick on the and. Keep a comfortable motion; timing does not certify foot technique.",
+      events: phrase(hat(eighthBeats), snare([1, 3]), kick([0, 2, 3.5])),
+      readingQuestion: "Which count places the added kick immediately before the next bar?",
+      readingChoices: ["Beat 3", "The & of 4", "Beat 4"], readingAnswer: 1),
+
+    DrumxLessonDefinition(
+      id: "between-the-beats", version: "between-the-beats-v1", chapter: 4,
+      title: "Between the beats", subtitle: "Move the hi-hat to every and.",
+      objective: "Keep the numbered beats steady while the hi-hat plays only halfway between them.",
+      explanation: "Keep kick on 1 and 3 and snare on 2 and 4. Play closed hi-hat only on each &: these are the offbeats in this exercise. The first beat's upper voice starts with an eighth rest, followed by a hat note. Begin at 48 BPM to give this new coordination more room.",
+      counts: eighthCounts, suggestedBPM: 48, practiceMinutes: "Suggested 12 min",
+      techniqueTip: "Listen for even spacing from kick or snare to hi-hat and back again. Avoid pulling the hats onto the numbered beats. If the rests become confusing, revisit Give the groove more space, then count this pattern aloud before playing.",
+      events: phrase(hat([0.5, 1.5, 2.5, 3.5]), snare([1, 3]), kick([0, 2])),
+      readingQuestion: "In the first beat's upper voice, what comes before the hi-hat note?",
+      readingChoices: ["A simultaneous snare note", "A quarter-note hat", "An eighth rest"], readingAnswer: 2),
   ]
 
   static func lesson(id: String) -> DrumxLessonDefinition? {

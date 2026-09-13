@@ -7,7 +7,7 @@ import Foundation
     let lessons: [[String: Any]] = DrumxCourse.lessons.map { lesson in
       ["id":lesson.id,"version":lesson.version,"chapter":lesson.chapter,"title":lesson.title,
        "subtitle":lesson.subtitle,"objective":lesson.objective,"explanation":lesson.explanation,
-       "counts":lesson.counts,"bpm":lesson.suggestedBPM,"technique_tip":lesson.techniqueTip,
+       "counts":lesson.counts,"bpm":lesson.suggestedBPM,"practice_minutes":lesson.practiceMinutes,"technique_tip":lesson.techniqueTip,
        "reading_question":lesson.readingQuestion,"reading_choices":lesson.readingChoices,"reading_answer":lesson.readingAnswer,
        "events":lesson.events.map { ["beat":$0.beat,"pad":$0.pad,"velocity":$0.velocity,"hand":$0.hand ?? ""] as [String:Any] }]
     }

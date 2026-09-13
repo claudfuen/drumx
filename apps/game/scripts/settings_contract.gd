@@ -158,6 +158,21 @@ static func run_checks(host: Node) -> Dictionary:
 	check.call(path._nodes[1].focus_mode == Control.FOCUS_ALL and not path._nodes[1].disabled, "Locked steps remain keyboard-inspectable")
 	path._inspect(0)
 	check.call(not path._play.focus_neighbor_bottom.is_empty() and not path._nodes[0].focus_neighbor_top.is_empty(), "Course action and path have explicit vertical focus routes")
+	path._turn_page(1)
+	check.call(path.chapter_page == 1 and path.featured_index == 12, "Next chapters reveal the first later lesson")
+	check.call(path._nodes.filter(func(node): return node.visible).size() == 8, "Second page keeps eight later steps instead of squeezing twenty into a row")
+	check.call(path._next_page.disabled and not path._previous_page.disabled and plays.count == 0, "Paging only inspects, with explicit final boundary")
+	path._focus_step(11)
+	check.call(path.chapter_page == 0 and path._nodes[11].has_focus(), "Keyboard navigation reveals and focuses the preceding chapter page")
+	path._inspect(controller.model.course.lessons.size() - 1)
+	check.call(path.chapter_page == 1 and path._nodes[19].visible, "Resuming or inspecting the last lesson opens its page")
+	for viewport in [Vector2(980, 540), Vector2(1440, 780), Vector2(1840, 1180)]:
+		path.size = viewport
+		path._layout()
+		for node in path._nodes:
+			if node.visible:
+				check.call(node.size.x >= 44 and node.size.y >= 44, "Expanded course nodes retain useful pointer targets")
+				check.call(Rect2(Vector2.ZERO, path.size).encloses(Rect2(path.composition.position + node.position, node.size)), "Visible course steps stay within the viewport")
 	for item in path._labels:
 		check.call(item.view.get_theme_font_size("font_size") >= 11, "Learning path metadata remains readable at minimum size")
 	harness.queue_free()

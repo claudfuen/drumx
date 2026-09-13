@@ -1,6 +1,6 @@
 # Play the foundation course
 
-The Mac prototype connects welcome, a main menu, local players, settings, and a 12-lesson foundation journey: hear, count, read, play, review, and return. **M1 remains active.** The integrated experience needs validation with a real beginner and physical kit; hardware latency and sustained frame pacing are still unmeasured. See the [milestone checklist](learning-milestones.md#m1-one-complete-beginner-learning-loop).
+The Mac prototype connects welcome, a main menu, local players, settings, and a 20-lesson foundation journey: hear, count, read, play, review, and return. **M1 remains active.** The integrated experience needs validation with a real beginner and physical kit; hardware latency and sustained frame pacing are still unmeasured. See the [milestone checklist](learning-milestones.md#m1-one-complete-beginner-learning-loop).
 
 ## Build and run
 
@@ -28,7 +28,7 @@ There is no five-minute session timer. Each attempt is one finite practice block
 | Destination | Use it for |
 | --- | --- |
 | Main menu → Continue | Open the selected player's saved lesson. It does not start audio immediately. |
-| Main menu → Learn | Inspect a 12-step path grouped into three chapters. One featured step shows its objective, best saved stars, and play action or lock reason. |
+| Main menu → Learn | Inspect a 20-step path grouped into five chapters, with at most three chapters visible per page. One featured step shows its objective, best saved stars, and play action or lock reason. |
 | Main menu → Settings | Configure Your kit, Sound, Playing, and Players & progress on a dedicated page. |
 | Player name on the main menu | Switch, add, or rename a local player. The same manager is available in Settings. |
 
@@ -46,21 +46,25 @@ Stopping before the phrase ends does not archive a completed take, set a persona
 | --- | --- |
 | Pulse and counts | Find the pulse; Find the and; Give silence its beat; Bring in the bass drum. |
 | Build your backbeat | Hand meets foot; Add the backbeat; Your first backbeat; Give the groove more space. |
-| Read, vary, and remember | Let your hands take turns; Kick on the and; Keep counting through a gap; Groove into a fill. |
+| Read, vary, and remember | Single Stroke Roll; Kick on the and; Keep counting through a gap; Groove into a fill. |
+| Hands and rudiments | Double Stroke Open Roll; Move the doubles; Single Paradiddle; Move the paradiddle. |
+| Make the groove your own | Foot under a paradiddle; Four on the floor; Lead into one; Between the beats. |
 
-These lessons introduce quarter/eighth notes, rests, simultaneous instruments, a backbeat, a variation, and a short fill. Select any numbered node to inspect its lesson, including locked steps. **Play this step** opens preparation only when that lesson is available. The named-rudiment course remains a [proposal](curriculum.md).
+These lessons introduce quarter/eighth notes, rests, simultaneous instruments, a backbeat, a variation, and a short fill. Select any numbered node to inspect its lesson, including locked steps. **Play this step** opens preparation only when that lesson is available. The [curriculum guide](curriculum.md) covers the new named rudiments, listening tasks, and repair routes.
 
-The estimates total **96 suggested practice minutes**, spread across repetitions, comfortable tempos, phrase lengths, and attempts with less guidance. They are not 96 minutes of unique recordings, a timed course, or a promise of how quickly a player will learn.
+The estimates total **174 suggested practice minutes**, spread across repetitions, comfortable tempos, phrase lengths, and attempts with less guidance. They are not 174 minutes of unique recordings, a timed course, or a promise of how quickly a player will learn.
 
 Each lesson's audio demonstration, scoring targets, and original notation use the same versioned events in [DrumxCourse.swift](../native/macos/DrumxCourse.swift). A bar always lasts four quarter-note beats, including its silent portions. The demonstration is not scored or saved as the player's performance.
 
 ### Open the next step
 
-For a new player, Find the pulse is the first available lesson. Its successor opens after the **72 BPM guided checkpoint**: two qualifying among three comparable takes, each at least 16 bars with 95% matched targets, 90% inside ±50 ms, and at most 2% extras. Later lessons retain the prototype **at least four bars / 80% matched** rule. To enter chapters 2 or 3, also answer the preceding chapter's final lesson reading question correctly. The featured locked step and the review explain the remaining prerequisite.
+For a new player, Find the pulse is the first available lesson. Its successor opens after the **72 BPM guided checkpoint**: two qualifying among three comparable takes, each at least 16 bars with 95% matched targets, 90% inside ±50 ms, and at most 2% extras.
 
-For those later lessons, matched notes use the normal instrument/timing matching window. Their rule does not require the tighter on-time judgment, a star count, or a specific tempo. Extra hits affect the game score but do not reduce the unlock ratio. One-bar takes can record practice evidence and scores, but cannot clear this progression step. Recall and technique self-checks remain separate evidence.
+Other lessons require **16 guided bars at the authored tempo**, with two qualifying takes within three comparable attempts. Each required instrument must match at least 80% of its targets and play at least 70% within ±50 ms. Total extras must be no greater than 10% of expected targets. The original authored chart size and per-instrument counts must agree with the saved take. A dense hi-hat part cannot hide an absent kick. Choose **Use checkpoint settings** to prepare the required conditions without starting playback.
 
-**Step complete** on the journey and **lessons cleared** on the main menu describe the applicable lesson unlock rule. The pulse checkpoint uses the new tempo policy; later steps retain the prototype rule. The four-bar/80% threshold is an untested starting hypothesis, not a validated learning standard. Existing saved positions and earlier practice preserve access; old lesson revisions do not certify the current revision. Broader [learning readiness](learning-milestones.md#readiness-is-separate-from-the-game-score) still needs counting, reading, recall, revisits, and technique evidence.
+Entering each later chapter also requires the preceding chapter's final reading check. Short repairs, manual tempo choices, and recall can record practice and scores without passing the guided checkpoint. Input, mapping, assistance, monitoring, calibration, and hand-hint conditions stay separate when comparing evidence. The reading answer and technique self-check are distinct records.
+
+**Step complete** and **lessons cleared** describe this progression policy, not mastery. Earlier access is preserved on upgrade; older scores without per-instrument evidence do not certify the new checkpoint. A later difficult take does not erase an earned checkpoint, while corrected results are reevaluated. Thresholds remain untested product hypotheses. Broader [learning readiness](learning-milestones.md#readiness-is-separate-from-the-game-score) also needs counting, reading, recall, revisits, and technique evidence.
 
 ### Local players and progress
 
@@ -198,7 +202,7 @@ Captured MIDI can arrive after a display update or the end of a take. The core c
 | The wrong instrument responds | Select its pad in Settings → Your kit, choose Add MIDI note, and strike again. A conflicting note moves from its former owner; check both pads. |
 | The kit reports a note but no instrument responds | An unmapped note still appears with its velocity. Add it to the intended pad, then strike again to verify the mapping. |
 | MIDI lights respond but you hear no drums | Enable app monitoring in Settings → Sound and check volume and the Mac output. If using module audio, check its separate listening route. |
-| The next lesson is locked | For Find the pulse, earn two qualifying guided 72 BPM takes. Later lessons need at least four bars with 80% of notes matched. At a chapter boundary, pass the preceding lesson's reading check too. Follow the reason shown on the featured step or review. |
+| The next lesson is locked | For Find the pulse, earn two qualifying guided 72 BPM takes. Later lessons need two qualifying guided 16-bar takes at their authored tempo, with coverage and timing on every required instrument. Use checkpoint settings to prepare that plan. At a chapter boundary, pass the preceding lesson's reading check too. Follow the reason shown on the featured step or review. |
 | You hear two drum sounds per strike | Choose app monitoring or module monitoring rather than hearing both paths. |
 | A take stops when a device changes | Check the selected input and audio output, then start a fresh count-in. |
 | Timing looks consistently shifted | Check the listening route and fixed input offset. Compare a repeatable setup before changing calibration. |
@@ -213,6 +217,6 @@ bash scripts/test-native.sh
 
 The checks cover the portable scoring core, MIDI parsing and virtual input, mapping/receipt behavior, drum-menu gestures, practice-plan migration, sample integrity, native audio/demo behavior, lesson review/history, course-content contracts, local progress, unlock sequencing, course integration, signed count-in travel, shared projection, and capture-time boundaries. Audio startup is not a measurement of audible output timing. Test output establishes what passed in a particular environment; it does not substitute for an observed beginner using the whole app.
 
-The custom Mac interface uses AppKit. The C++ core and C consumer have passed hosted macOS/Windows Debug and Release contracts, plus Mac sanitizers; the [portable build guide](cross-platform.md) records the run and commands. The Swift lesson/progression models and interface/input/audio layers still need a Windows strategy. Choose the production engine before large content expansion. The [rendering plan](rendering-plan.md) describes the next experiment; [menu architecture](menu-architecture.md) records the navigation boundary. Scoring currently runs on the main thread with preserved input timestamps. That protects timestamp-based grading after a stall, while visible feedback can still arrive late.
+The custom Mac interface uses AppKit. The C++ core and C consumer have passed hosted macOS/Windows Debug and Release contracts, plus Mac sanitizers; the [portable build guide](cross-platform.md) records the run and commands. The experimental shared Godot app consumes verified course JSON and has native Mac/Windows MIDI/audio adapters and paired exported-app CI. Full visual parity and physical-device acceptance remain open. Validate longer phrases and new notation in both renderers before further content expansion. The [rendering plan](rendering-plan.md) describes the next experiment; [menu architecture](menu-architecture.md) records the navigation boundary. Scoring currently runs on the main thread with preserved input timestamps. That protects timestamp-based grading after a stall, while visible feedback can still arrive late.
 
-Still ahead: validating the complete beginner journey and real-kit reliability, named rudiments, scheduled retention and transfer checks, full-kit scoring and articulation, musical backing tracks, production rendering, Windows platform layers, and public release packaging. Building the first foundation unit advances M1; it does not close the [remaining acceptance checks](learning-milestones.md#m1-one-complete-beginner-learning-loop).
+Still ahead: validating the complete beginner journey and real-kit reliability, longer phrases and sixteenths, scheduled retention and transfer checks, full-kit scoring and articulation, musical backing tracks, production rendering, Windows physical-device and presentation acceptance, and public release packaging. Building the first foundation unit advances M1; it does not close the [remaining acceptance checks](learning-milestones.md#m1-one-complete-beginner-learning-loop).

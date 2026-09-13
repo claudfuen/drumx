@@ -10,7 +10,7 @@ This document describes navigation and its expansion boundaries. The [native gui
 | --- | --- | --- |
 | Welcome | Establish a starting point | Name a local player, try the keyboard, or connect a kit. Let's play opens the main menu. |
 | Main menu | Choose what to do now | Continue opens the saved lesson; Learn explores Foundations; Settings opens preferences. The player name identifies whose progress is active. |
-| Learn | See the path ahead | A 12-node path groups the lessons into three chapters. Selecting any node, including a locked step, updates one featured lesson. Its play action opens preparation only when available. |
+| Learn | See the path ahead | A 12-node path groups the lessons into five chapters. Selecting any node, including a locked step, updates one featured lesson. Its play action opens preparation only when available. |
 | Lesson | Understand and prepare | Objective, counts, original staff study, demonstration, and a lesson check. Start playing uses the saved plan; collapsed Practice options holds tempo, phrase length, and assistance. |
 | Practice stage | Settle into the pattern | A four-beat count-in leads into a finite block, with one musical timeline, stable kit positions, selected aids, and captured input. New lessons default to 16 bars at their suggested tempo. |
 | Review | Choose the next useful action | Inspect the take, retry, slow down, isolate a bar, reduce help, answer a reading check, or open the next available lesson. |
@@ -20,7 +20,7 @@ This document describes navigation and its expansion boundaries. The [native gui
 
 The responsive main menu carries the return-to-practice action. Learn presents one featured step and a compact path so exploration has a clear destination. Its five-star display shows the player's best saved result for the current lesson version across any conditions; review keeps condition-matched personal bests. Actual staff notation remains in the lesson.
 
-The default 16-bar block lasts about 53–64 seconds at the unit's 60–72 BPM starting tempos, plus count-in. It gives a player more uninterrupted repetition before review. One-, four-, and eight-bar choices remain available in Practice options; one-bar repair is still a finite take. The cadence is a product hypothesis, not a learning gate or an endless automatic loop. See the [practice-loop note](first-practice-loop.md).
+The default 16-bar block lasts about 53–80 seconds at the unit's 48–72 BPM starting tempos, plus count-in. It gives a player more uninterrupted repetition before review. One-, four-, and eight-bar choices remain available in Practice options; one-bar repair is still a finite take. The cadence is a product hypothesis, not a learning gate or an endless automatic loop. See the [practice-loop note](first-practice-loop.md).
 
 ## Navigation and interruption rules
 
@@ -53,13 +53,13 @@ Adding a MIDI note preserves the selected instrument's other aliases and moves a
 
 ## Unlocks invite another step
 
-The current foundation policy is deliberately small. A valid completed take of **at least four bars**, with **80% of expected notes matched**, clears a step. A chapter transition also needs a correct reading response for the preceding chapter's final lesson. One-bar repair work remains available but does not clear the step. Every locked lesson names its prerequisite.
+The pulse step has a coached 72 BPM checkpoint. Every later step uses its authored tempo, 16 bars, and Guided notes, with two qualifying takes within three comparable attempts. Each required instrument needs 80% matched and 70% on time; total extras must stay within 10% of expected targets. A chapter transition also needs a correct reading response for the preceding final lesson. **Use checkpoint settings** prepares the required conditions without launching a take.
 
-Matching uses the ordinary instrument/timing window. The tighter on-time grade, star tiers, and extra-hit penalty belong to the game score; they do not set this unlock ratio. Neither click-only recall nor the technique checkbox is required by the current access rule. **Step complete** and **lessons cleared** are game progression labels, not mastery claims.
+Short repair, manual tempo, and reduced-guidance practice remain useful without clearing that guided checkpoint. Scores and technique self-checks remain separate. Existing access is frozen on upgrade without treating old aggregate scores as the new per-instrument evidence. Later difficult practice does not erase an earned checkpoint; corrected attempts are reevaluated.
 
-Saved positions and earlier practice preserve existing players' access when this policy is introduced. Older lesson revisions can retain access without passing the current revision's checks. Keep access, current-version clearance, reading, recall, and technique evidence distinct when content changes.
+The rules are product hypotheses awaiting beginner observation. Broader readiness still needs counts, reading, reduced-aid performance, later recall, transfer, and technique observation. See the [curriculum review and gate](curriculum-review.md).
 
-The four-bar/80% rule is a **starting hypothesis not yet validated with beginners**. Observe whether it provides useful challenge and momentum, then refine it using learner evidence. Broader readiness needs counts, reading, reduced-aid performance, later recall, transfer, and appropriate technique observation. Do not quietly replace that evidence with stars or a higher speed target.
+The path displays at most three chapters per page, with one featured lesson. Previous/next chapter-page controls and a visible range make the remaining chapters discoverable. Keyboard movement can cross page boundaries; resuming or recommending a lesson reveals its chapter. Keep lesson targets readable rather than compressing an expanding course into one diagram.
 
 ## Expansion without a larger front door
 
@@ -77,7 +77,7 @@ The lasting hierarchy is **Learn → course → chapter → lesson → practice 
 
 Menus, cards, selectors, toggles, and sliders should share the game's typography, spacing, colors, and state treatments. Custom appearance must retain meaningful keyboard focus, value changes, readable disabled states, accessible labels, and reduced-motion behavior. Hover can reinforce an action; it must not be the only way to discover one. Locked steps need text, not color alone.
 
-The current interface is a custom **Swift/AppKit Mac shell**. AppKit controls do not become a Windows interface because they are drawn differently. The **C++ scoring core and C interface passed hosted macOS/Windows build and test contracts**; authored content, progression, and presentation are separated conceptually, but the current lesson and progress models are Swift. They need extraction or porting. Windows also needs its own interface, input, audio, packaging, and hardware validation. See the [cross-platform baseline](cross-platform.md#what-has-been-verified) for the actual CI evidence and its limits.
+The current interface is a custom **Swift/AppKit Mac shell**. AppKit controls do not become a Windows interface because they are drawn differently. The **C++ scoring core and C interface pass hosted macOS/Windows contracts**. The experimental Godot app consumes verified JSON exported from the Swift lesson source and uses native input/audio adapters on both systems. Both exported executables run in CI. Presentation parity, full profile-feature parity, physical hardware, and release acceptance remain open. See the [cross-platform baseline](cross-platform.md#what-has-been-verified) for the actual CI evidence and its limits.
 
 Choose the production renderer/engine **before large content expansion**. Carry this navigation and learning contract into that decision, then prove a representative launch → lesson → play → review → return slice with authoritative native timing, accessible controls, and reliable saves. See the [rendering plan](rendering-plan.md). Physical-kit latency, sustained frame pacing, and a real beginner's complete journey remain unverified.
 

@@ -16,8 +16,9 @@ struct DrumxUnlockState {
 /// LessonAttempt has no transport flags: archive admission is the authority for
 /// natural completion and exclusion of demonstrations, not guessed device names.
 enum DrumxUnlocks {
-  static let minimumBars = 4
+  static let minimumBars = 16
   static let minimumMatchPercent = 80
+  static let readinessPolicyVersion = 1
 
   static func evaluate(course: [DrumxLessonDefinition], history: [LessonAttempt],
                        progress: DrumxProgress) -> DrumxUnlockState {
@@ -34,7 +35,8 @@ enum DrumxUnlocks {
         && (1...24).contains($0.expected / $0.settings.bars)
     }
     var cleared = Set<String>(), practised = Set<String>(), reading = Set<String>(), recall = Set<String>()
-    var preservedThrough = 0
+    let frozenAccess = progress.selectedProfile.legacyAccessThrough
+    var preservedThrough = course.firstIndex(where: { $0.id == frozenAccess }) ?? 0
     for (index, lesson) in course.enumerated() {
       let current = validHistory.filter {
         $0.settings.lessonVersion == lesson.version
@@ -44,13 +46,23 @@ enum DrumxUnlocks {
         if DrumxTempoCoach.checkpointEarned(history: current) { cleared.insert(lesson.id) }
         // The prior rule already opened lesson two. Preserve that access without
         // relabelling legacy records as evidence for today's coached checkpoint.
-        if current.contains(where: {
-          $0.settings.tempoPolicyVersion == nil && $0.settings.bars >= minimumBars
+        if frozenAccess == nil, current.contains(where: {
+          $0.settings.tempoPolicyVersion == nil && $0.settings.readinessPolicyVersion == nil && $0.settings.bars >= 4
             && $0.matched * 5 >= $0.expected * 4
         }) { preservedThrough = max(preservedThrough, min(index + 1, course.count - 1)) }
-      } else if current.contains(where: {
-        $0.settings.bars >= minimumBars && $0.matched * 5 >= $0.expected * 4
-      }) { cleared.insert(lesson.id) }
+      } else {
+        if readinessStatus(lesson: lesson, history: current).checkpoint { cleared.insert(lesson.id) }
+        // Legacy totals preserve access under their original rule, never a new
+        // per-instrument checkpoint. New stamped takes cannot enter this branch.
+        if frozenAccess == nil, current.contains(where: {
+          $0.settings.readinessPolicyVersion == nil && $0.settings.bars >= 4
+            && $0.matched * 5 >= $0.expected * 4
+        }), index + 1 < course.count,
+          course[index + 1].chapter == lesson.chapter
+            || progress.readingEvidence(lessonID: lesson.id, version: lesson.version) != nil {
+          preservedThrough = max(preservedThrough, index + 1)
+        }
+      }
 
       if progress.practiceEvidence(lessonID: lesson.id, version: lesson.version) != nil
         || current.contains(where: { $0.matched > 0 }) { practised.insert(lesson.id) }
@@ -68,11 +80,11 @@ enum DrumxUnlocks {
         $0.lessonID == lesson.id && $0.kind == .completedPractice
       }
       let archivedPractice = validHistory.contains {
-        $0.matched > 0 && archivedVersion($0.settings.lessonVersion, belongsTo: lesson)
+        $0.settings.readinessPolicyVersion == nil && $0.matched > 0 && archivedVersion($0.settings.lessonVersion, belongsTo: lesson)
           && ($0.settings.lessonVersion != lesson.version
             || $0.expected == lesson.events.count * $0.settings.bars)
       }
-      if durablePractice || archivedPractice || progress.selectedProfile.lastLessonID == lesson.id {
+      if frozenAccess == nil && (durablePractice || archivedPractice || progress.selectedProfile.lastLessonID == lesson.id) {
         preservedThrough = max(preservedThrough, index)
       }
     }
@@ -110,10 +122,78 @@ enum DrumxUnlocks {
       practisedIDs: practised, readingIDs: reading, recallIDs: recall)
   }
 
-  private static func practiceAction(_ lesson: DrumxLessonDefinition) -> String {
+  static func practiceAction(_ lesson: DrumxLessonDefinition) -> String {
     lesson.version == DrumxTempoCoach.lessonVersion
       ? "Earn the 72 BPM checkpoint in \(lesson.title): two steady 16-bar guided takes in three comparable attempts."
-      : "Finish \(lesson.title): 4+ bars with at least 80% of notes matched."
+      : "\(lesson.title): two steady 16-bar guided takes at \(Int(lesson.suggestedBPM)) BPM in three comparable attempts. Each instrument needs 80% matched and 70% on time; extras stay within 10%."
+  }
+
+  /// Call after the selected player's history opens and before any new take or
+  /// resume mutation. Failed persistence must remain visible to the controller.
+  @discardableResult
+  static func migrateLegacyAccess(course: [DrumxLessonDefinition], history: [LessonAttempt],
+                                  progress: DrumxProgress) -> Bool {
+    guard progress.selectedProfile.legacyAccessThrough == nil else { return true }
+    let state = evaluate(course: course, history: history, progress: progress)
+    guard let frontier = course.last(where: { state.availableIDs.contains($0.id) }) else { return false }
+    return progress.freezeLegacyAccess(through: frontier.id)
+  }
+
+  struct ReadinessStatus {
+    let passing: Int
+    let recent: Int
+    let checkpoint: Bool
+  }
+
+  /// Two of the latest three complete takes under exactly the same captured
+  /// conditions. This measures repeatable pattern playing, not hand technique.
+  static func readinessStatus(lesson: DrumxLessonDefinition, history: [LessonAttempt],
+                              settings: TakeSettings? = nil) -> ReadinessStatus {
+    var unique: [UUID: LessonAttempt] = [:]
+    for attempt in history { unique[attempt.id] = attempt }
+    let candidates = unique.values.filter {
+      DrumxRunScore(attempt: $0).isComplete && $0.settings.lessonVersion == lesson.version
+        && $0.settings.readinessPolicyVersion == readinessPolicyVersion
+        && $0.settings.mode == 0 && $0.settings.bars == minimumBars
+        && abs($0.settings.tempo - lesson.suggestedBPM) < 0.000001
+        && authoredPads($0, lesson: lesson)
+        && (settings == nil || $0.settings == settings)
+    }.sorted { $0.endedAt < $1.endedAt }
+    var groups: [[LessonAttempt]] = []
+    for attempt in candidates {
+      if let group = groups.firstIndex(where: { $0.first?.settings == attempt.settings }) {
+        groups[group].append(attempt)
+      } else { groups.append([attempt]) }
+    }
+    var best = ReadinessStatus(passing: 0, recent: 0, checkpoint: false)
+    var earned = false
+    for group in groups {
+      for end in group.indices {
+        let start = max(0, end - 2)
+        if group[start...end].filter({ steady($0) }).count >= 2 { earned = true }
+      }
+      let recent = group.suffix(3)
+      let passing = recent.filter { steady($0) }.count
+      if passing > best.passing || passing == best.passing && recent.count > best.recent {
+        best = ReadinessStatus(passing: passing, recent: recent.count, checkpoint: passing >= 2)
+      }
+    }
+    return ReadinessStatus(passing: best.passing, recent: best.recent, checkpoint: earned)
+  }
+
+  private static func authoredPads(_ attempt: LessonAttempt, lesson: DrumxLessonDefinition) -> Bool {
+    guard let pads = attempt.pads, pads.count == 3,
+      attempt.expected == lesson.events.count * attempt.settings.bars else { return false }
+    return (0..<3).allSatisfy { pad in
+      pads[pad].expected == lesson.events.filter({ $0.pad == pad }).count * attempt.settings.bars
+    }
+  }
+
+  private static func steady(_ attempt: LessonAttempt) -> Bool {
+    guard let pads = attempt.pads, attempt.extra <= attempt.expected / 10 else { return false }
+    return pads.filter({ $0.expected > 0 }).allSatisfy {
+      $0.matched * 100 >= $0.expected * 80 && $0.onTime * 100 >= $0.expected * 70
+    }
   }
 
   private static func readingAction(_ lesson: DrumxLessonDefinition) -> String {

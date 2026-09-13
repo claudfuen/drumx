@@ -86,6 +86,9 @@ struct DrumxPlayerProfile: Codable, Equatable, Identifiable {
   fileprivate let usesLegacyHistory: Bool
   fileprivate(set) var pulsePractice: DrumxPulsePractice? = nil
 
+  /// Frozen before the first new-policy take. Nil means this profile still needs migration.
+  fileprivate(set) var legacyAccessThrough: String? = nil
+
   var lastLessonID: String { resume.lessonID }
 
   /// History stays in its existing store. This model never reads or rewrites takes.
@@ -100,6 +103,7 @@ struct DrumxPlayerProfile: Codable, Equatable, Identifiable {
 
   fileprivate var isValid: Bool {
     guard pulsePractice?.isValid ?? true,
+      legacyAccessThrough.map(validProgressIdentifier) ?? true,
       validPlayerName(name), name == name.trimmingCharacters(in: .whitespacesAndNewlines),
       createdAt.timeIntervalSinceReferenceDate.isFinite, resume.isValid, checks.count <= 2048,
       checks.allSatisfy({ $0.isValid && $0.recordedAt >= createdAt })
@@ -214,7 +218,7 @@ final class DrumxProgress {
       return nil
     }
     let player = DrumxPlayerProfile(id: UUID(), name: name, createdAt: date,
-      hasCompletedWelcome: false, resume: PracticeResume(), checks: [], usesLegacyHistory: false)
+      hasCompletedWelcome: false, resume: PracticeResume(), checks: [], usesLegacyHistory: false, legacyAccessThrough: "find-the-pulse")
     guard persist(profiles: profiles + [player], selectedID: player.id) else { return nil }
     return player
   }
@@ -245,6 +249,15 @@ final class DrumxProgress {
     }
     guard name != selectedProfile.name else { return true }
     return updateSelected { $0.name = name }
+  }
+
+  /// Snapshot the old course frontier once. Current practice/resume flags never
+  /// increase this value, so free practice cannot masquerade as legacy access.
+  @discardableResult
+  func freezeLegacyAccess(through lessonID: String) -> Bool {
+    guard validProgressIdentifier(lessonID) else { return false }
+    guard selectedProfile.legacyAccessThrough == nil else { return true }
+    return updateSelected { $0.legacyAccessThrough = lessonID }
   }
 
   @discardableResult

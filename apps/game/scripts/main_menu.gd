@@ -116,7 +116,7 @@ var chapter_index := 0
 var player := "Player 1"
 var unlocked := 1
 var cleared := 0
-var total := 12
+var total := 0
 var label_font := make_font(500)
 var title_font := make_font(600)
 var caption_font: FontVariation

@@ -30,6 +30,9 @@ private final class CoursePathButton: NSButton {
   var cleared = false { didSet { needsDisplay = true } }
   var available = true { didSet { needsDisplay = true } }
   var primary = false
+  var navigationControl = false
+  var onNavigate: ((Int) -> Void)?
+  var onPage: ((Int) -> Void)?
   var drawingScale: CGFloat = 1 { didSet { needsDisplay = true } }
   private var hovered = false
   private var tracking: NSTrackingArea?
@@ -47,7 +50,9 @@ private final class CoursePathButton: NSButton {
   override func mouseExited(with event: NSEvent) { hovered = false; needsDisplay = true }
   override func resetCursorRects() { if isEnabled { addCursorRect(bounds, cursor: .pointingHand) } }
   override func keyDown(with event: NSEvent) {
-    if event.keyCode == 36 || event.keyCode == 76 { performClick(nil) }
+    if event.keyCode == 123 || event.keyCode == 124 { onNavigate?(event.keyCode == 123 ? -1 : 1) }
+    else if event.keyCode == 116 || event.keyCode == 121 { onPage?(event.keyCode == 116 ? -1 : 1) }
+    else if event.keyCode == 36 || event.keyCode == 76 { performClick(nil) }
     else { super.keyDown(with: event) }
   }
   override func draw(_ dirtyRect: NSRect) {
@@ -65,11 +70,11 @@ private final class CoursePathButton: NSButton {
     path.fill()
     (focused || selected ? CourseInk.lime : CourseInk.paper.withAlphaComponent(active ? 0.3 : 0.10)).setStroke()
     path.lineWidth = focused ? 2 : 1; path.stroke()
-    let color = primary && isEnabled ? CourseInk.ink : available ? CourseInk.paper : CourseInk.muted
+    let color = primary && isEnabled ? CourseInk.ink : available && isEnabled ? CourseInk.paper : CourseInk.muted
     CourseInk.text(title, in: NSRect(x: 8 * scale, y: bounds.midY - (primary ? 12 : 11) * scale,
-      width: bounds.width - 16 * scale, height: 28 * scale), size: (primary ? 18 : 17) * scale,
+      width: bounds.width - 16 * scale, height: 28 * scale), size: (primary ? 18 : navigationControl ? 13 : 17) * scale,
       color: color, weight: .semibold, alignment: .center)
-    if !primary {
+    if !primary && !navigationControl {
       let width: CGFloat = cleared ? 20 : 12
       let marker = NSBezierPath(roundedRect: NSRect(x: bounds.midX - width * scale / 2,
         y: bounds.maxY - 9 * scale, width: width * scale, height: 2.5 * scale), xRadius: scale, yRadius: scale)
@@ -124,7 +129,11 @@ final class DrumxCourseMenuView: NSView {
   private let objective = CourseInk.label("", size: 16, color: CourseInk.muted, wrapping: true)
   private let stepHint = CourseInk.label("", size: 12, color: CourseInk.muted, wrapping: true)
   private let trailLabel = CourseInk.label("YOUR LEARNING PATH", size: 11, color: CourseInk.muted, weight: .medium)
-  private let trailHint = CourseInk.label("Select a step to inspect it.", size: 11, color: CourseInk.muted)
+  private let trailHint = CourseInk.label("", size: 11, color: CourseInk.muted)
+  private let previousPage = CoursePathButton(title: "Previous", target: nil, action: nil)
+  private let nextPage = CoursePathButton(title: "Next", target: nil, action: nil)
+  private let chaptersPerPage = 3
+  private var chapterPage = 0
   private let playButton = CoursePathButton(title: "Play this step", target: nil, action: nil)
   private let starsView = CourseStarsView()
   private var chapterLabels: [NSTextField] = []
@@ -142,8 +151,14 @@ final class DrumxCourseMenuView: NSView {
     super.init(frame: frame)
     addSubview(content)
     for view in [titleLabel, subtitle, progressLabel, stepLabel, lessonTitle, objective, stepHint,
-                 trailLabel, trailHint, playButton, starsView] { content.addSubview(view) }
-    progressLabel.alignment = .right; trailHint.alignment = .right
+                 trailLabel, trailHint, previousPage, nextPage, playButton, starsView] { content.addSubview(view) }
+    progressLabel.alignment = .right; trailHint.alignment = .center
+    for (button, direction) in [(previousPage, -1), (nextPage, 1)] {
+      button.navigationControl = true; button.tag = direction
+      button.isBordered = false; button.focusRingType = .none
+      button.target = self; button.action = #selector(turnChapterPage(_:))
+      button.setAccessibilityLabel(direction < 0 ? "Previous chapters" : "Next chapters")
+    }
     lessonTitle.maximumNumberOfLines = 2; objective.maximumNumberOfLines = 3; stepHint.maximumNumberOfLines = 2
     playButton.primary = true; playButton.isBordered = false; playButton.focusRingType = .none
     playButton.target = self; playButton.action = #selector(playFeatured)
@@ -156,6 +171,8 @@ final class DrumxCourseMenuView: NSView {
       let node = CoursePathButton(title: String(format: "%02d", index + 1), target: self, action: #selector(inspectStep(_:)))
       node.tag = index; node.isBordered = false; node.focusRingType = .none
       node.toolTip = lesson.title
+      node.onNavigate = { [weak self] offset in self?.focusStep(index + offset) }
+      node.onPage = { [weak self] offset in self?.moveChapterPage(offset) }
       nodes.append(node); content.addSubview(node)
     }
   }
@@ -192,16 +209,28 @@ final class DrumxCourseMenuView: NSView {
     let starWidth = min(340 * scale, width - leftWidth - 32 * scale)
     place(starsView, width - starWidth, 155, starWidth, 146)
     place(trailLabel, 2 * scale, 416, 240 * scale, 20)
-    place(trailHint, width - 240 * scale, 416, 240 * scale, 20)
+    place(trailHint, width - 460 * scale, 416, 230 * scale, 24)
+    place(previousPage, width - 224 * scale, 410, 106 * scale, 32)
+    place(nextPage, width - 106 * scale, 410, 106 * scale, 32)
+    let firstChapter = chapterPage * chaptersPerPage
+    let lastChapter = min(firstChapter + chaptersPerPage, chapterLabels.count)
+    trailHint.stringValue = "Chapters \(firstChapter + 1)-\(lastChapter) of \(chapterLabels.count)"
+    previousPage.isEnabled = chapterPage > 0
+    nextPage.isEnabled = lastChapter < chapterLabels.count
+    previousPage.drawingScale = scale; nextPage.drawingScale = scale
     let groupGap = 28 * scale
-    let groupWidth = (width - groupGap * 2) / 3
+    let columns = min(chaptersPerPage, chapterLabels.count)
+    let groupWidth = (width - groupGap * CGFloat(max(0, columns - 1))) / CGFloat(max(1, columns))
     for (chapter, label) in chapterLabels.enumerated() {
-      let groupX = CGFloat(chapter) * (groupWidth + groupGap)
+      let visible = chapter >= firstChapter && chapter < lastChapter
+      label.isHidden = !visible
+      let groupX = CGFloat(chapter - firstChapter) * (groupWidth + groupGap)
       place(label, groupX, 448, groupWidth, 20)
       let chapterNodes = nodes.filter { DrumxCourse.lessons[$0.tag].chapter == chapter }
       let gap = 8 * scale
       let nodeWidth = (groupWidth - gap * CGFloat(max(0, chapterNodes.count - 1))) / CGFloat(max(1, chapterNodes.count))
       for (index, node) in chapterNodes.enumerated() {
+        node.isHidden = !visible
         place(node, groupX + CGFloat(index) * (nodeWidth + gap), 482, nodeWidth, 54)
         node.drawingScale = scale
       }
@@ -233,7 +262,7 @@ final class DrumxCourseMenuView: NSView {
     displayedPlayer = player; contextID = recommended.id
     availableIDs = available; clearedIDs = cleared; self.lockReasons = lockReasons
     self.bestStarsByID = bestStarsByID; self.bestConditionsByID = bestConditionsByID
-    subtitle.stringValue = "\(player)’s foundations. A steady pulse, then your first fill."
+    subtitle.stringValue = "\(player)’s path. From your first pulse to rudiments and grooves."
     progressLabel.stringValue = "\(cleared.count) / \(DrumxCourse.lessons.count) steps complete"
     progressLabel.setAccessibilityValue("\(cleared.count) steps complete. \(practised) lessons practised.")
     refreshFeature()
@@ -243,6 +272,7 @@ final class DrumxCourseMenuView: NSView {
   private func refreshFeature() {
     guard let lesson = DrumxCourse.lesson(id: featuredID),
           let index = DrumxCourse.lessons.firstIndex(where: { $0.id == featuredID }) else { return }
+    chapterPage = lesson.chapter / chaptersPerPage
     let available = availableIDs.contains(featuredID)
     let complete = clearedIDs.contains(featuredID)
     stepLabel.stringValue = "STEP \(String(format: "%02d", index + 1))  /  \(DrumxCourse.chapterTitles[lesson.chapter].uppercased())"
@@ -252,7 +282,7 @@ final class DrumxCourseMenuView: NSView {
     playButton.isEnabled = available
     playButton.setAccessibilityLabel(available ? "\(playButton.title). \(lesson.title)." : "\(lesson.title) is locked.")
     stepHint.stringValue = available ? complete ? "Step complete. Repeat for a steadier score, or explore your next step."
-      : "Your playing and reading check move you to the next step."
+      : lockReasons[featuredID] ?? "Play the checkpoint at this lesson’s recommended pace."
       : lockReasons[featuredID] ?? "Complete the previous step to open this lesson."
     if available && lesson.version == DrumxTempoCoach.lessonVersion {
       stepHint.stringValue = complete
@@ -278,6 +308,23 @@ final class DrumxCourseMenuView: NSView {
     window?.recalculateKeyViewLoop()
     needsLayout = true
   }
+  private func focusStep(_ index: Int) {
+    guard !nodes.isEmpty else { return }
+    let target = min(nodes.count - 1, max(0, index))
+    featuredID = DrumxCourse.lessons[target].id
+    refreshFeature()
+    layoutSubtreeIfNeeded()
+    window?.makeFirstResponder(nodes[target])
+  }
+  private func moveChapterPage(_ direction: Int) {
+    let lastPage = max(0, (chapterLabels.count - 1) / chaptersPerPage)
+    let target = min(lastPage, max(0, chapterPage + direction))
+    guard target != chapterPage, let index = DrumxCourse.lessons.firstIndex(where: {
+      $0.chapter == target * chaptersPerPage
+    }) else { return }
+    focusStep(index)
+  }
+  @objc private func turnChapterPage(_ sender: CoursePathButton) { moveChapterPage(sender.tag) }
   @objc private func inspectStep(_ sender: CoursePathButton) {
     guard DrumxCourse.lessons.indices.contains(sender.tag) else { return }
     featuredID = DrumxCourse.lessons[sender.tag].id

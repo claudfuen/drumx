@@ -21,7 +21,7 @@ for DRUMX_CORE_NAME in drumx_core drumx_tempo; do
     -c "$DRUMX_ROOT/native/core/$DRUMX_CORE_NAME.cpp" \
     -o "$DRUMX_TEMPO_BUILD/$DRUMX_CORE_NAME.o"
 done
-for DRUMX_ADAPTER_CHECK in DrumxLessonChecks DrumxTempoCoachChecks; do
+for DRUMX_ADAPTER_CHECK in DrumxLessonChecks DrumxTempoCoachChecks DrumxUnlockChecks; do
   xcrun swiftc -target "$DRUMX_TEMPO_TARGET" -swift-version 5 \
     -warnings-as-errors -parse-as-library \
     -import-objc-header "$DRUMX_ROOT/native/macos/DrumxBridging.h" \

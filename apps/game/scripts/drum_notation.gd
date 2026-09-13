@@ -51,6 +51,7 @@ func _ready() -> void:
 
 static func notation_model(events: Array) -> Dictionary:
 	var groups: Array = [[], [], [], [], [], [], [], []]
+	var sticking: Array = [[], [], [], [], [], [], [], []]
 	var pads: Array = []
 	var eighths := false
 	var keys := {}
@@ -76,11 +77,16 @@ static func notation_model(events: Array) -> Dictionary:
 			return {"valid": false}
 		keys[key] = true
 		groups[tick].append(pad)
+		var hand = event.get("hand")
+		if pad != 2 and hand in ["R", "L"] and not sticking[tick].has(hand):
+			sticking[tick].append(hand)
 		if not pads.has(pad):
 			pads.append(pad)
 		eighths = eighths or tick % 2 == 1
 	for group in groups:
 		group.sort()
+	for hands in sticking:
+		hands.sort()
 	pads.sort()
 	var upper_present := pads.has(0) or pads.has(1)
 	var lower_present := pads.has(2)
@@ -114,7 +120,7 @@ static func notation_model(events: Array) -> Dictionary:
 	for tick in range(0, 8, 1 if eighths else 2):
 		counts.append({"tick": tick, "text": str(tick / 2 + 1) if tick % 2 == 0 else "&", "pads": groups[tick]})
 	return {"valid": true, "groups": groups, "pads": pads, "eighths": eighths,
-		"upper_present": upper_present, "lower_present": lower_present, "voices": voices, "counts": counts}
+		"upper_present": upper_present, "lower_present": lower_present, "voices": voices, "counts": counts, "sticking": sticking}
 
 func refresh_notation() -> void:
 	notation = notation_model(authored)
@@ -130,7 +136,9 @@ func refresh_notation() -> void:
 			var instruments := PackedStringArray()
 			for pad in count.pads:
 				instruments.append(PAD_NAMES[pad])
-			descriptions.append(label + ": " + ("no strike" if instruments.is_empty() else " and ".join(instruments)))
+			var hands: Array = notation.sticking[tick]
+			var suggestion := "" if hands.is_empty() else "; suggested hands " + " and ".join(hands)
+			descriptions.append(label + ": " + ("no strike" if instruments.is_empty() else " and ".join(instruments)) + suggestion)
 		accessibility_name = lesson_title + ". One bar of four-four time. " + ". ".join(descriptions) + ". Hi-hat and snare share the upper voice; kick uses the lower voice when present."
 	queue_redraw()
 
@@ -255,10 +263,17 @@ func _draw() -> void:
 	for count in notation.counts:
 		var tick := int(count.tick)
 		text(count.text, note_start + float(tick) * step, offset + 132, 12, INK if tick % 2 == 0 else MUTED, true)
-	var key_width := 88.0
-	var key_start := size.x / 2 - float(notation.pads.size()) * key_width / 2
+	var key_width := 57.0 if size.x < 540 else 88.0
+	var key_start := right - float(notation.pads.size()) * key_width
 	for index in range(notation.pads.size()):
 		var pad: int = notation.pads[index]
 		var x := key_start + float(index) * key_width
-		notehead(x + 6, offset + 161, pad == 0)
-		text(PAD_NAMES[pad], x + 20, offset + 154)
+		notehead(x + 6, offset + 13, pad == 0)
+		text(["HAT", "SN", "KICK"][pad] if size.x < 540 else PAD_NAMES[pad], x + 17, offset + 6, 10 if size.x < 540 else 11)
+	var has_hands := false
+	for tick in range(8):
+		var hands: Array = notation.sticking[tick]
+		has_hands = has_hands or not hands.is_empty()
+		text("+".join(hands), note_start + float(tick) * step, offset + 152, 11, INK, true)
+	if has_hands:
+		text("R/L suggested", left, offset + 153, 10)

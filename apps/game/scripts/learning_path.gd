@@ -8,12 +8,14 @@ const INK = Color(0.047, 0.063, 0.071, 1)
 const PAPER = Color(0.94, 0.95, 0.91, 1)
 const LIME = Color(0.79, 0.91, 0.49, 1)
 const MUTED = Color(0.57, 0.65, 0.64, 1)
+const CHAPTERS_PER_PAGE := 3
 
 signal play_requested(index: int)
 signal selected(index: int)
 
 var model: Object
 var featured_index := 0
+var chapter_page := 0
 var composition := Control.new()
 var _title: Label
 var _subtitle: Label
@@ -25,6 +27,8 @@ var _step_hint: Label
 var _trail_title: Label
 var _trail_hint: Label
 var _play: PathButton
+var _previous_page: PathButton
+var _next_page: PathButton
 var _stars: CourseStars
 var _chapters: Array[Label] = []
 var _nodes: Array[PathButton] = []
@@ -33,6 +37,7 @@ var _labels: Array[Dictionary] = []
 
 class PathButton extends Button:
 	var primary := false
+	var navigation_control := false
 	var inspected := false
 	var cleared := false
 	var available := true
@@ -40,6 +45,7 @@ class PathButton extends Button:
 	var hovered := false
 	var title_font: Font
 	signal navigation(offset: int)
+	signal page_navigation(offset: int)
 
 	func _ready() -> void:
 		focus_mode = Control.FOCUS_ALL
@@ -64,6 +70,9 @@ class PathButton extends Button:
 		if not primary and event.keycode in [KEY_LEFT, KEY_RIGHT]:
 			navigation.emit(-1 if event.keycode == KEY_LEFT else 1)
 			accept_event()
+		elif event.keycode in [KEY_PAGEUP, KEY_PAGEDOWN]:
+			page_navigation.emit(-1 if event.keycode == KEY_PAGEUP else 1)
+			accept_event()
 		elif event.keycode in [KEY_ENTER, KEY_KP_ENTER]:
 			pressed.emit()
 			accept_event()
@@ -83,12 +92,12 @@ class PathButton extends Button:
 		shape.border_color = LIME if has_focus() or inspected else Color(PAPER, 0.3 if active else 0.10)
 		shape.set_border_width_all(2 if has_focus() else 1)
 		draw_style_box(shape, area.grow(-1))
-		var color := INK if primary and not disabled else PAPER if available else MUTED
-		var point_size := 18 if primary else 17
+		var color := INK if primary and not disabled else PAPER if available and not disabled else MUTED
+		var point_size := 18 if primary else 13 if navigation_control else 17
 		var top := area.size.y / 2 - (12 if primary else 11)
 		draw_string(title_font, Vector2(8, top + title_font.get_ascent(point_size)), text,
 			HORIZONTAL_ALIGNMENT_CENTER, area.size.x - 16, point_size, color)
-		if not primary:
+		if not primary and not navigation_control:
 			var width := 20.0 if cleared else 12.0
 			var marker := StyleBoxFlat.new()
 			marker.set_corner_radius_all(1)
@@ -147,7 +156,7 @@ func _ready() -> void:
 	composition.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(composition)
 	_title = _label("One step at a time.", 38, PAPER, 700)
-	_subtitle = _label("Your foundations. A steady pulse, then your first fill.", 14, MUTED)
+	_subtitle = _label("From your first pulse to rudiments and grooves.", 14, MUTED)
 	_progress = _label("", 12, MUTED)
 	_progress.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_step = _label("", 11, LIME, 500)
@@ -155,8 +164,10 @@ func _ready() -> void:
 	_objective = _label("", 16, MUTED, 400, 3)
 	_step_hint = _label("", 12, MUTED, 400, 2)
 	_trail_title = _label("YOUR LEARNING PATH", 11, MUTED, 500)
-	_trail_hint = _label("Select a step to inspect it.", 11, MUTED)
-	_trail_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_trail_hint = _label("", 11, MUTED)
+	_trail_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_previous_page = _page_button("Previous", -1)
+	_next_page = _page_button("Next", 1)
 	_play = PathButton.new()
 	_play.primary = true
 	_play.title_font = Menu.make_font(600)
@@ -168,6 +179,17 @@ func _ready() -> void:
 	composition.add_child(_stars)
 	resized.connect(_layout)
 	_refresh()
+
+
+func _page_button(title: String, direction: int) -> PathButton:
+	var control := PathButton.new()
+	control.text = title
+	control.navigation_control = true
+	control.title_font = Menu.make_font(500)
+	control.accessibility_name = title + " chapters"
+	control.pressed.connect(func(): _turn_page(direction))
+	composition.add_child(control)
+	return control
 
 
 func _label(value: String, point_size: int, color: Color, weight: int = 400, lines: int = 1) -> Label:
@@ -194,6 +216,7 @@ func _refresh() -> void:
 	if _nodes.size() != course.lessons.size():
 		_build_path(course)
 	var lesson: Dictionary = course.lessons[featured_index]
+	chapter_page = int(lesson.chapter) / CHAPTERS_PER_PAGE
 	var frontier: int = model.frontier()
 	var available := featured_index <= frontier
 	var complete: bool = model.cleared(featured_index)
@@ -237,8 +260,8 @@ func _refresh() -> void:
 
 
 func _build_path(course: Dictionary) -> void:
-	# The authored foundation has three chapters and twelve lessons. Keeping the
-	# groups data-driven does not add access rules or alter the model's frontier.
+	# Chapters page in groups of three, preserving readable note-sized targets as
+	# the course grows. Inspection never changes the selected practice lesson.
 	for node in _nodes:
 		composition.remove_child(node)
 		node.queue_free()
@@ -256,6 +279,7 @@ func _build_path(course: Dictionary) -> void:
 		node.title_font = Menu.make_font(600)
 		node.pressed.connect(func(): _inspect(index))
 		node.navigation.connect(func(offset): _focus_step(index + offset))
+		node.page_navigation.connect(_turn_page)
 		composition.add_child(node)
 		_nodes.append(node)
 
@@ -268,7 +292,21 @@ func _inspect(index: int) -> void:
 
 func _focus_step(index: int) -> void:
 	if _nodes.is_empty(): return
-	_nodes[clampi(index, 0, _nodes.size() - 1)].grab_focus()
+	var target := clampi(index, 0, _nodes.size() - 1)
+	_inspect(target)
+	_nodes[target].grab_focus()
+
+
+func _turn_page(direction: int) -> void:
+	if model == null: return
+	var last_page := maxi(0, ceili(float(model.course.chapters.size()) / CHAPTERS_PER_PAGE) - 1)
+	var target_page := clampi(chapter_page + direction, 0, last_page)
+	if target_page == chapter_page: return
+	var first_chapter := target_page * CHAPTERS_PER_PAGE
+	for index in range(model.course.lessons.size()):
+		if int(model.course.lessons[index].chapter) == first_chapter:
+			_focus_step(index)
+			return
 
 
 func _play_featured() -> void:
@@ -277,19 +315,11 @@ func _play_featured() -> void:
 
 
 func _has_qualifying_take(index: int) -> bool:
-	# Used only to explain an existing gate, never to grant access. These are
-	# the current model.cleared criteria, including the exact lesson version.
-	var lesson: Dictionary = model.course.lessons[index]
-	for attempt in model.save.attempts:
-		if attempt.get("lesson") != lesson.id or attempt.get("version") != lesson.version:
-			continue
-		if int(attempt.get("settings", {}).get("bars", 0)) >= 4 and float(attempt.get("matched", 0)) / maxi(1, int(attempt.get("expected", 0))) >= 0.8:
-			return true
-	return false
+	return bool(model.readiness_status(index).get("checkpoint", false))
 
 
 func _needs_reading(index: int) -> bool:
-	return index in [3, 7] and not bool(model.save.read.get(model.course.lessons[index].version, false))
+	return model.needs_reading(index) and not bool(model.save.read.get(model.course.lessons[index].version, false))
 
 
 func lock_reason(index: int) -> String:
@@ -300,14 +330,14 @@ func lock_reason(index: int) -> String:
 		return "Build two strong guided takes at 72 BPM in Find the pulse. Keep the same kit setup for both."
 	if _needs_reading(prerequisite) and _has_qualifying_take(prerequisite):
 		return "Pass the reading check in %s." % title
-	return "Finish %s: 4+ bars with at least 80%% of notes matched." % title
+	return "In %s: %s" % [title, model.lesson_requirement(prerequisite)]
 
 
 func _available_hint(index: int) -> String:
 	if index == 0: return "Start at a coached pace. Two strong guided takes at 72 BPM open your next step."
 	if _needs_reading(index) and _has_qualifying_take(index):
 		return "Playing check complete. Pass this lesson's reading check to open the next chapter."
-	return "Your playing and reading check move you to the next step."
+	return model.lesson_requirement(index)
 
 
 func _layout() -> void:
@@ -334,11 +364,24 @@ func _layout() -> void:
 	var star_width := minf(340 * scale, width - left_width - 32 * scale)
 	_place(_stars, width - star_width, 155, star_width, 146, scale)
 	_place(_trail_title, 2 * scale, 416, 240 * scale, 20, scale)
-	_place(_trail_hint, width - 240 * scale, 416, 240 * scale, 20, scale)
+	_place(_trail_hint, width - 460 * scale, 416, 230 * scale, 24, scale)
+	_place(_previous_page, width - 224 * scale, 410, 106 * scale, 32, scale)
+	_place(_next_page, width - 106 * scale, 410, 106 * scale, 32, scale)
+	var first_chapter := chapter_page * CHAPTERS_PER_PAGE
+	var last_chapter := mini(first_chapter + CHAPTERS_PER_PAGE, _chapters.size())
+	_trail_hint.text = "Chapters %d-%d of %d" % [first_chapter + 1, last_chapter, _chapters.size()]
+	_previous_page.disabled = chapter_page == 0
+	_next_page.disabled = last_chapter >= _chapters.size()
+	for control in [_previous_page, _next_page]:
+		control.drawing_scale = scale
+		control.queue_redraw()
 	var group_gap := 28 * scale
-	var group_width := (width - group_gap * maxf(0, _chapters.size() - 1)) / maxf(1, _chapters.size())
+	var columns := mini(CHAPTERS_PER_PAGE, _chapters.size())
+	var group_width := (width - group_gap * maxf(0, columns - 1)) / maxf(1, columns)
 	for chapter in range(_chapters.size()):
-		var group_x := chapter * (group_width + group_gap)
+		var visible_chapter := chapter >= first_chapter and chapter < last_chapter
+		_chapters[chapter].visible = visible_chapter
+		var group_x := (chapter - first_chapter) * (group_width + group_gap)
 		_place(_chapters[chapter], group_x, 448, group_width, 20, scale)
 		var indices: Array[int] = []
 		for index in range(_nodes.size()):
@@ -347,6 +390,7 @@ func _layout() -> void:
 		var node_width := (group_width - gap * maxi(0, indices.size() - 1)) / maxi(1, indices.size())
 		for offset in range(indices.size()):
 			var node := _nodes[indices[offset]]
+			node.visible = visible_chapter
 			_place(node, group_x + offset * (node_width + gap), 482, node_width, 54, scale)
 			node.drawing_scale = scale
 			node.queue_redraw()

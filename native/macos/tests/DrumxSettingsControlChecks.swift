@@ -3,6 +3,8 @@ import AppKit
 // This isolated page-layout fixture needs only NSButton's frame and visibility
 // contract. Production LessonButton drawing belongs to the app's visual gate.
 typealias LessonButton = NSButton
+// Course UI only compares this stable identity; tempo evaluation has its own suite.
+enum DrumxTempoCoach { static let lessonVersion = "find-the-pulse-v1" }
 private var checks = 0
 private func check(_ value: @autoclosure () -> Bool, _ message: String) {
   checks += 1
@@ -85,6 +87,48 @@ private final class ActionProbe: NSObject {
     check(kit.lastPad == nil && kit.lastVelocity == 127, "invalid input cannot index beyond the diagram or overrun its meter")
     kit.clearSignal()
     check(kit.lastPad == nil && kit.lastVelocity == 0 && signal.stringValue.contains("Strike a pad"), "disconnect reset clears both visible and accessible signal state")
+    let course = DrumxCourseMenuView(frame: NSRect(x: 0, y: 0, width: 980, height: 540))
+    window.contentView = course
+    var launches = 0
+    course.onSelect = { _ in launches += 1 }
+    func descendants(_ view: NSView) -> [NSView] { view.subviews.flatMap { [$0] + descendants($0) } }
+    func updateCourse(_ index: Int) {
+      let lesson = DrumxCourse.lessons[index]
+      course.update(lesson: lesson, player: "Fixture", statuses: [:], practised: 0,
+        availability: Set(DrumxCourse.lessons.map(\.id)), recommendedID: lesson.id)
+      course.layoutSubtreeIfNeeded()
+    }
+    func visibleNodes() -> [NSButton] {
+      descendants(course).compactMap { $0 as? NSButton }.filter {
+        Int($0.title) != nil && !$0.isHiddenOrHasHiddenAncestor
+      }
+    }
+    updateCourse(0)
+    check(visibleNodes().count == 12, "first course page exposes three readable four-step chapters")
+    let courseButtons = descendants(course).compactMap { $0 as? NSButton }
+    let next = courseButtons.first { $0.title == "Next" }!
+    let previous = courseButtons.first { $0.title == "Previous" }!
+    check(!previous.isEnabled && next.isEnabled, "chapter paging has explicit beginning boundary")
+    next.performClick(nil); course.layoutSubtreeIfNeeded()
+    check(visibleNodes().map(\.title) == (13...20).map { String(format: "%02d", $0) },
+      "next page shows later chapters without shrinking all twenty steps")
+    check(previous.isEnabled && !next.isEnabled && launches == 0, "chapter inspection never starts a lesson and respects final page")
+    previous.performClick(nil); course.layoutSubtreeIfNeeded()
+    check(visibleNodes().first?.title == "01", "previous chapters return to the first page")
+    updateCourse(DrumxCourse.lessons.count - 1)
+    check(visibleNodes().last?.title == "20", "resuming a later lesson reveals its chapter automatically")
+    let left = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+      windowNumber: window.windowNumber, context: nil, characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: 123)!
+    let thirteenth = courseButtons.first { $0.title == "13" }!
+    thirteenth.keyDown(with: left); course.layoutSubtreeIfNeeded()
+    check(visibleNodes().last?.title == "12" && launches == 0, "left arrow crosses the chapter page boundary without launching")
+    for size in [NSSize(width: 980, height: 540), NSSize(width: 1440, height: 780), NSSize(width: 1840, height: 1180)] {
+      course.setFrameSize(size); course.layoutSubtreeIfNeeded()
+      for node in visibleNodes() {
+        check(node.frame.width >= 44 && node.frame.height >= 44, "course steps keep useful target sizes across supported viewports")
+        check(course.bounds.contains(course.convert(node.bounds, from: node)), "visible course steps remain inside their viewport")
+      }
+    }
     print("Drumx native settings/control contracts: \(checks) checks passed without a visible window.")
   }
 }

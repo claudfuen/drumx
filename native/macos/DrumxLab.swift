@@ -800,6 +800,14 @@ final class LabController: NSObject, NSWindowDelegate {
   }
   func startTake(advanceGuided: Bool = true) {
     guard !transportActive else { return }
+    if progress.selectedProfile.legacyAccessThrough == nil {
+      guard history.lastError == nil,
+        DrumxUnlocks.migrateLegacyAccess(course: DrumxCourse.lessons,
+                                        history: history.attempts, progress: progress) else {
+        setStatus(history.lastError ?? progress.lastError ?? "Progress could not be prepared. Your existing access has been preserved.")
+        return
+      }
+    }
     offsetChanged()
     if isGuidedPulse, currentPage == .review, let captured = takeSettings,
       !DrumxTempoCoach.sameInputConditions(captured, pulseTakeSettings()) {

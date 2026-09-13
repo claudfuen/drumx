@@ -15,6 +15,7 @@ const ScoreHUD = preload("res://scripts/score_hud.gd")
 const SettingsPanel = preload("res://scripts/settings_panel.gd")
 const SettingsContract = preload("res://scripts/settings_contract.gd")
 const RecoveryContract = preload("res://scripts/recovery_contract.gd")
+const ReadinessContract = preload("res://scripts/readiness_contract.gd")
 const INK = Color("0c1012")
 const PAPER = Color("f0f2e8")
 const MUTED = Color("92a5a3")
@@ -82,6 +83,7 @@ var coached_action: Button
 var coaching: Dictionary = {}
 var result_detail: Label
 var result_best: Label
+var result_checkpoint: Label
 var score_before := -1
 var result_fingerprint := ""
 var stage_done := false
@@ -116,7 +118,7 @@ func _ready() -> void:
 		model.blocked = true
 		preserve_error = str(engine.snapshot().get("progress_lock_error", "Progress is unavailable.")) if engine != null else "Native engine unavailable. Reopen a complete Drumx build."
 		model.error = preserve_error
-	lesson_index = clampi(int(model.save.selected), 0, 11)
+	lesson_index = clampi(int(model.save.selected), 0, model.course.lessons.size() - 1)
 	tempo = float(model.course.lessons[lesson_index].bpm)
 	if lesson_index == 0: restore_pulse_plan()
 	var saved: Dictionary = model.save.get("settings", {})
@@ -293,6 +295,7 @@ func clear_page(destination: String) -> void:
 	result_metrics.clear()
 	result_detail = null
 	result_best = null
+	result_checkpoint = null
 	tempo_card = null
 	coached_action = null
 	for child in content.get_children():
@@ -357,7 +360,7 @@ func show_main() -> void:
 	var lesson: Dictionary = model.course.lessons[lesson_index]
 	menu.configure({"lesson": lesson.title, "chapter": model.course.chapters[int(lesson.chapter)],
 		"chapter_index": int(lesson.chapter), "player": "Player 1", "unlocked": model.frontier() + 1,
-		"cleared": cleared_count(), "total": 12})
+		"cleared": cleared_count(), "total": model.course.lessons.size()})
 	menu.continued.connect(func(): show_prepare(lesson_index))
 	menu.learn_requested.connect(func(): show_learn(model.frontier()))
 	menu.settings_requested.connect(show_settings)
@@ -386,7 +389,7 @@ func configure_logical_window() -> void:
 
 func cleared_count() -> int:
 	var count := 0
-	for index in range(12):
+	for index in range(model.course.lessons.size()):
 		if model.cleared(index):
 			count += 1
 	return count
@@ -396,7 +399,7 @@ func star_string(value: int) -> String:
 
 func show_learn(index: int) -> void:
 	clear_page("learn")
-	learning_path_index = clampi(index, 0, 11)
+	learning_path_index = clampi(index, 0, model.course.lessons.size() - 1)
 	var path := LearningPath.new()
 	path.configure(model, learning_path_index)
 	path.selected.connect(func(inspected): learning_path_index = inspected)
@@ -510,24 +513,39 @@ func build_prepare() -> void:
 			if pulse_intent == "guided": switch_pulse_intent("free")
 			else: options_open = not options_open; controls.visible = options_open))
 	else:
+		actions.add_child(button("Use checkpoint settings", use_checkpoint_settings))
 		actions.add_child(button("Practice options", func(): options_open = not options_open; controls.visible = options_open))
 	if lesson_index == 0:
 		stack.add_child(label("Checkpoint: 2 of 3 full takes at 72 BPM · 95% hits · 90% within ±50 ms · At most 2% extras.", 11, MUTED))
 	else:
-		stack.add_child(label("Reading check saved." if model.save.read.get(lesson.version, false) else "Read the bar, then keep counting as you play.", 12, LIME))
+		stack.add_child(label(model.lesson_requirement(lesson_index), 11, LIME, true))
 	if not smoke: start.call_deferred("grab_focus")
 
 func update_prepare_summary() -> void:
 	if stage_feedback != null:
 		stage_feedback.text = "%d BPM · %d bars · About %d seconds · Four-beat count-in" % [tempo, bars, roundi(bars * 4 * 60 / tempo)]
+		if lesson_index != 0:
+			var readiness: Dictionary = model.readiness_status(lesson_index, current_take_settings())
+			stage_feedback.text += " · Checkpoint settings" if bool(readiness.get("eligible", false)) else " · Personal practice"
 		if lesson_index == 0 and pulse_intent == "free":
 			stage_feedback.text += " · Free practice"
 			if tempo == 72 and bars >= 16 and guidance == 0: stage_feedback.text += " · Checkpoint eligible"
+
+func use_checkpoint_settings() -> void:
+	if lesson_index == 0: return
+	tempo = float(model.course.lessons[lesson_index].bpm)
+	bars = 16
+	guidance = 0
+	options_open = false
+	build_prepare()
 
 func current_take_settings() -> Dictionary:
 	var settings := {"bpm": tempo, "bars": bars, "guidance": guidance, "source": source_id, "mapping": mappings.duplicate(true)}
 	if lesson_index == 0:
 		settings.merge({"tempo_policy": 1, "live_feedback": guidance != 2, "monitoring": monitoring, "calibration_ms": 0})
+	else:
+		settings.source = "keyboard" if source_id.is_empty() else "midi:" + source_id
+		settings.merge({"readiness_policy": 1, "live_feedback": guidance != 2, "monitoring": monitoring, "calibration_ms": 0, "hand_hints": true})
 	return settings
 
 func restore_pulse_plan() -> void:
@@ -594,7 +612,7 @@ func accept_coaching() -> void:
 		build_prepare()
 		return
 	match int(coaching.get("action", 0)):
-		5: show_prepare(mini(11, lesson_index + 1)); return
+		5: show_prepare(mini(model.course.lessons.size() - 1, lesson_index + 1)); return
 	if not _ensure_practice_ready(): return
 	if int(coaching.get("action", 0)) != 8:
 		tempo = float(coaching.get("next_bpm", tempo))
@@ -737,6 +755,9 @@ func show_result() -> void:
 	stack.add_child(label("Points reward notes inside ±50 ms. Missing and extra hits lower your score.", 12, MUTED, true))
 	result_best = label("", 13, LIME, true)
 	stack.add_child(result_best)
+	if lesson_index != 0:
+		result_checkpoint = label("", 12, MUTED, true)
+		stack.add_child(result_checkpoint)
 	var actions := row()
 	stack.add_child(actions)
 	if lesson_index == 0 and pulse_intent == "guided":
@@ -759,10 +780,10 @@ func show_result() -> void:
 	var next_actions := row()
 	stack.add_child(next_actions)
 	next_actions.add_child(button("Lesson check", show_learning_check))
-	next_lesson_button = button("Next lesson", func(): show_prepare(mini(11, lesson_index + 1)))
-	next_lesson_button.disabled = lesson_index >= 11 or lesson_index >= model.frontier()
+	next_lesson_button = button("Next lesson", func(): show_prepare(mini(model.course.lessons.size() - 1, lesson_index + 1)))
+	next_lesson_button.disabled = lesson_index >= model.course.lessons.size() - 1 or lesson_index >= model.frontier()
 	next_actions.add_child(next_lesson_button)
-	if lesson_index != 0: next_actions.add_child(button("Practice options", func(): options_open = true; build_prepare()))
+	if lesson_index != 0: next_actions.add_child(button("Use checkpoint settings", use_checkpoint_settings))
 	next_actions.add_child(button("Learning path", func(): show_learn(model.frontier())))
 	update_result()
 	if not smoke and actions.get_child_count() > 0: actions.get_child(0).call_deferred("grab_focus")
@@ -828,7 +849,7 @@ func answer_reading(answer: int) -> void:
 			model.save.read = previous
 			stage_feedback.text = model.error
 			return
-		stage_feedback.text = "That's right. " + ("Next step open." if model.cleared(lesson_index) else "Build two strong guided takes at 72 BPM to open the next step." if lesson_index == 0 else "Match 80% of the notes in a complete take to open the next step.")
+		stage_feedback.text = "That's right. " + ("Next step open." if model.cleared(lesson_index) else "Build two strong guided takes at 72 BPM to open the next step." if lesson_index == 0 else model.lesson_requirement(lesson_index))
 	else:
 		stage_feedback.text = "Try again. " + lesson.explanation
 
@@ -837,7 +858,7 @@ func update_result() -> void:
 		return
 	var complete := bool(snapshot.get("naturally_completed", false))
 	var points_value := DataModel.points(snapshot, complete)
-	var grade_fingerprint := JSON.stringify([complete, points_value, snapshot.get("expected"), snapshot.get("on_time"), snapshot.get("matched"), snapshot.get("missed"), snapshot.get("extra"), snapshot.get("best_streak")])
+	var grade_fingerprint := JSON.stringify([complete, points_value, snapshot.get("expected"), snapshot.get("on_time"), snapshot.get("matched"), snapshot.get("missed"), snapshot.get("extra"), snapshot.get("best_streak"), snapshot.get("pads")])
 	if complete and grade_fingerprint != result_grade_fingerprint:
 		model.record(take_id, take_lesson_index, snapshot, take_settings)
 		result_grade_fingerprint = grade_fingerprint
@@ -851,7 +872,7 @@ func update_result() -> void:
 			if int(attempt[key]) != int(snapshot.get(key, 0)): return false
 		return true)
 	if next_lesson_button != null:
-		next_lesson_button.disabled = lesson_index >= 11 or lesson_index >= model.frontier()
+		next_lesson_button.disabled = lesson_index >= model.course.lessons.size() - 1 or lesson_index >= model.frontier()
 	result_visual.update_score(snapshot, score_before, comparable_attempts, take_id if saved else "")
 	var metric_keys := ["matched", "missed", "extra", "best_streak"]
 	for index in range(result_metrics.size()): result_metrics[index].text = str(int(snapshot.get(metric_keys[index], 0)))
@@ -880,6 +901,14 @@ func update_result() -> void:
 		result_detail.text = "A full phrase, at your own pace." if complete else "Your records are unchanged. Start again when you are ready."
 	var comparable: Dictionary = model.best(lesson_index, take_settings)
 	result_best.text = ("New personal best. " if complete and saved and points_value > score_before and score_before >= 0 else "") + ("Best with these settings: %d points." % int(comparable.points) if not comparable.is_empty() else "Complete a full take to save your first record.")
+	if result_checkpoint != null:
+		var readiness: Dictionary = model.readiness_status(lesson_index, take_settings)
+		if bool(readiness.get("checkpoint", false)):
+			result_checkpoint.text = "Playing checkpoint earned." + (" Pass the lesson check to open the next chapter." if model.needs_reading(lesson_index) and not bool(model.save.read.get(model.course.lessons[lesson_index].version, false)) else " Keep practising, or move to the next step.")
+		elif bool(readiness.get("eligible", false)):
+			result_checkpoint.text = "%d strong of the last %d comparable takes. " % [int(readiness.get("passing", 0)), int(readiness.get("recent", 0))] + model.lesson_requirement(lesson_index)
+		else:
+			result_checkpoint.text = "Personal practice. Use checkpoint settings when ready. " + model.lesson_requirement(lesson_index)
 	if model.pending_attempts.has(take_id):
 		result_best.text = "This result is waiting to save. Keep Drumx open; your records update after saving succeeds."
 	elif model.error != "":
@@ -1032,7 +1061,7 @@ func _process(_delta: float) -> void:
 	_sync_input_state(snapshot)
 	_note_transport_interruption(snapshot)
 	if bool(snapshot.get("naturally_completed", false)) and take_id != "":
-		var grade_fingerprint := JSON.stringify([snapshot.get("on_time"), snapshot.get("matched"), snapshot.get("missed"), snapshot.get("extra"), snapshot.get("best_streak")])
+		var grade_fingerprint := JSON.stringify([snapshot.get("on_time"), snapshot.get("matched"), snapshot.get("missed"), snapshot.get("extra"), snapshot.get("best_streak"), snapshot.get("pads")])
 		if grade_fingerprint != saved_fingerprint and now >= save_retry_at:
 			save_retry_at = now + 1.0
 			if model.record(take_id, take_lesson_index, snapshot, take_settings): saved_fingerprint = grade_fingerprint
@@ -1216,7 +1245,7 @@ func smoke_test() -> void:
 	# loads or writes real progress, selects a MIDI source, or opens audio output.
 	model.blocked = true
 	var native_required := "--smoke-test" in OS.get_cmdline_user_args()
-	for index in range(12):
+	for index in range(model.course.lessons.size()):
 		var authored: Array = model.course.lessons[index].events
 		var chart: Array = model.chart(index, 16)
 		verify(chart.size() == authored.size() * 16, "authored repeat count")
@@ -1243,6 +1272,15 @@ func smoke_test() -> void:
 	invalid.settings = {"volume": "bad", "mapping": [[42], [38], [36]]}
 	verify(not model.valid_save(invalid), "invalid settings rejected")
 	var clean_save: Dictionary = model.save.duplicate(true)
+	var captured_source_before := source_id
+	var captured_lesson_before := lesson_index
+	lesson_index = 1
+	source_id = ""
+	verify(model.valid_settings(current_take_settings(), true) and current_take_settings().source == "keyboard", "keyboard practice captures an explicit valid readiness identity")
+	source_id = "fixture-midi"
+	verify(model.valid_settings(current_take_settings(), true) and current_take_settings().source == "midi:fixture-midi", "MIDI practice captures a distinct valid readiness identity")
+	source_id = captured_source_before
+	lesson_index = captured_lesson_before
 	var evidence := {"id": "fixture", "lesson": model.course.lessons[0].id, "version": model.course.lessons[0].version,
 		"settings": {"bpm": 60, "bars": 16, "guidance": 0, "source": "", "mapping": mappings},
 		"points": 5000, "matched": 60, "on_time": 32, "missed": 4, "extra": 0, "expected": 64, "best_streak": 6}
@@ -1252,13 +1290,25 @@ func smoke_test() -> void:
 	model.ensure_tempo_coach(true)
 	verify(model.frontier() == 1, "migration preserves previously unlocked second lesson")
 	evidence = evidence.duplicate(true)
-	evidence.id = "chapter"
+	evidence.id = "chapter-first"
 	evidence.lesson = model.course.lessons[3].id
 	evidence.version = model.course.lessons[3].version
+	evidence.settings = {"bpm": float(model.course.lessons[3].bpm), "bars": 16, "guidance": 0,
+		"source": "keyboard", "mapping": mappings, "readiness_policy": 1, "monitoring": true,
+		"live_feedback": true, "calibration_ms": 0, "hand_hints": true}
+	evidence.expected = 32; evidence.matched = 32; evidence.on_time = 32
+	evidence.missed = 0; evidence.extra = 0; evidence.best_streak = 32; evidence.points = 10000
+	evidence.pads = [{"expected": 0, "matched": 0, "on_time": 0, "missed": 0, "extra": 0},
+		{"expected": 0, "matched": 0, "on_time": 0, "missed": 0, "extra": 0},
+		{"expected": 32, "matched": 32, "on_time": 32, "missed": 0, "extra": 0}]
 	model.save.attempts = [evidence]
-	verify(not model.cleared(3), "chapter transition needs reading check")
+	verify(not model.cleared(3), "one full take cannot earn a repeated chapter checkpoint")
+	var second_chapter_take: Dictionary = evidence.duplicate(true)
+	second_chapter_take.id = "chapter-second"
+	model.save.attempts.append(second_chapter_take)
+	verify(not model.cleared(3), "chapter transition needs reading check after two steady takes")
 	model.save.read[evidence.version] = true
-	verify(model.cleared(3), "chapter transition opens after reading evidence")
+	verify(model.cleared(3), "chapter transition opens after playing and reading evidence")
 	var round_trip = JSON.parse_string(JSON.stringify(model.save))
 	verify(model.valid_save(round_trip), "completed attempts survive JSON number conversion")
 	var broken = round_trip.duplicate(true)
@@ -1333,6 +1383,9 @@ func smoke_test() -> void:
 		verify(sample_result and bool(engine.snapshot().get("samples_ready", false)), "native decodes all24 FLAC without audio output")
 		var mapped: bool = engine.set_mapping(mappings)
 		verify(mapped, "native accepts reloaded normalized aliases")
+	var readiness_checks := ReadinessContract.run_checks()
+	smoke_checks += int(readiness_checks.checks)
+	for failure in readiness_checks.failures: verify(false, "Readiness: " + str(failure))
 	var recovery_checks := RecoveryContract.run_checks(engine)
 	smoke_checks += int(recovery_checks.checks)
 	for failure in recovery_checks.failures: verify(false, "Recovery: " + str(failure))
@@ -1375,7 +1428,7 @@ func smoke_test() -> void:
 	for destination in ["main", "learn", "prepare", "result", "settings"]:
 		match destination:
 			"main": show_main()
-			"learn": show_learn(11)
+			"learn": show_learn(model.course.lessons.size() - 1)
 			"prepare": build_prepare()
 			"result": show_result()
 			"settings": show_settings()
@@ -1507,6 +1560,12 @@ func smoke_test() -> void:
 	repair_evidence.missed = 0
 	repair_evidence.on_time = 2
 	repair_evidence.best_streak = 2
+	repair_evidence.points = 5000
+	repair_evidence.settings.erase("readiness_policy")
+	repair_evidence.settings.tempo_policy = 1
+	repair_evidence.pads = [{"expected": 0, "matched": 0, "on_time": 0, "missed": 0, "extra": 0},
+		{"expected": 4, "matched": 4, "on_time": 2, "missed": 0, "extra": 0},
+		{"expected": 0, "matched": 0, "on_time": 0, "missed": 0, "extra": 0}]
 	verify(model.valid_attempt(repair_evidence), "one-bar repair records are valid")
 	model.save.attempts = [repair_evidence]
 	verify(not model.cleared(0), "one-bar repair cannot unlock another lesson")
@@ -1565,7 +1624,7 @@ func controller_recovery_checks() -> void:
 	snapshot = fixture.snapshot()
 	input_choice_required = false
 	preserve_error = ""
-	show_learn(11)
+	show_learn(model.course.lessons.size() - 1)
 	var inspected_path: Control = content.get_child(0)
 	inspected_path.selected.emit(5)
 	show_settings()

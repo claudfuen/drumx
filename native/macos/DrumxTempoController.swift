@@ -9,7 +9,8 @@ extension LabController {
       calibrationMS: calibrationMS,
       inputIdentity: io.selectedSourceID.map { "midi:\($0)" } ?? "keyboard", mapping: mappings,
       lessonVersion: lesson.version, handHints: showHands,
-      tempoPolicyVersion: isPulseLesson ? 1 : nil, monitoring: isPulseLesson ? drumSound : nil)
+      tempoPolicyVersion: isPulseLesson ? 1 : nil, monitoring: drumSound,
+      readinessPolicyVersion: isPulseLesson ? nil : 1)
   }
 
   var pulseRecommendation: DrumxTempoCoach.Recommendation? {
@@ -72,6 +73,12 @@ extension LabController {
     startTake(advanceGuided: false)
   }
 
+  @objc func useLessonCheckpointSettings() {
+    guard !isPulseLesson, !transportActive else { return }
+    tempo = lesson.suggestedBPM; lessonBars = 16; mode = 0; showLive = true
+    saveResume(); resetCore(); showPage(.prepare)
+  }
+
   @objc func startPulseStretch() {
     guard isGuidedPulse, let recommendation = pulseRecommendation,
       recommendation.checkpointEarned else { return }
@@ -85,13 +92,18 @@ extension LabController {
     practiceRouteButton.title = isGuidedPulse ? "Free practice" : "Return to guided"
     practiceRouteButton.setAccessibilityLabel(isGuidedPulse ? "Open free practice with separate tempo and assistance settings" : "Return to app-guided pulse practice")
     optionsButton.isHidden = isGuidedPulse
-    pulseCheckpointButton.isHidden = !isGuidedPulse
+    pulseCheckpointButton.isHidden = isPulseLesson && !isGuidedPulse
     let checkpointEarned = pulseRecommendation?.checkpointEarned ?? false
     let optionalPace = tempo >= 84 ? 96 : 84
     pulseCheckpointButton.title = checkpointEarned ? "Try \(optionalPace) BPM · optional" : "Try 72 BPM"
     pulseCheckpointButton.action = checkpointEarned ? #selector(startPulseStretch) : #selector(startPulseCheckpoint)
     pulseCheckpointButton.setAccessibilityLabel(checkpointEarned
       ? "Try the optional \(optionalPace) BPM challenge" : "Try the guided 72 BPM checkpoint directly")
+    if !isPulseLesson {
+      pulseCheckpointButton.title = "Use checkpoint settings"
+      pulseCheckpointButton.action = #selector(useLessonCheckpointSettings)
+      pulseCheckpointButton.setAccessibilityLabel("Prepare a guided 16-bar checkpoint at \(Int(lesson.suggestedBPM)) BPM")
+    }
     pulseCoachView.isHidden = !isGuidedPulse
     practiceSummary.isHidden = isGuidedPulse
     lessonEvidence.isHidden = isGuidedPulse

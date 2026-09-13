@@ -2,7 +2,9 @@
   "chapters" : [
     "Pulse and counts",
     "Build your backbeat",
-    "Read, vary, and remember"
+    "Read, vary, and remember",
+    "Hands and rudiments",
+    "Make the groove your own"
   ],
   "lessons" : [
     {
@@ -38,6 +40,7 @@
       "explanation" : "A bar groups four quarter-note beats here. Strike the snare on each click while saying 1, 2, 3, 4. After 4, return to 1 without a pause.",
       "id" : "find-the-pulse",
       "objective" : "Play four evenly spaced snare strokes and keep counting through the barline.",
+      "practice_minutes" : "Suggested 6 min",
       "reading_answer" : 1,
       "reading_choices" : [
         "Two",
@@ -107,6 +110,7 @@
       "explanation" : "The click still marks quarter notes. Add one hi-hat stroke halfway between each pair of clicks. Count every number and every &, saying & as and. Eight evenly spaced notes fill the bar.",
       "id" : "eighth-note-hat",
       "objective" : "Divide each click into two equal parts on the closed hi-hat.",
+      "practice_minutes" : "Suggested 8 min",
       "reading_answer" : 0,
       "reading_choices" : [
         "Halfway between beats 1 and 2",
@@ -140,6 +144,7 @@
       "explanation" : "Play the snare on 2 and 4. Beats 1 and 3 are silent in this exercise, but they still take a full beat. Count all four numbers so the spaces have the same length as the played beats.",
       "id" : "backbeat-rests",
       "objective" : "Keep counting four beats while playing only the two backbeats.",
+      "practice_minutes" : "Suggested 6 min",
       "reading_answer" : 2,
       "reading_choices" : [
         "1 and 3",
@@ -173,6 +178,7 @@
       "explanation" : "Kick is another name for the bass drum. Play it on 1 and 3, leaving 2 and 4 silent. Continue counting through those rests and into the next bar.",
       "id" : "kick-pulse",
       "objective" : "Place two bass-drum notes inside a steady four-beat count.",
+      "practice_minutes" : "Suggested 6 min",
       "reading_answer" : 0,
       "reading_choices" : [
         "2 and 4",
@@ -254,6 +260,7 @@
       "explanation" : "Bring the previous two patterns together. The hi-hat plays every number and &, while the kick joins it on 1 and 3. Notes lined up at the same time are played together, not one after another.",
       "id" : "hat-and-kick",
       "objective" : "Play steady hi-hat eighth notes with kick on 1 and 3.",
+      "practice_minutes" : "Suggested 8 min",
       "reading_answer" : 1,
       "reading_choices" : [
         "Hi-hat first, then kick",
@@ -335,6 +342,7 @@
       "explanation" : "For this step, leave the bass drum out. Play hi-hat on every number and &, with snare on 2 and 4. The hi-hat continues on the backbeats, so those two counts each contain a pair of simultaneous notes.",
       "id" : "hat-and-snare",
       "objective" : "Keep hi-hat eighth notes even while the other hand adds the snare.",
+      "practice_minutes" : "Suggested 8 min",
       "reading_answer" : 2,
       "reading_choices" : [
         "Only the snare plays",
@@ -428,6 +436,7 @@
       "explanation" : "Put the two coordination steps together. The hi-hat keeps all eight notes. Kick joins on 1 and 3; snare joins on 2 and 4. Repeat the bar, then try hiding a phrase when you feel ready. This is a groove, not a named rudiment.",
       "id" : "first-backbeat",
       "objective" : "Combine eighth-note hi-hat, kick on 1 and 3, and snare on 2 and 4.",
+      "practice_minutes" : "Suggested 12 min",
       "reading_answer" : 0,
       "reading_choices" : [
         "Kick on 1 and 3; snare on 2 and 4",
@@ -497,6 +506,7 @@
       "explanation" : "Keep kick on 1 and 3 and snare on 2 and 4. This time, strike the hi-hat only on the four numbered beats. Count the & between them without adding a hit. The pulse stays the same even though the pattern has fewer notes.",
       "id" : "quarter-note-groove",
       "objective" : "Change the hi-hat to quarter notes while keeping the kick and snare pattern.",
+      "practice_minutes" : "Suggested 6 min",
       "reading_answer" : 1,
       "reading_choices" : [
         "Eight",
@@ -563,9 +573,10 @@
           "velocity" : 100
         }
       ],
-      "explanation" : "Move the eighth-note rhythm to the snare. Play R L R L R L R L while counting 1 & 2 & 3 & 4 &. Each hand supplies every other note. This prepares a short fill; deeper rudiment technique comes in later units.",
+      "explanation" : "The Single Stroke Roll alternates R L. Here, play R L R L R L R L as snare eighth notes while counting 1 & 2 & 3 & 4 &. The sticking names the rudiment; eighth notes describe this exercise's spacing. This slow introduction also prepares a short fill.",
       "id" : "alternating-eighths",
-      "objective" : "Play eight evenly spaced snare strokes with suggested alternating sticking.",
+      "objective" : "Name the Single Stroke Roll and play eight even strokes with suggested alternating hands.",
+      "practice_minutes" : "Suggested 8 min",
       "reading_answer" : 2,
       "reading_choices" : [
         "Right",
@@ -573,9 +584,9 @@
         "Left"
       ],
       "reading_question" : "Following R L sticking, which hand plays the & of 1?",
-      "subtitle" : "Snare eighth notes, R then L.",
-      "technique_tip" : "Match the sound and spacing of the two hands. R/L is a self-check: the same snare MIDI note cannot tell the app which hand struck it.",
-      "title" : "Let your hands take turns",
+      "subtitle" : "Let your hands take turns.",
+      "technique_tip" : "Listen for matching sound and spacing from both hands. R/L is a self-check, not a MIDI measurement. If the ands become uneven, revisit Find the and before adding speed.",
+      "title" : "Single Stroke Roll",
       "version" : "alternating-eighths-v1"
     },
     {
@@ -665,6 +676,7 @@
       "explanation" : "Return to the full eighth-note backbeat. Keep kick on 1 and 3, then add one on the & of 3. Snare stays on 2 and 4. Say 3 and 4 evenly so the extra kick fits between the two numbered beats.",
       "id" : "kick-on-the-and",
       "objective" : "Add a kick on the & of 3 without changing the hand pattern.",
+      "practice_minutes" : "Suggested 10 min",
       "reading_answer" : 1,
       "reading_choices" : [
         "On beat 2",
@@ -746,6 +758,7 @@
       "explanation" : "Play the basic groove through the & of 3. On beat 4, play only snare; on the & of 4, play nothing. Keep counting 4 and 1 through the gap. Read the space first, then try the phrase with less guidance.",
       "id" : "leave-a-gap",
       "objective" : "Leave space around the final snare, then return to the next bar's first beat.",
+      "practice_minutes" : "Suggested 8 min",
       "reading_answer" : 0,
       "reading_choices" : [
         "Nothing; keep counting",
@@ -827,6 +840,7 @@
       "explanation" : "For beats 1 and 2, play the basic groove: hi-hat eighths, kick on 1, snare on 2. For 3 & 4 &, play four snare notes, R L R L, leaving hi-hat and kick out. Repeat the bar and land the next hi-hat and kick together on 1.",
       "id" : "groove-to-fill",
       "objective" : "Replace the last two beats with alternating snare eighth notes and return to one.",
+      "practice_minutes" : "Suggested 10 min",
       "reading_answer" : 2,
       "reading_choices" : [
         "On beat 1",
@@ -838,6 +852,644 @@
       "technique_tip" : "The fill uses the same spacing as the hi-hat notes it replaces. Count through the change, and try a click-only take to check recall when the phrase feels familiar.",
       "title" : "Groove into a fill",
       "version" : "groove-to-fill-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 3,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        }
+      ],
+      "explanation" : "The Double Stroke Open Roll repeats R R L L. Here, play R R L L R R L L as snare eighth notes, with two distinct strokes per hand. Each number and & gets one note. The timing stays like the Single Stroke Roll; the suggested hand sequence changes.",
+      "id" : "double-stroke-open-roll",
+      "objective" : "Keep each pair evenly spaced in a slow introduction to double strokes.",
+      "practice_minutes" : "Suggested 8 min",
+      "reading_answer" : 1,
+      "reading_choices" : [
+        "1 and the & of 1",
+        "2 and the & of 2",
+        "Only beat 4"
+      ],
+      "reading_question" : "With R R L L eighths, which counts use the first left-hand pair?",
+      "subtitle" : "Two even strokes from each hand.",
+      "technique_tip" : "Listen to each pair's second stroke: keep it clear and even. If the pulse slips, revisit Single Stroke Roll. Self-check the hands or ask a teacher; MIDI cannot verify sticking or controlled rebound. This is not a buzz-roll exercise.",
+      "title" : "Double Stroke Open Roll",
+      "version" : "double-stroke-open-roll-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 3,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        }
+      ],
+      "explanation" : "Keep R R L L R R L L in eighth notes. Place the suggested R strokes on closed hi-hat and L strokes on snare. Hear two hat notes, then two snare notes, repeated. This is orchestration: placing a rhythm on different instruments. Leave the foot out for this study.",
+      "id" : "move-the-doubles",
+      "objective" : "Move the double-stroke pattern between hi-hat and snare without changing its spacing.",
+      "practice_minutes" : "Suggested 8 min",
+      "reading_answer" : 2,
+      "reading_choices" : [
+        "Hi-hat",
+        "Bass drum",
+        "Snare"
+      ],
+      "reading_question" : "Which instrument plays both eighth notes on count 2 and its &?",
+      "subtitle" : "One sticking, two sounds.",
+      "technique_tip" : "Listen for even spacing when the sound changes. If switching surfaces adds a gap, return to Double Stroke Open Roll on snare. Use a comfortable reach. The pad score checks instruments, not which hand played them.",
+      "title" : "Move the doubles",
+      "version" : "move-the-doubles-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 3,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 2,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        }
+      ],
+      "explanation" : "A Single Paradiddle combines singles and doubles: R L R R, then L R L L. In this slow study, one full sequence fills the bar in eighth notes. The first group starts on 1 and the second on 3. Keep the beat unchanged when one hand plays twice.",
+      "id" : "single-paradiddle",
+      "objective" : "Learn R L R R L R L L while keeping every snare eighth note evenly spaced.",
+      "practice_minutes" : "Suggested 10 min",
+      "reading_answer" : 0,
+      "reading_choices" : [
+        "On beat 3",
+        "On the & of 1",
+        "On beat 4"
+      ],
+      "reading_question" : "In this eighth-note paradiddle, where does the L R L L group begin?",
+      "subtitle" : "Two singles, then a double.",
+      "technique_tip" : "Say the sticking, then listen for even notes through each double. Revisit Single Stroke Roll or Double Stroke Open Roll if needed. No accents are required here. Self-check your hands; a perfect MIDI timing score cannot verify the sticking.",
+      "title" : "Single Paradiddle",
+      "version" : "single-paradiddle-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 3,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 2,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        }
+      ],
+      "explanation" : "Use R L R R L R L L again, with suggested R on closed hi-hat and L on snare. The staff now shows which surface plays each eighth note. Listen for the different sounds revealing the two singles and the double. This coordination study is not the usual snare-on-2-and-4 backbeat.",
+      "id" : "move-the-paradiddle",
+      "objective" : "Play the paradiddle's rhythm across hi-hat and snare with no gaps at the changes.",
+      "practice_minutes" : "Suggested 10 min",
+      "reading_answer" : 2,
+      "reading_choices" : [
+        "1 and the & of 1",
+        "3 and the & of 3",
+        "4 and the & of 4"
+      ],
+      "reading_question" : "Which two counts contain the final pair of snare notes?",
+      "subtitle" : "Hear the sticking across the kit.",
+      "technique_tip" : "Keep each sound in its place without speeding up the doubles. If the surface changes distract you, revisit Single Paradiddle on snare. MIDI can check the surface sequence; hand choice and movement remain self or teacher checks.",
+      "title" : "Move the paradiddle",
+      "version" : "move-the-paradiddle-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 4,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 0,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 2,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 2,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 88
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 100
+        }
+      ],
+      "explanation" : "Keep the hi-hat and snare sequence from Move the paradiddle. Add bass drum on 1 and 3. On 1, kick meets hi-hat; on 3, it meets snare. The suggested leading hand changes while your foot keeps the same two counts. Read those aligned notes as simultaneous sounds.",
+      "id" : "foot-under-paradiddle",
+      "objective" : "Add kick on 1 and 3 without disturbing the orchestrated paradiddle.",
+      "practice_minutes" : "Suggested 12 min",
+      "reading_answer" : 1,
+      "reading_choices" : [
+        "Hi-hat and snare",
+        "Snare and bass drum",
+        "Hi-hat and bass drum"
+      ],
+      "reading_question" : "Which two instruments are vertically aligned on beat 3?",
+      "subtitle" : "Same hands, add the downbeats.",
+      "technique_tip" : "Listen for kick and snare arriving together on 3, then an even next hi-hat. If adding the foot disrupts your hands, revisit Move the paradiddle. MIDI checks the note arrivals, not hand choice, balance, or pedal technique.",
+      "title" : "Foot beneath the paradiddle",
+      "version" : "foot-under-paradiddle-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 4,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 0,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 1,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 2,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 3,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 3,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        }
+      ],
+      "explanation" : "Return to the familiar eighth-note hi-hat and snare on 2 and 4. This time the kick plays all four numbered beats. Four on the floor names that steady bass-drum pattern. On 2 and 4, hi-hat, snare, and kick arrive together; the hat still plays each & between them.",
+      "id" : "four-on-the-floor",
+      "objective" : "Keep hi-hat eighths and the snare backbeat over four steady quarter-note kicks.",
+      "practice_minutes" : "Suggested 8 min",
+      "reading_answer" : 0,
+      "reading_choices" : [
+        "Three",
+        "One",
+        "Two"
+      ],
+      "reading_question" : "How many different instruments play together on beat 2?",
+      "subtitle" : "A bass-drum note on every beat.",
+      "technique_tip" : "Listen for one aligned attack from all three instruments on the backbeats. Keep the intervening hats even. If the extra kicks interrupt your hands, revisit Your first backbeat. Stay balanced; pedal technique remains a self or teacher check.",
+      "title" : "Four on the floor",
+      "version" : "four-on-the-floor-v1"
+    },
+    {
+      "bpm" : 60,
+      "chapter" : 4,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 0,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 1,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 2,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 2,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 3,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 90
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        }
+      ],
+      "explanation" : "Play the basic groove with hi-hat eighths, snare on 2 and 4, and kick on 1 and 3. Add a kick on the & of 4. That extra note anticipates the next bar's 1. Count 4 and 1 evenly: the barline does not shorten the space between the two kick strokes.",
+      "id" : "lead-into-one",
+      "objective" : "Place a kick on the & of 4 and land the next downbeat without rushing.",
+      "practice_minutes" : "Suggested 10 min",
+      "reading_answer" : 1,
+      "reading_choices" : [
+        "Beat 3",
+        "The & of 4",
+        "Beat 4"
+      ],
+      "reading_question" : "Which count places the added kick immediately before the next bar?",
+      "subtitle" : "An extra kick before the barline.",
+      "technique_tip" : "Listen to the gap from the last kick to the next first beat. Keep it one eighth note long. If the pedal pair feels crowded, revisit Kick on the and. Keep a comfortable motion; timing does not certify foot technique.",
+      "title" : "Lead into one",
+      "version" : "lead-into-one-v1"
+    },
+    {
+      "bpm" : 48,
+      "chapter" : 4,
+      "counts" : "1 & 2 & 3 & 4 &",
+      "events" : [
+        {
+          "beat" : 0,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 0.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 1,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 1.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 2,
+          "hand" : "",
+          "pad" : 2,
+          "velocity" : 112
+        },
+        {
+          "beat" : 2.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        },
+        {
+          "beat" : 3,
+          "hand" : "L",
+          "pad" : 1,
+          "velocity" : 108
+        },
+        {
+          "beat" : 3.5,
+          "hand" : "R",
+          "pad" : 0,
+          "velocity" : 78
+        }
+      ],
+      "explanation" : "Keep kick on 1 and 3 and snare on 2 and 4. Play closed hi-hat only on each &: these are the offbeats in this exercise. The first beat's upper voice starts with an eighth rest, followed by a hat note. Begin at 48 BPM to give this new coordination more room.",
+      "id" : "between-the-beats",
+      "objective" : "Keep the numbered beats steady while the hi-hat plays only halfway between them.",
+      "practice_minutes" : "Suggested 12 min",
+      "reading_answer" : 2,
+      "reading_choices" : [
+        "A simultaneous snare note",
+        "A quarter-note hat",
+        "An eighth rest"
+      ],
+      "reading_question" : "In the first beat's upper voice, what comes before the hi-hat note?",
+      "subtitle" : "Move the hi-hat to every and.",
+      "technique_tip" : "Listen for even spacing from kick or snare to hi-hat and back again. Avoid pulling the hats onto the numbered beats. If the rests become confusing, revisit Give the groove more space, then count this pattern aloud before playing.",
+      "title" : "Between the beats",
+      "version" : "between-the-beats-v1"
     }
   ],
   "version" : 1

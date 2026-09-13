@@ -39,16 +39,20 @@ def verify(exported_course=None, exported_baseline=None):
     course_path = ROOT / "apps/game/data/course.json"
     course = json.loads(course_path.read_text())
     assert course["version"] == 1, "Unsupported course format"
-    assert len(course["chapters"]) == 3
+    chapters = course["chapters"]
+    assert chapters and all(isinstance(title, str) and title.strip() for title in chapters)
+    assert len(set(chapters)) == len(chapters), "Duplicate chapter title"
     lessons = course["lessons"]
-    assert len(lessons) == 12
-    assert len({item["id"] for item in lessons}) == 12, "Duplicate lesson ID"
-    assert len({item["version"] for item in lessons}) == 12, "Duplicate lesson version"
+    assert lessons, "Empty course"
+    assert len({item["id"] for item in lessons}) == len(lessons), "Duplicate lesson ID"
+    assert len({item["version"] for item in lessons}) == len(lessons), "Duplicate lesson version"
     event_count = 0
     for index, lesson in enumerate(lessons):
-        assert lesson["chapter"] == index // 4, "Unexpected chapter sequence"
+        assert type(lesson["chapter"]) is int and 0 <= lesson["chapter"] < len(chapters), "Invalid chapter"
+        if index > 0:
+            assert lessons[index - 1]["chapter"] <= lesson["chapter"], "Chapters must stay in order"
         for key in ("id", "version", "title", "subtitle", "objective", "explanation",
-                    "counts", "technique_tip", "reading_question"):
+                    "counts", "practice_minutes", "technique_tip", "reading_question"):
             assert isinstance(lesson[key], str) and lesson[key].strip(), f"Missing {key}"
         assert 48 <= lesson["bpm"] <= 144
         choices = lesson["reading_choices"]
@@ -59,12 +63,15 @@ def verify(exported_course=None, exported_baseline=None):
         for event in lesson["events"]:
             beat, pad = event["beat"], event["pad"]
             assert isinstance(beat, (float, int)) and math.isfinite(beat) and 0 <= beat < 4
+            assert beat * 2 == round(beat * 2), "Current notation supports quarter/eighth attacks"
             assert type(pad) is int and 0 <= pad < 3
             assert type(event["velocity"]) is int and 1 <= event["velocity"] <= 127
             assert event["hand"] in ("", "R", "L")
             assert (pad, beat) not in targets, "Duplicate target"
             targets.add((pad, beat))
             event_count += 1
+
+    assert {lesson["chapter"] for lesson in lessons} == set(range(len(chapters))), "Empty chapter"
 
     if exported_course:
         assert course == json.loads(Path(exported_course).read_text()), "Shared course differs from authored native lessons; regenerate with apps/game/tools/export-course.swift"
@@ -84,7 +91,7 @@ def verify(exported_course=None, exported_baseline=None):
     for relative in sorted(originals):
         assert (source / relative).read_bytes() == (destination / relative).read_bytes(), f"Sample bank drift: {relative}"
     assert len(list(source.rglob("*.flac"))) == 24
-    print(f"Shared content: 12 lessons, {event_count} authored targets, 24 identical FLAC recordings, pinned Inter font/license, and complete provenance.")
+    print(f"Shared content: {len(lessons)} lessons in {len(chapters)} chapters, {event_count} authored targets, 24 identical FLAC recordings, pinned Inter font/license, and complete provenance.")
 
 
 if __name__ == "__main__":

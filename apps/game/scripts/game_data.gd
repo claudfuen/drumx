@@ -28,11 +28,12 @@ func load_course() -> bool:
 	if not parsed is Dictionary or not parsed.get("lessons") is Array:
 		return false
 	course = parsed
-	return course.lessons.size() == 12
+	return not course.lessons.is_empty() and course.get("chapters") is Array and not course.chapters.is_empty()
 
 func load_progress() -> void:
 	if not FileAccess.file_exists(save_path):
 		ensure_tempo_coach(false)
+		ensure_readiness(false)
 		return
 	var parser := JSON.new()
 	var parse_status := parser.parse(FileAccess.get_file_as_string(save_path))
@@ -49,6 +50,7 @@ func load_progress() -> void:
 	if save.settings.has("mapping"):
 		save.settings.mapping = normalized_mapping(save.settings.mapping)
 	ensure_tempo_coach(true)
+	ensure_readiness(true)
 
 func persist() -> bool:
 	if blocked:
@@ -96,45 +98,126 @@ static func stars(points_value: int, complete: bool) -> int:
 
 func best(index: int, settings: Dictionary = {}) -> Dictionary:
 	var result: Dictionary = {}
+	var comparison := normalized_take_settings(settings) if not settings.is_empty() else {}
 	var identifier: String = course.lessons[index].id
 	for attempt in save.attempts:
 		if attempt.get("lesson") != identifier or attempt.get("version") != course.lessons[index].version:
 			continue
-		if not settings.is_empty() and attempt.get("settings") != settings:
+		if not comparison.is_empty() and normalized_take_settings(attempt.get("settings", {})) != comparison:
 			continue
 		if result.is_empty() or int(attempt.get("points", 0)) > int(result.get("points", 0)):
 			result = attempt
 	return result
 
+func needs_reading(index: int) -> bool:
+	return index + 1 < course.lessons.size() and int(course.lessons[index].chapter) != int(course.lessons[index + 1].chapter)
+
+func lesson_requirement(index: int) -> String:
+	if index == 0: return "Earn the 72 BPM checkpoint: two steady 16-bar guided takes in three comparable attempts."
+	return "Two steady 16-bar guided takes at %d BPM in three comparable attempts. Each instrument: 80%% matched and 70%% on time. Extras: at most 10%%." % int(course.lessons[index].bpm)
+
 func cleared(index: int) -> bool:
-	if index == 0:
-		return pulse_checkpoint_earned()
-	return legacy_cleared(index)
+	var playing := pulse_checkpoint_earned() if index == 0 else bool(readiness_status(index).checkpoint)
+	return playing and (not needs_reading(index) or bool(save.read.get(course.lessons[index].version, false)))
 
 func legacy_cleared(index: int) -> bool:
-	var needs_reading := index in [3, 7]
-	if needs_reading and not bool(save.read.get(course.lessons[index].version, false)):
-		return false
+	if needs_reading(index) and not bool(save.read.get(course.lessons[index].version, false)): return false
 	for attempt in save.attempts:
-		if attempt.lesson == course.lessons[index].id and attempt.version == course.lessons[index].version:
-			if int(attempt.settings.bars) >= 4 and float(attempt.matched) / maxi(1, int(attempt.expected)) >= 0.8:
+		if attempt.lesson == course.lessons[index].id and attempt.version == course.lessons[index].version and not attempt.settings.has("readiness_policy") and not attempt.settings.has("tempo_policy"):
+			if int(attempt.expected) == course.lessons[index].events.size() * int(attempt.settings.bars) and int(attempt.settings.bars) >= 4 and int(attempt.matched) * 5 >= int(attempt.expected) * 4:
 				return true
 	return false
 
 func frontier() -> int:
-	for index in range(int(save.get("tempo_coach", {}).get("legacy_frontier", 0)), course.lessons.size()):
-		if not cleared(index):
-			return index
-	return 11
+	var old_frontier := int(save.get("readiness", {}).get("legacy_frontier", save.get("tempo_coach", {}).get("legacy_frontier", 0)))
+	for index in range(old_frontier, course.lessons.size()):
+		if not cleared(index): return index
+	return maxi(0, course.lessons.size() - 1)
+
+# A checkpoint remains earned after later practice. Each historical window uses
+# only the latest three takes at that moment with exactly equal captured settings.
+func readiness_status(index: int, settings: Dictionary = {}) -> Dictionary:
+	var result := {"passing": 0, "recent": 0, "checkpoint": false, "eligible": false}
+	var lesson: Dictionary = course.lessons[index]
+	if not settings.is_empty():
+		result.eligible = valid_settings(settings, true) and int(settings.get("readiness_policy", 0)) == 1 and int(settings.get("bars", 0)) == 16 and int(settings.get("guidance", -1)) == 0 and float(settings.get("bpm", 0)) == float(lesson.bpm)
+	var comparison: Dictionary = normalized_take_settings(settings) if not settings.is_empty() and valid_settings(settings, true) else settings.duplicate(true)
+	var groups: Array = []
+	var unique: Dictionary = {}
+	for stored in save.attempts:
+		if stored is Dictionary and stored.get("id") is String: unique[stored.id] = stored
+	for stored in unique.values():
+		if not valid_attempt(stored): continue
+		var attempt: Dictionary = normalized_attempt(stored)
+		if attempt.lesson != lesson.id or attempt.version != lesson.version or not valid_attempt(attempt): continue
+		var captured: Dictionary = attempt.settings
+		if int(captured.get("readiness_policy", 0)) != 1 or int(captured.bars) != 16 or int(captured.guidance) != 0 or float(captured.bpm) != float(lesson.bpm): continue
+		if not authored_pads(attempt, index) or (not comparison.is_empty() and captured != comparison): continue
+		result.eligible = true
+		var target := -1
+		for group_index in range(groups.size()):
+			if groups[group_index][0].settings == captured: target = group_index; break
+		if target < 0: groups.append([attempt])
+		else: groups[target].append(attempt)
+	for group in groups:
+		var window: Array = []
+		for attempt in group:
+			window.append(attempt)
+			if window.size() > 3: window.pop_front()
+			var passing := 0
+			for prior in window:
+				if steady_readiness_take(prior): passing += 1
+			if passing >= 2: result.checkpoint = true
+		var recent_passing := 0
+		for attempt in window:
+			if steady_readiness_take(attempt): recent_passing += 1
+		if recent_passing > result.passing or (recent_passing == result.passing and window.size() > result.recent):
+			result.passing = recent_passing
+			result.recent = window.size()
+	return result
+
+func authored_pads(attempt: Dictionary, index: int) -> bool:
+	if not attempt.has("pads") or attempt.pads.size() != 3: return false
+	var expected := [0, 0, 0]
+	for event in course.lessons[index].events: expected[int(event.pad)] += int(attempt.settings.bars)
+	for pad in range(3):
+		if int(attempt.pads[pad].expected) != expected[pad]: return false
+	return int(attempt.expected) == course.lessons[index].events.size() * int(attempt.settings.bars)
+
+static func steady_readiness_take(attempt: Dictionary) -> bool:
+	if int(attempt.extra) * 10 > int(attempt.expected): return false
+	for pad in attempt.pads:
+		if int(pad.expected) > 0 and (int(pad.matched) * 100 < int(pad.expected) * 80 or int(pad.on_time) * 100 < int(pad.expected) * 70): return false
+	return true
+
+func ensure_readiness(migrate: bool) -> void:
+	if save.has("readiness"): return
+	var prior := 0
+	if migrate:
+		prior = int(save.get("tempo_coach", {}).get("legacy_frontier", 0))
+		while prior + 1 < course.lessons.size() and legacy_cleared(prior): prior += 1
+		prior = maxi(prior, int(save.get("selected", 0)))
+		for attempt in save.attempts:
+			if attempt.settings.has("readiness_policy"): continue
+			for index in range(course.lessons.size()):
+				if attempt.lesson == course.lessons[index].id and int(attempt.matched) > 0 and attempt.version == course.lessons[index].version and int(attempt.expected) == course.lessons[index].events.size() * int(attempt.settings.bars):
+					prior = maxi(prior, index)
+					if index + 1 < course.lessons.size() and legacy_cleared(index): prior = maxi(prior, index + 1)
+	save.readiness = {"version": 1, "legacy_frontier": prior}
 
 func record(identifier: String, index: int, snapshot: Dictionary, settings: Dictionary) -> bool:
 	if not bool(snapshot.get("naturally_completed", false)):
 		return false
+	if settings.has("readiness_policy"):
+		if not valid_settings(settings, true): return false
+		var duration := float(settings.bars) * 240.0 / float(settings.bpm)
+		if not is_equal_approx(float(snapshot.get("bpm", -1)), float(settings.bpm)) or int(snapshot.get("guidance", -1)) != int(settings.guidance) or not is_equal_approx(float(snapshot.get("duration_seconds", -1)), duration) or not is_finite(float(snapshot.get("elapsed_seconds", -1))) or float(snapshot.get("elapsed_seconds", -1)) < duration - 0.000001: return false
 	var attempt := {"id": identifier, "lesson": course.lessons[index].id, "version": course.lessons[index].version,
 		"settings": settings.duplicate(true), "points": points(snapshot, true), "best_streak": int(snapshot.get("best_streak", 0)),
 		"matched": int(snapshot.get("matched", 0)), "on_time": int(snapshot.get("on_time", 0)),
 		"missed": int(snapshot.get("missed", 0)), "extra": int(snapshot.get("extra", 0)), "expected": int(snapshot.get("expected", 0))}
-	if not valid_attempt(attempt):
+	if snapshot.has("pads"): attempt.pads = snapshot.pads.duplicate(true)
+	if not valid_attempt(attempt) or (settings.has("readiness_policy") and not authored_pads(attempt, index)):
 		error = "The completed take contained invalid score data and was not saved."
 		return false
 	attempt = normalized_attempt(attempt)
@@ -171,6 +254,7 @@ func retry_pending(restore_archive: bool = false) -> bool:
 		save = restored
 		blocked = false
 		ensure_tempo_coach(true)
+		ensure_readiness(true)
 		if pending_attempts.is_empty():
 			error = ""
 			progress_revision += 1
@@ -195,14 +279,25 @@ static func normalized_attempt(value: Dictionary) -> Dictionary:
 	var attempt: Dictionary = value.duplicate(true)
 	for key in ["points", "matched", "on_time", "missed", "extra", "expected", "best_streak"]:
 		attempt[key] = int(attempt[key])
-	attempt.settings.bpm = float(attempt.settings.bpm)
-	attempt.settings.bars = int(attempt.settings.bars)
-	attempt.settings.guidance = int(attempt.settings.guidance)
-	attempt.settings.mapping = normalized_mapping(attempt.settings.mapping)
-	if attempt.settings.has("tempo_policy"):
-		attempt.settings.tempo_policy = int(attempt.settings.tempo_policy)
-		attempt.settings.calibration_ms = int(attempt.settings.calibration_ms)
+	attempt.settings = normalized_take_settings(attempt.settings)
+	if attempt.has("pads"):
+		for pad in attempt.pads:
+			for key in ["expected", "matched", "missed", "extra", "on_time"]: pad[key] = int(pad[key])
 	return attempt
+
+static func normalized_take_settings(value: Dictionary) -> Dictionary:
+	var result: Dictionary = value.duplicate(true)
+	result.bpm = float(result.bpm)
+	result.bars = int(result.bars)
+	result.guidance = int(result.guidance)
+	result.mapping = normalized_mapping(result.mapping)
+	if result.has("tempo_policy"): result.tempo_policy = int(result.tempo_policy)
+	if result.has("readiness_policy"):
+		result.readiness_policy = int(result.readiness_policy)
+		result.calibration_ms = float(result.calibration_ms)
+		for aliases in result.mapping: aliases.sort()
+	elif result.has("tempo_policy"): result.calibration_ms = int(result.calibration_ms)
+	return result
 
 static func whole(value: Variant, minimum: float, maximum: float) -> bool:
 	return (typeof(value) == TYPE_INT or typeof(value) == TYPE_FLOAT) and is_finite(float(value)) and float(value) == floor(float(value)) and float(value) >= minimum and float(value) <= maximum
@@ -233,9 +328,12 @@ func valid_settings(value: Variant, take: bool) -> bool:
 	if not value is Dictionary:
 		return false
 	if take:
-		if value.has("tempo_policy"):
-			if not whole(value.tempo_policy, 1, 1000000) or not value.get("monitoring") is bool or not value.get("live_feedback") is bool or not whole(value.get("calibration_ms"), -500, 500):
-				return false
+		if value.has("readiness_policy"):
+			if not whole(value.readiness_policy, 1, 1) or value.has("tempo_policy") or not value.get("hand_hints") is bool or not value.get("source") is String or value.source.strip_edges().is_empty(): return false
+			if not typeof(value.get("calibration_ms")) in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(value.calibration_ms)) or absf(float(value.calibration_ms)) > 500: return false
+		if value.has("tempo_policy") or value.has("readiness_policy"):
+			if not value.get("monitoring") is bool or not value.get("live_feedback") is bool: return false
+			if value.has("tempo_policy") and (not whole(value.tempo_policy, 1, 1000000) or not whole(value.get("calibration_ms"), -500, 500)): return false
 		return whole(value.get("bpm"), 30, 240) and whole(value.get("bars"), 1, 32) and whole(value.get("guidance"), 0, 2) and value.get("source") is String and valid_mapping(value.get("mapping"))
 	if value.has("mapping") and not valid_mapping(value.mapping):
 		return false
@@ -253,13 +351,32 @@ func valid_attempt(value: Variant) -> bool:
 			return false
 	if int(value.expected) < 1 or int(value.expected) > 4096 or int(value.matched) + int(value.missed) != int(value.expected) or int(value.on_time) > int(value.matched) or int(value.best_streak) > int(value.on_time):
 		return false
+	if value.has("pads"):
+		if not valid_pad_evidence(value.pads, value): return false
+	elif value.settings.has("readiness_policy"): return false
+	if value.settings.has("readiness_policy") and value.version == "find-the-pulse-v1": return false
 	return int(value.points) == points(value, true)
 
+static func valid_pad_evidence(pads: Variant, total: Dictionary) -> bool:
+	if not pads is Array or pads.size() != 3: return false
+	var sums := {"expected": 0, "matched": 0, "missed": 0, "extra": 0, "on_time": 0}
+	for pad in pads:
+		if not pad is Dictionary: return false
+		for key in sums:
+			if not whole(pad.get(key), 0, 10000000 if key == "extra" else 4096): return false
+			sums[key] += int(pad[key])
+		if int(pad.matched) + int(pad.missed) != int(pad.expected) or int(pad.on_time) > int(pad.matched): return false
+	for key in sums:
+		if sums[key] != int(total[key]): return false
+	return true
+
 func valid_save(value: Variant) -> bool:
-	if not value is Dictionary or value.get("version") != 1 or not value.get("attempts") is Array or not value.get("read") is Dictionary or not whole(value.get("selected", 0), 0, 11) or not valid_settings(value.get("settings", {}), false):
+	if not value is Dictionary or value.get("version") != 1 or not value.get("attempts") is Array or not value.get("read") is Dictionary or not whole(value.get("selected", 0), 0, maxi(0, course.lessons.size() - 1)) or not valid_settings(value.get("settings", {}), false):
 		return false
 	if value.has("tempo_coach") and not valid_tempo_coach(value.tempo_coach):
 		return false
+	if value.has("readiness"):
+		if not value.readiness is Dictionary or value.readiness.get("version") != 1 or not whole(value.readiness.get("legacy_frontier"), 0, maxi(0, course.lessons.size() - 1)): return false
 	var identifiers: Array = []
 	for attempt in value.attempts:
 		if not valid_attempt(attempt) or attempt.id in identifiers:
@@ -277,7 +394,7 @@ func ensure_tempo_coach(migrate: bool = false) -> void:
 	var prior_frontier := 0
 	var free := {"bpm": 60, "bars": 16, "guidance": 0}
 	if migrate:
-		while prior_frontier < 11 and legacy_cleared(prior_frontier): prior_frontier += 1
+		while prior_frontier + 1 < course.lessons.size() and legacy_cleared(prior_frontier): prior_frontier += 1
 		prior_frontier = maxi(prior_frontier, int(save.get("selected", 0)))
 		for attempt in save.attempts:
 			if attempt.lesson == "find-the-pulse" and attempt.version == "find-the-pulse-v1":
@@ -285,8 +402,8 @@ func ensure_tempo_coach(migrate: bool = false) -> void:
 	save.tempo_coach = {"version": 1, "legacy_frontier": prior_frontier,
 		"intent": "free" if migrate else "guided", "guided": {"bpm": 60, "bars": 16, "guidance": 0}, "free": free}
 
-static func valid_tempo_coach(value: Variant) -> bool:
-	if not value is Dictionary or value.get("version") != 1 or not whole(value.get("legacy_frontier"), 0, 11) or value.get("intent") not in ["guided", "free"]: return false
+func valid_tempo_coach(value: Variant) -> bool:
+	if not value is Dictionary or value.get("version") != 1 or not whole(value.get("legacy_frontier"), 0, maxi(0, course.lessons.size() - 1)) or value.get("intent") not in ["guided", "free"]: return false
 	for mode in ["guided", "free"]:
 		var plan = value.get(mode)
 		if not plan is Dictionary or not whole(plan.get("bpm"), 30, 240) or not whole(plan.get("bars"), 1, 32) or not whole(plan.get("guidance"), 0, 2): return false

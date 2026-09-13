@@ -19,7 +19,7 @@ private func standardChecks() {
     let plan = DrumxPracticePlan.standard(lesson: lesson)
     check(plan.tempo == lesson.suggestedBPM, "standard pace comes from the selected lesson")
     check(plan.bars == 16 && plan.mode == 0 && plan.liveFeedback, "standard phrase has enough guided repetitions")
-    check(plan.durationSeconds >= 53 && plan.durationSeconds <= 64, "current course defaults give roughly one minute before review")
+    check(plan.durationSeconds >= 53 && plan.durationSeconds <= 80, "authored defaults give 53 to 80 seconds of continuous practice before review")
     check(near(plan.durationSeconds * plan.tempo / 60, 64), "standard phrase always has 64 quarter-note beats")
     check(near(plan.countInSeconds * plan.tempo / 60, 4), "count-in remains four quarter-note beats")
     check(near(plan.totalDurationSeconds, plan.durationSeconds + plan.countInSeconds), "count-in is separate from playing time")

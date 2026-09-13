@@ -251,11 +251,20 @@ Dictionary DrumxEngine::snapshot() {
   d["progress_archive_path"]=String::utf8(progress_lock.archive_path().c_str());
   d["progress_lock_error"]=String::utf8(progress_lock.error().c_str());
   d["practice_start"]=state.practice_start; d["elapsed_seconds"]=s.elapsed_seconds;
-  d["duration_seconds"]=s.duration_seconds; d["bpm"]=s.bpm;
+  d["duration_seconds"]=s.duration_seconds; d["bpm"]=s.bpm; d["guidance"]=s.guidance;
   d["expected"]=m.expected; d["matched"]=m.matched; d["missed"]=m.missed; d["extra"]=m.extra;
   d["on_time"]=m.on_time; d["streak"]=m.streak; d["best_streak"]=m.best_streak;
   d["hit_rate_percent"]=m.hit_rate_percent; d["timing_accuracy_percent"]=m.timing_accuracy_percent;
   d["mean_offset_ms"]=m.mean_offset_ms; d["mean_absolute_offset_ms"]=m.mean_absolute_offset_ms;
+  Array pads;
+  for (int pad=0;pad<DX_PAD_COUNT;++pad) {
+    const auto &metrics=s.pads[pad];
+    Dictionary entry;
+    entry["expected"]=metrics.expected; entry["matched"]=metrics.matched;
+    entry["missed"]=metrics.missed; entry["extra"]=metrics.extra; entry["on_time"]=metrics.on_time;
+    pads.push_back(entry);
+  }
+  d["pads"]=pads;
   Array biases;
   for (int pad=0;pad<DX_PAD_COUNT;++pad) {
     const auto &bias=s.bias[pad];

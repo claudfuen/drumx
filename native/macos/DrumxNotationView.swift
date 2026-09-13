@@ -58,7 +58,9 @@ final class DrumxNotationView: NSView {
     let counts = stride(from: 0, to: 8, by: eighths ? 1 : 2).map { tick in
       let count = tick.isMultiple(of: 2) ? "Count \(tick / 2 + 1)" : "And of \(tick / 2 + 1)"
       let instruments = (groups[tick] ?? []).sorted { $0.pad < $1.pad }.map { padNames[$0.pad] }
-      return "\(count): \(instruments.isEmpty ? "no strike" : instruments.joined(separator: " and "))"
+      let hands = Set((groups[tick] ?? []).filter { $0.pad != 2 }.compactMap(\.hand)).sorted()
+      let suggestion = hands.isEmpty ? "" : "; suggested hands \(hands.joined(separator: " and "))"
+      return "\(count): \(instruments.isEmpty ? "no strike" : instruments.joined(separator: " and "))\(suggestion)"
     }
     setAccessibilityLabel("\(lesson.title). One bar of four-four time. \(counts.joined(separator: ". ")). Hi-hat and snare share the upper voice; kick uses the lower voice when present.")
   }
@@ -239,12 +241,25 @@ final class DrumxNotationView: NSView {
            color: tick.isMultiple(of: 2) ? ink : muted, centered: true)
     }
     let pads = Array(Set(events.map(\.pad))).sorted()
-    let keyWidth: CGFloat = 88
-    let keyStart = bounds.midX - CGFloat(pads.count) * keyWidth / 2
+    // Keep the staff and count geometry stable. The compact key lives in the
+    // heading; authored sticking sits directly below its musical count.
+    let keyWidth: CGFloat = bounds.width < 540 ? 57 : 88
+    let keyStart = right - CGFloat(pads.count) * keyWidth
     for (index, pad) in pads.enumerated() {
       let x = keyStart + CGFloat(index) * keyWidth
-      notehead(x: x + 6, y: offset + 161, cross: pad == 0)
-      text(padNames[pad], x: x + 20, y: offset + 154)
+      notehead(x: x + 6, y: offset + 13, cross: pad == 0)
+      text(bounds.width < 540 ? ["HAT", "SN", "KICK"][pad] : padNames[pad],
+           x: x + 17, y: offset + 6, size: bounds.width < 540 ? 10 : 11)
+    }
+    let handGroups = Dictionary(grouping: events.filter { $0.pad != 2 && $0.hand != nil },
+                                by: { Int(($0.beat * 2).rounded()) })
+    if !handGroups.isEmpty {
+      text("R/L suggested", x: left, y: offset + 153, size: 10)
+      for tick in 0..<8 {
+        let hands = Set((handGroups[tick] ?? []).compactMap(\.hand)).sorted()
+        text(hands.joined(separator: "+"), x: noteStart + CGFloat(tick) * step,
+             y: offset + 152, size: 11, color: ink, centered: true)
+      }
     }
   }
 }

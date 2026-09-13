@@ -15,11 +15,14 @@ struct TakeSettings: Codable, Equatable {
   let tempoPolicyVersion: Int?
   /// Nil means the older archive did not record the monitoring route.
   let monitoring: Bool?
+  /// Versioned non-pulse instrument-coverage checkpoint; absent in older archives.
+  let readinessPolicyVersion: Int?
 
   init(
     tempo: Double, mode: Int, liveFeedback: Bool, bars: Int, calibrationMS: Double,
     inputIdentity: String, mapping: [[Int]], lessonVersion: String = "first-backbeat-v1",
-    handHints: Bool = true, tempoPolicyVersion: Int? = nil, monitoring: Bool? = nil
+    handHints: Bool = true, tempoPolicyVersion: Int? = nil, monitoring: Bool? = nil,
+    readinessPolicyVersion: Int? = nil
   ) {
     self.tempo = tempo
     self.mode = mode
@@ -33,6 +36,7 @@ struct TakeSettings: Codable, Equatable {
     self.handHints = handHints
     self.tempoPolicyVersion = tempoPolicyVersion
     self.monitoring = monitoring
+    self.readinessPolicyVersion = readinessPolicyVersion
   }
 
   var isValid: Bool {
@@ -42,6 +46,11 @@ struct TakeSettings: Codable, Equatable {
       && !lessonVersion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
       && mapping.count == 3 && mapping.flatMap { $0 }.allSatisfy { (0...127).contains($0) }
       && (tempoPolicyVersion.map { $0 == 1 && lessonVersion == "find-the-pulse-v1" && monitoring != nil } ?? true)
+      && (readinessPolicyVersion.map {
+        $0 == 1 && tempoPolicyVersion == nil && lessonVersion != "find-the-pulse-v1" && monitoring != nil
+          && abs(calibrationMS) <= 500 && mapping.allSatisfy({ $0.count <= 16 })
+          && Set(mapping.flatMap { $0 }).count == mapping.flatMap { $0 }.count
+      } ?? true)
   }
 }
 
@@ -219,6 +228,31 @@ struct LessonReview {
   }
 }
 
+/// Three fixed instrument slots, in hi-hat/snare/kick order. No hand inference.
+struct LessonPadEvidence: Codable, Equatable {
+  let expected: Int
+  let matched: Int
+  let missed: Int
+  let extra: Int
+  let onTime: Int
+
+  var isValid: Bool {
+    expected >= 0 && expected <= 4096 && matched >= 0 && matched <= expected
+      && missed == expected - matched && extra >= 0 && extra <= 10_000_000
+      && onTime >= 0 && onTime <= matched
+  }
+
+  init(expected: Int, matched: Int, missed: Int, extra: Int, onTime: Int) {
+    self.expected = expected; self.matched = matched; self.missed = missed
+    self.extra = extra; self.onTime = onTime
+  }
+
+  init(_ pad: DXMetrics) {
+    self.init(expected: Int(pad.expected), matched: Int(pad.matched), missed: Int(pad.missed),
+      extra: Int(pad.extra), onTime: Int(pad.on_time))
+  }
+}
+
 struct LessonAttempt: Codable, Equatable, Identifiable {
   let id: UUID
   let endedAt: Date
@@ -234,6 +268,8 @@ struct LessonAttempt: Codable, Equatable, Identifiable {
   let meanAbsoluteOffsetMS: Double?
   /// nil identifies older saved attempts that did not record a best streak.
   let bestStreak: Int?
+  /// Optional for legacy compatibility. New policy attempts require all three slots.
+  var pads: [LessonPadEvidence]? = nil
 
   fileprivate var isValid: Bool {
     guard settings.isValid, endedAt.timeIntervalSinceReferenceDate.isFinite,
@@ -243,6 +279,14 @@ struct LessonAttempt: Codable, Equatable, Identifiable {
       (0...100).contains(timingAccuracyPercent), (0...100).contains(hitRatePercent),
       bestStreak.map({ $0 >= 0 && $0 <= onTime }) ?? true
     else { return false }
+    if let pads {
+      guard pads.count == 3, pads.allSatisfy({ $0.isValid }),
+        pads.reduce(0, { $0 + $1.expected }) == expected,
+        pads.reduce(0, { $0 + $1.matched }) == matched,
+        pads.reduce(0, { $0 + $1.missed }) == missed,
+        pads.reduce(0, { $0 + $1.extra }) == extra,
+        pads.reduce(0, { $0 + $1.onTime }) == onTime else { return false }
+    } else if settings.readinessPolicyVersion != nil { return false }
     let denominator = Double(expected) + Double(extra)
     guard abs(timingAccuracyPercent - Double(onTime) / denominator * 100) < 0.000001,
       abs(hitRatePercent - Double(matched) / denominator * 100) < 0.000001
@@ -375,7 +419,8 @@ final class LessonHistory {
       hitRatePercent: Double(total.matched) / denominator * 100,
       meanOffsetMS: total.matched > 0 ? total.mean_offset_ms : nil,
       meanAbsoluteOffsetMS: total.matched > 0 ? total.mean_absolute_offset_ms : nil,
-      bestStreak: Int(total.best_streak))
+      bestStreak: Int(total.best_streak),
+      pads: [snapshot.pads.0, snapshot.pads.1, snapshot.pads.2].map(LessonPadEvidence.init))
     guard attempt.isValid else { return nil }
     pendingSaves[id] = attempt
     return retryPendingSaves() ? attempt : nil

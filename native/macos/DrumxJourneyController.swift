@@ -7,8 +7,12 @@ extension LabController {
     let directory = support.appendingPathComponent("Drumx", isDirectory: true)
       .appendingPathComponent(Bundle.main.bundleIdentifier ?? "org.drumx.timing-lab", isDirectory: true)
       .appendingPathComponent("History", isDirectory: true)
-    return LessonHistory(key: progress.selectedHistoryKey,
+    let loaded = LessonHistory(key: progress.selectedHistoryKey,
       archiveURL: directory.appendingPathComponent(progress.selectedHistoryKey + ".json"))
+    if loaded.lastError == nil {
+      _ = DrumxUnlocks.migrateLegacyAccess(course: DrumxCourse.lessons, history: loaded.attempts, progress: progress)
+    }
+    return loaded
   }
 
   var repeatedNotes: [DrumxLessonNote] {
@@ -38,6 +42,14 @@ extension LabController {
   func saveResume() {
     // Merely navigating setup must not replace unreadable saved progress with its fallback.
     guard progress.selectedProfile.hasCompletedWelcome else { return }
+    if progress.selectedProfile.legacyAccessThrough == nil {
+      guard history.lastError == nil,
+        DrumxUnlocks.migrateLegacyAccess(course: DrumxCourse.lessons, history: history.attempts, progress: progress)
+      else {
+        setStatus(history.lastError ?? progress.lastError ?? "Progress needs to be saved before changing the lesson.")
+        return
+      }
+    }
     storePulseCondition()
     _ = progress.updateResume(PracticeResume(lessonID: lesson.id, tempo: tempo, mode: mode,
                                            liveFeedback: showLive, bars: lessonBars, lessonVersion: lesson.version, sessionFormatVersion: DrumxPracticePlan.currentSessionFormatVersion))
@@ -60,7 +72,7 @@ extension LabController {
     let nameRow = row([label("PLAYING AS", 11, weight: .semibold), welcomeName], spacing: 18)
     let steps = row([
       column([label("01  GET COMFORTABLE", 11, weight: .semibold), label("Check the kit, or try A / S / Space.", 13)], spacing: 8), spacer(),
-      column([label("02  BUILD YOUR FOUNDATION", 11, weight: .semibold), label("12 small lessons. Your own pace.", 13)], spacing: 8), spacer(),
+      column([label("02  BUILD YOUR FOUNDATION", 11, weight: .semibold), label("\(DrumxCourse.lessons.count) lessons. Build your foundation.", 13)], spacing: 8), spacer(),
       column([label("03  COME BACK STRONGER", 11, weight: .semibold), label("Your practice stays on this Mac.", 13)], spacing: 8),
     ])
     let actions = row([button("Let's play", #selector(finishWelcome), primary: true),
@@ -113,8 +125,12 @@ extension LabController {
         : settings.mode == 2 ? "Memory + live" : modeNames[settings.mode] + (settings.liveFeedback ? "" : " · feedback after")
       bestConditions[item.id] = "\(Int(settings.tempo)) BPM · \(assistance)"
     }
+    var courseHints = state.reasonByID
+    for item in DrumxCourse.lessons where state.availableIDs.contains(item.id) && !state.clearedIDs.contains(item.id) {
+      courseHints[item.id] = DrumxUnlocks.practiceAction(item)
+    }
     courseView.update(lesson: lesson, player: progress.selectedProfile.name, statuses: statuses, practised: practised,
-      availability: state.availableIDs, cleared: state.clearedIDs, lockReasons: state.reasonByID,
+      availability: state.availableIDs, cleared: state.clearedIDs, lockReasons: courseHints,
       recommendedID: state.recommendedID, bestStarsByID: bestStars, bestConditionsByID: bestConditions)
   }
 
@@ -156,7 +172,8 @@ extension LabController {
     window.title = "Drumx · \(lesson.title)"
     let state = unlockState
     if !state.clearedIDs.contains(lesson.id) && !isPulseLesson {
-      lessonEvidence.stringValue += "  ·  Unlock next: 4+ bars, 80% caught"
+      lessonEvidence.stringValue = DrumxUnlocks.practiceAction(lesson)
+        + " · Reading \(reading ? "checked" : "to try")"
     }
     refreshPulsePreparation()
   }

@@ -44,6 +44,13 @@ func run_checks(root: Window) -> Dictionary:
 	check(chord.voices.size() == 2, "simultaneous kit attacks use two voices")
 	check(chord.voices[0].beats[0].first == [0, 1], "hi-hat and snare form one upper chord")
 	check(chord.voices[1].beats[0].first == [2], "kick is independent lower quarter")
+	var rudiment := Notation.notation_model([
+		{"beat": 0, "pad": 1, "hand": "R"}, {"beat": 0.5, "pad": 1, "hand": "R"},
+		{"beat": 1, "pad": 1, "hand": "L"}, {"beat": 1.5, "pad": 1, "hand": "L"}])
+	check(rudiment.sticking == [["R"], ["R"], ["L"], ["L"], [], [], [], []], "double strokes remain distinguishable from singles in suggested sticking")
+	var mixed_hands := Notation.notation_model([
+		{"beat": 0, "pad": 0, "hand": "R"}, {"beat": 0, "pad": 1, "hand": "L"}, {"beat": 0, "pad": 2, "hand": "R"}])
+	check(mixed_hands.sticking[0] == ["L", "R"], "simultaneous hands preserved; kick is never assigned a hand")
 	var empty := Notation.notation_model([])
 	check(empty.valid and empty.voices.size() == 1, "empty bar matches native single rest voice")
 	check(not Notation.notation_model([{"beat":3.9999999,"pad":1}]).valid, "near-barline tolerance cannot index a ninth slot")
@@ -57,6 +64,8 @@ func run_checks(root: Window) -> Dictionary:
 	check(view.accessibility_name.contains("And of 2: Kick"), "accessible counts explain offbeat kick")
 	check(view.accessibility_name.contains("Count 1: no strike"), "accessible rests are explicit")
 	check(not view.accessibility_name.contains("Hi-hat and Snare"), "no invented chord description")
+	view.authored = [{"beat": 0, "pad": 1, "hand": "L"}]
+	check(view.accessibility_name.contains("suggested hands L"), "accessible sticking is explicitly a suggestion")
 	view.authored = [{"beat": 0.25, "pad": 1}]
 	check(view.accessibility_name == "Offbeat kick. Notation is unavailable for this rhythm.", "invalid update clears previous accessible rhythm")
 	# Exercise queued draw commands through CanvasItem's draw notification with
