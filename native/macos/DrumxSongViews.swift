@@ -46,6 +46,13 @@ enum DrumxSongInk {
   }
 }
 
+final class DrumxSongTableView: NSTableView {
+  var onKey: ((NSEvent) -> Bool)?
+  override func keyDown(with event: NSEvent) {
+    if onKey?(event) != true { super.keyDown(with: event) }
+  }
+}
+
 final class DrumxSongRootView: NSView {
   var onKey: ((NSEvent) -> Bool)?
   var onDrop: ((URL) -> Void)?
@@ -266,7 +273,10 @@ final class DrumxSongLibraryView: NSView, NSTableViewDataSource, NSTableViewDele
   private let listHeading = DrumxSongInk.label("SONG / ARTIST", size: 10, weight: .medium, color: DrumxSongInk.muted)
   private let timeHeading = DrumxSongInk.label("TIME", size: 10, weight: .medium, color: DrumxSongInk.muted)
   private let levelsHeading = DrumxSongInk.label("DRUMS", size: 10, weight: .medium, color: DrumxSongInk.muted)
-  private let table = NSTableView()
+  private let table = DrumxSongTableView()
+  var onKey: ((NSEvent) -> Bool)? {
+    didSet { table.onKey = onKey }
+  }
   private let scroll = NSScrollView()
   private let selectedHeading = DrumxSongInk.label("SELECTED SONG", size: 10, weight: .medium, color: DrumxSongInk.muted)
   private let artwork = DrumxSongArtwork()

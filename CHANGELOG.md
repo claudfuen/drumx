@@ -8,6 +8,7 @@ A record of playable milestones and product decisions. These entries describe re
 
 - Load lightweight song summaries off the main thread, retain note arrays only for play, and reuse unchanged reference imports through source fingerprints. Repair missing intensity metadata in the background with visible loading and failure states.
 - Add arrow-key browsing, search, sorting, chart filters, cached artwork, and cancellable previews from authored excerpts or the middle of a song. Display authored or estimated intensity separately from chart difficulty.
+- Route table-focused arrow, Return, and Space keys through the song controls, while retaining normal search-field text editing.
 - Preserve a long, narrow perspective highway across window sizes. Smooth raised note shells, center their visible silhouettes on one timing row, and draw musical beat and bar lines from the chart's tempo and meter maps.
 - Add recent rushing/dragging feedback, combo multipliers, five-star progress, and per-player song/difficulty personal bests. Persist complete attempts with retryable saves and revision-safe corrections from captured input timestamps.
 - Integrate live recorded-drum stem controls and restore lesson MIDI mappings when leaving Songs. Keep private media and score archives outside the repository.

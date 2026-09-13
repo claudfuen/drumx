@@ -111,6 +111,7 @@ final class DrumxSongController: NSObject {
     scrollSpeedControl.attachValueLabel(scrollSpeedLabel) { String(format: "Scroll speed · %.2f×", $0) }
     view.onResize = { [weak self] in self?.layout() }
     view.onKey = { [weak self] event in self?.handleKey(event) ?? false }
+    library.onKey = { [weak self] event in self?.handleKey(event) ?? false }
     view.onDrop = { [weak self] url in self?.importSource(url, scan: false) }
     library.onBack = { [weak self] in self?.stop(); self?.onBack() }
     library.onImport = { [weak self] in self?.chooseImport(scan: false) }
@@ -245,6 +246,7 @@ final class DrumxSongController: NSObject {
         library.moveSelection(event.keyCode == 125 ? 1 : -1); return true
       }
       if view.window?.firstResponder is NSTextView { return false }
+      if event.keyCode == 49 { library.onPreviewToggle?(); return true }
       if event.keyCode == 53 { stop(); onBack(); return true }
       if event.keyCode == 36 { prepareAndPlay(); return true }
       return false
